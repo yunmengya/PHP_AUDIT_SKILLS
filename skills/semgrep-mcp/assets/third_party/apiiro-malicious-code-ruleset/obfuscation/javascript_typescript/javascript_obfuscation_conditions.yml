@@ -1,0 +1,18 @@
+rules:
+  - id: javascript-obfuscation-conditions
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-not: while (true) { ... }
+      - pattern-either:
+          - pattern: if ($VAR) { ... }
+          - pattern: while ($VAR) { ... }
+          - pattern: switch ($VAR) { case ... }
+      - metavariable-regex:
+          metavariable: $VAR
+          # Match all non-literals, or the listed literals.
+          regex: ^(?!.*(?<!['"`])\b(?!true|false|undefined|null|NaN)[a-zA-Z_$]).*$
+    message:  Detect obfuscation by spurious conditions.
+    severity: WARNING
+    languages: 
+      - javascript
+      - typescript

@@ -1,0 +1,20 @@
+rules:
+  - id: go-obfuscation-conditions
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-not: for true { ... }
+      - pattern-either:
+          - pattern: if $VAR { ... }
+          - pattern: for $VAR { ... }
+          - pattern: |
+              switch $VAR {
+              case ...
+              }
+      - metavariable-regex:
+          metavariable: $VAR
+          # Match all non-literals, or the listed literals.
+          regex: ^((?:[^a-zA-Z_!'"]|(['"])[^'"]*\2)+|(?!true$)|(?!false$))$
+    message:  Detect obfuscation by spurious conditions.
+    severity: WARNING
+    languages:
+      - go

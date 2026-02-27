@@ -1,0 +1,7 @@
+rules:
+  - id: lua-obfuscation-reconstruction
+    pattern-regex: (concat|ipairs|tostring)\(\{\s*((((["'])(?:(?!\5).)*\5)|(\d+|(0|\\{1,})[beoux]\d+))\s*,\s*){5,}(((((["'])(?:(?!\12).)))*\12)|(\d+|(0|\\{1,})[beoux]\d+))\s*\}.*\)
+    message: Obfuscation by reconstruction of hardcoded data.
+    severity: WARNING
+    languages:
+      - lua

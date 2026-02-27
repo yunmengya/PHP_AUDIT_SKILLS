@@ -1,0 +1,25 @@
+rules:
+  - id: python-obfuscation-indirect-exec
+    patterns:
+      - pattern-either:
+          - pattern: builtins.exec
+          - pattern: $VAR = exec
+          - pattern: globals()[...].exec
+          - pattern: |
+              $VAR = builtins
+              ...
+              $VAR.exec
+          - pattern: |
+              ...(..., 'exec')
+          - pattern: |
+              $VAR = 'exec'
+              ...
+              ...(..., $VAR)
+          - pattern: |
+              $VAR = globals()[...]
+              ...
+              $VAR.exec("...")
+    message: "Detected potential obfuscation by alternative usage of `exec`."
+    severity: ERROR
+    languages:
+      - python

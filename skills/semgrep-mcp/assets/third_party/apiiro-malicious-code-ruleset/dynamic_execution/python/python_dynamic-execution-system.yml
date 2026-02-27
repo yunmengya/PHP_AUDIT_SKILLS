@@ -1,0 +1,21 @@
+rules:
+  - id: python-dynamic-execution-system
+    pattern-either:
+      - pattern: $VAR = os
+      - pattern: $VAR = subprocess
+      - pattern-regex: \b(python.?|bash)\s*\-c\b
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  [..., '$LANG', '-c', ...]
+              - pattern: |
+                  $CMD(..., '...', '$LANG', '-c', '...')
+              - pattern: |
+                  (..., ['$LANG', '-c', ...], '...')
+          - metavariable-regex:
+              metavariable: $LANG
+              regex: (python.?|bash)
+    message: Dynamic execution using system commands.
+    severity: ERROR
+    languages:
+      - python

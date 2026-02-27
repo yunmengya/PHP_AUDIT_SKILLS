@@ -1,0 +1,123 @@
+PHP 代码审计之文件上传  
+1. 文件上传原理  
+将 Web 木马插入到服务器并且服务器端可以成功解析插入的 Web 木马
+何为上传的 Web 木马被解析：最简单的例子就是目标服务器后端用 PHP 语言，那么针对上传的文件我们
+就要利用 PHP 木马进行上传，且后缀为.PHP。
+是否存在上传漏洞的前提条件是：①存在上传点  ②上传点的内容可控③上传的文件可被解析
+1.1 文件上传业务流程  
+通过前端页面上传恶意文件到后端，服务器接收到文件后先将他存储为临时文件，将临时文件移动到信
+的位置，然后攻击者访问该文件，恶意文件被解析后返回该恶意文件内容。
+1.2 文件上传利用条件  
+① Web 站点具有上传功能点
+②上传的目标文件可被 Web 服务器解析
+③已知上传的目标文件路径以及文件名
+④目标文件可被访问
+  在某种情况下服务器会对上传的文件进行访问控制，也就是说即使将目标文件上传到服务器也无法
+对其进行访问，无法进一步利用。
+1.3 文件上传示例代码  
+index.html
+form标签中action属性定义在哪个文件实现后端文件上传功能，method属性定义上传方式，
+enctype属性定义上传类型 , 如果不写浏览器将根据上传文件，自行判断上传文件类型
+input标签type属性定义 input 标签将内容当做什么类型来处理，name属性定义上传文件名
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>文件上传小 demo</title>
+demo.php
+上传 dog.jpg 作为演示文件
+uploadFile就是index.html中input标签中name属性值，上传成功后会通过var_dump()函数以
+键值对的形式打印出$_FILES中保存的所有值。
+值得注意的是文件被上传后，默认地会被存储为临时文件 (phpBD6C.tmp) ，需使用
+move_uploaded_file()函数将临时文件进行移动存储，如果不进行移动在上传代码运行完成之后临时
+文件将被删除，文件将不会被保存。
+</head>
+<body>
+<form  action="demo.php" method="post" enctype="multipart/form-data">   
+   <p>请选择上传的文件：</p>
+    <input class="upload_file" type="file" name="uploadFile"/> 
+    <input class="button" type="submit" name="submit" value=" 上传 " />
+</form>
+</body>
+</html>
+<?php
+    if(is_uploaded_file($_FILES["uploadFile"]["tmp_name"]))
+    {
+        $upFile = $_FILES["uploadFile"];
+        $name = $upFile["name"];
+        $type = $upFile["type"];
+        $size = $upFile["size"];
+        $tmpName = $upFile["tmp_name"];
+        var_dump($upFile);
+        $path = "./".$name;
+        move_uploaded_file($tmpName,$path);
+        echo " 文件上传成功 ";
+    }else
+    {
+        echo " 文件上传失败 ";
+    }
+?>
+1.3.1 PHP 超全局变量以及函数介绍  
+ $_FILES 
+PHP 中的超全局变量，用来接收上传文件的所有内容， $_FILES 是一个二维数组，数组内容如下：
+var_dump()
+is_uploaded_ﬁle()
+$_FILES['uploadFile']['name']   客户端文件的原名称。 
+$_FILES['uploadFile']['type']   文件的 MIME 类型，例如"image/gif"。 
+$_FILES['uploadFile']['size']   已上传文件的大小，单位为字节。 
+$_FILES['uploadFile']['tmp_name']   文件被上传后在服务端储存的临时文件名，一般是系统默
+认。可以在 php.ini 的 upload_tmp_dir 指定。
+$_FILES['uploadFile']['error']   该文件上传相关的错误代码。
+move_uploaded_ﬁle()
+如果移动过程中文件名重复，则会覆盖以后文件。
+2. 文件上传检测类型  
+文件上传最重要的是对上传文件的类型进行检测，相关检测方式如下如：
+2.1 代码示例  
+这里代码为前端 JS 检测代码，上述提到的检测类型代码以及绕过方式会在Upload-Labs靶场中为大家一
+一讲解。
+upload_index.html
+<!DOCTYPE html>
+<html lang="en">
+2.2 绕过方式  
+上传 .php 文件，提示不允许上传
+<head>
+    <meta charset="UTF-8">
+    <title>文件上传 JS 检测 demo</title>
+</head>
+<body>
+<form  action="demo.php" method="post" enctype="multipart/form-data" 
+onsubmit="return checkFile()">
+    <p>请选择上传的文件：</p>
+    <input class="upload_file" type="file" name="uploadFile"/>
+    <input class="button" type="submit" name="submit" value=" 上传 " />
+</form>
+</body>
+</html>
+<script type="text/javascript">
+    function checkFile() {
+        // 获取数组下标为 0 的值，也就是上传的文件名
+        var file = document.getElementsByName('uploadFile')[0].value;
+        if (file == null || file == "") {
+            alert(" 请选择要上传的文件 !");
+            return false;
+        }
+        // 定义允许上传的文件类型
+        var allow_ext = ".jpg|.png|.gif";
+        // 提取上传文件的类型
+        var ext_name = file.substring(file.lastIndexOf("."));
+        // 判断上传文件类型是否允许上传
+        if (allow_ext.indexOf(ext_name) == -1) {
+            var errMsg = " 该文件不允许上传，请上传 " + allow_ext + " 类型的文件 , 当前文件
+类型为： " + ext_name;
+            alert(errMsg);
+            return false;
+        }
+    }
+</script>
+修改后缀名为.jpg，并使用 burp 抓包修改将后缀修改回原来的 .php 绕过 js 检测
+3. 文件上传代码审计总结  
+
+本次只对文件上传原理以及上传代码如何进行实现进行简单介绍，目的是让大家了解文件上传中前后端代码是
+如何进行分工配合实现文件上传的。在文件上传代码审记中重点要关注的是上传检测部分的代码，通过审计该
+部分代码来绕过文件上传检测。后续在 Upload-Labs 靶场部分会对上述所提到的所有上传检测代码以及绕过
+方式进行一一介绍以及实战演示。

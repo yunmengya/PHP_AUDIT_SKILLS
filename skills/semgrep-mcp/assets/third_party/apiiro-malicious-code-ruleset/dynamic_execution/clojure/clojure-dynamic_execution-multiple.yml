@@ -1,0 +1,10 @@
+rules:
+  - id: clojure-dynamic-execution-multiple
+    pattern-either:
+      - pattern: eval
+      - pattern: load-string
+      - pattern: RT/var ... ...
+    message: Dynamic execution.
+    severity: ERROR
+    languages:
+      - clojure

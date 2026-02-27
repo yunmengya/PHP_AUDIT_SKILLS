@@ -1,0 +1,58 @@
+# auto-slice rules
+# auth_keywords: words treated as auth/permission checks (will be skipped)
+# sink_patterns: regex patterns for sink calls to exclude from trace-only slice
+auth_keywords:
+  - auth
+  - permission
+  - acl
+  - rbac
+  - session
+  - token
+  - middleware
+  - guard
+  - login
+  - islogin
+  - checkauth
+  - isadmin
+  - authorize
+  - capability
+  - role
+  - policy
+sink_patterns:
+  - "\\b(system|exec|passthru|shell_exec|popen|proc_open|eval|assert)\\b"
+  - "\\b(file_get_contents|readfile|fopen|file_put_contents|fwrite)\\b"
+  - "\\b(curl_init|simplexml_load_string|unserialize)\\b"
+  - "->\\s*(query|exec|prepare)\\s*\\("
+sink_patterns_sql:
+  - "->\\s*(query|exec|prepare|execute|raw|statement|unprepared)\\s*\\("
+  - "\\b(mysqli_query|mysqli_multi_query|mysqli_prepare|mysqli_stmt_execute)\\b"
+  - "\\b(mysql_query|mysql_db_query)\\b"
+  - "\\b(pg_query|pg_exec|pg_prepare|pg_execute)\\b"
+  - "\\b(sqlite_query|sqlite_exec|SQLite3::query|SQLite3::exec|SQLite3::prepare)\\b"
+  - "\\b(PDO::query|PDO::exec|PDO::prepare)\\b"
+  - "\\b(DB::select|DB::statement|DB::unprepared)\\b"
+  - "\\b(executeQuery|executeStatement)\\b"
+sink_patterns_rce:
+  - "\\b(system|exec|passthru|shell_exec|popen|proc_open|pcntl_exec)\\b"
+  - "\\b(eval|assert|create_function)\\b"
+  - "\\b(call_user_func|call_user_func_array)\\b"
+  - "`[^`]+`"
+sink_patterns_file:
+  - "\\b(include|require|include_once|require_once)\\b"
+  - "\\b(fopen|readfile|file_get_contents|file_put_contents|rename|copy|unlink|fwrite|move_uploaded_file|file)\\b"
+sink_patterns_ssrf:
+  - "\\b(curl_init|curl_exec|curl_multi_exec|curl_setopt)\\b"
+  - "\\b(fsockopen|pfsockopen|stream_socket_client|socket_create)\\b"
+  - "\\b(get_headers|file_get_contents|fopen)\\b"
+sink_patterns_xxe:
+  - "\\b(simplexml_load_string|loadXML|xml_parse|xml_parser_create)\\b"
+  - "\\b(DOMDocument->loadXML|DOMDocument->load)\\b"
+  - "\\b(XMLReader::XML|XMLReader::open)\\b"
+sink_patterns_xss:
+  - "\\b(echo|print|printf|print_r|var_dump)\\b"
+  - "->\\s*(render|display|write|output|setContent|send)\\s*\\("
+sink_patterns_ssti:
+  - "->\\s*(render|fetch|display|evaluate)\\s*\\("
+  - "\\b(twig|smarty|blade|latte)\\b"
+sink_patterns_serialize:
+  - "\\b(unserialize|igbinary_unserialize|yaml_parse|msgpack_unpack|wddx_deserialize)\\b"

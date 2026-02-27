@@ -1,0 +1,31 @@
+rules:
+  - id: ruby-obfuscation-override
+    pattern-either:
+      - patterns:
+          - pattern: |
+              class $IMPOSTOR
+                ...
+              end
+          - metavariable-pattern:
+              metavariable: $IMPOSTOR
+              pattern-regex: ^(Array|Class|Complex|Date|Exception|File|Float|Hash|Integer|IO|Module|NilClass|Object|Regexp|Range|String|Symbol|Thread|Time|TrueClass|FalseClass)$
+      - patterns:
+          - pattern: |
+              module $IMPOSTOR
+                ...
+              end
+          - metavariable-pattern:
+              metavariable: $IMPOSTOR
+              pattern-regex: ^(Comparable|CSV|Dir|Errno|Enumerable|FileUtils|IO|JSON|Kernel|Math|Monitor|Mutex|Net::HTTP|OpenSSL|Process|RSpec|Set|StringIO|Tempfile|Thread|URI)$
+      - patterns:
+          - pattern: |
+              def $IMPOSTOR
+                ...
+              end
+          - metavariable-pattern:
+              metavariable: $IMPOSTOR
+              pattern-regex: ^(abs|each|each_with_index|map|select|reject|reduce|inject|collect|to_s|to_i|to_f|length|size|push|pop|shift|unshift|include?|empty?|sort|join|reverse|flatten|uniq|split|gsub|sub|chomp|strip|puts|print|gets|chdir|require|load|define_method|respond_to?|method|call|send|eval|at_exit|raise|warn|sleep|exit)(\..*)?$
+    message: Obfuscation by overriding builtin constructs.
+    severity: ERROR
+    languages: 
+      - ruby

@@ -1,0 +1,11 @@
+rules:
+  - id: clojure-dynamic-system-commands
+    pattern:
+      (require '[clojure.java.shell :refer [$SH]])
+      ...
+      (def $RESULT ($SH "clojure" ...))
+      ...
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - clojure

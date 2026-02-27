@@ -1,0 +1,224 @@
+rules:
+  - id: python-obfuscation-conditions
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-either:
+          # Split for performance
+          - patterns:
+              - pattern-inside: |
+                  $X = $VAR
+                  ...
+              - pattern-either:
+                  - patterns:
+                      - pattern-regex: ^if\snot.*:\s
+                      - pattern-either:
+                          - pattern: |
+                              if not $VAR in $X:
+                                ...
+                          - pattern: |
+                              if not $X in $VAR:
+                                ...
+                          - pattern: |
+                              if not $X:
+                                ...
+                  - patterns:
+                      - pattern-regex: ^if.*:\s
+                      - pattern-either:
+                          - pattern: |
+                              if $X in $VAR:
+                                ...
+                          - pattern: |
+                              if $X not in $VAR:
+                                ...
+                          - pattern: |
+                              if $X is $VAR:
+                                ...
+                          - pattern: |
+                              if $X is not $VAR:
+                                ...
+                          - pattern: |
+                              if $X:
+                                ...
+                  - patterns:
+                      # pattern-inside and then elif patterns is invalid syntax, so... 
+                      - pattern-regex: ^elif\snot.*:\s
+                      - pattern-either:
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif not $X in $VAR:
+                                ...
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif not $VAR in $X:
+                                ...
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif not $X:
+                                ...
+                  - patterns:
+                      - pattern-regex: ^elif.*:\s
+                      - pattern-either:
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif $X in $VAR:
+                                ...
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif $X not in $VAR:
+                                ...
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif $X is $VAR:
+                                ...
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif $X is not $VAR:
+                                ...
+                          - pattern: |
+                              if ...:
+                                ...
+                              elif $X:
+                                ...
+                  - patterns:
+                      - pattern-regex: ^while\snot.*:\s
+                      - pattern-either:
+                          - pattern: |
+                              while not $VAR in $VAR:
+                                ...
+                          - pattern: |
+                              while not $VAR:
+                                ...
+                  - patterns:
+                      - pattern-regex: ^while\s(?:(?!True).)*:$
+                      - pattern-either:
+                          - pattern: |
+                              while $VAR in $VAR:
+                                ...
+                          - pattern: |
+                              while $VAR not in $VAR:
+                                ...
+                          - pattern: |
+                              while $VAR is $VAR:
+                                ...
+                          - pattern: |
+                              while $VAR is not $VAR:
+                                ...
+                          - pattern: |
+                              while $VAR:
+                                ...    
+                  - pattern: |
+                      match $VAR:
+                        case $C: ...
+          - patterns:
+              - pattern-regex: ^if\snot.*:\s
+              - pattern-either:
+                  - pattern: |
+                      if not $VAR in $VAR:
+                        ...
+                  - pattern: |
+                      if not $VAR:
+                        ...
+          - patterns:
+              - pattern-regex: ^if.*:\s
+              - pattern-either:
+                  - pattern: |
+                      if $VAR in $VAR:
+                        ...
+                  - pattern: |
+                      if $VAR not in $VAR:
+                        ...
+                  - pattern: |
+                      if $VAR is $VAR:
+                        ...
+                  - pattern: |
+                      if $VAR is not $VAR:
+                        ...
+                  - pattern: |
+                      if $VAR:
+                        ...
+          - patterns:
+              - pattern-regex: ^elif\snot.*:\s
+              - pattern-either:
+                  - pattern: |
+                      if ...:
+                        ...
+                      elif not $VAR in $VAR:
+                        ...
+                  - pattern: |
+                      if ...:
+                        ...
+                      elif not $VAR:
+                        ...
+          - patterns:
+              - pattern-regex: ^elif.*:\s
+              - pattern-either:
+                  - pattern: |
+                      if ...:
+                        ...
+                      elif $VAR in $VAR:
+                        ...
+                  - pattern: |
+                      if ...:
+                        ...
+                      elif $VAR not in $VAR:
+                        ...
+                  - pattern: |
+                      if ...:
+                        ...
+                      elif $VAR is $VAR:
+                        ...
+                  - pattern: |
+                      if ...:
+                        ...
+                      elif $VAR is not $VAR:
+                        ...
+                  - pattern: |
+                      if ...:
+                        ...
+                      elif $VAR:
+                        ...
+          - patterns:
+              - pattern-regex: ^while\snot.*:\s
+              - pattern-either:
+                  - pattern: |
+                      while not $VAR in $VAR:
+                        ...
+                  - pattern: |
+                      while not $VAR:
+                        ...
+          - patterns:
+              - pattern-regex: ^while\s(?:(?!True).)*:$
+              - pattern-either:
+                  - pattern: |
+                      while $VAR not in $VAR:
+                        ...
+                  - pattern: |
+                      while $VAR in $VAR:
+                        ...
+                  - pattern: |
+                      while $VAR is not $VAR:
+                        ...
+                  - pattern: |
+                      while $VAR is $VAR:
+                        ...
+                  - pattern: |
+                      while $VAR:
+                        ...
+          - pattern: |
+              match $VAR:
+                case $C: ...
+      - metavariable-regex:
+          metavariable: $VAR
+          # Match all non-literals and the listed literals.
+          regex: ^\(?((?:[^a-zA-Z_'"]|(['"])[^'"]*\2)+|True|False|None)\)?$
+    message: Obfuscation by spurious conditions.
+    severity: WARNING
+    languages: 
+      - python

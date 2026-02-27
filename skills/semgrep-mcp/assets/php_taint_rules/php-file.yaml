@@ -1,0 +1,43 @@
+rules:
+  - id: php-file-taint
+    languages: [php]
+    message: "Tainted data used in file operation"
+    severity: WARNING
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[$X]
+      - pattern: $_POST[$X]
+      - pattern: $_REQUEST[$X]
+      - pattern: $_COOKIE[$X]
+      - pattern: request()->input($X)
+      - pattern: $REQ->input($X)
+      - pattern: input($X)
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: realpath(...)
+      - pattern: preg_match(...)
+      - pattern: str_replace("..", "", ...)
+    pattern-propagators:
+      - pattern: trim($X)
+        from: $X
+        to: trim($X)
+      - pattern: strtolower($X)
+        from: $X
+        to: strtolower($X)
+    pattern-sinks:
+      - pattern: include $X
+      - pattern: include_once $X
+      - pattern: require $X
+      - pattern: require_once $X
+      - pattern: file_get_contents(...)
+      - pattern: readfile(...)
+      - pattern: fopen(...)
+      - pattern: file(...)
+      - pattern: file_put_contents(...)
+      - pattern: fwrite(...)
+      - pattern: unlink(...)
+      - pattern: rename(...)
+      - pattern: copy(...)
+      - pattern: mkdir(...)
+      - pattern: rmdir(...)
+      - pattern: move_uploaded_file(...)

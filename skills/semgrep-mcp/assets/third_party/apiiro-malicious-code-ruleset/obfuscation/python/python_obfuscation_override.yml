@@ -1,0 +1,16 @@
+rules:
+  - id: python-obfuscation-override
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $IMPOSTOR(...):
+                ...
+          - pattern: $IMPOSTOR = ...
+          - pattern: setattr(__builtins__, $IMPOSTOR, ...)
+      - metavariable-pattern:
+          metavariable: $IMPOSTOR
+          pattern-regex: ^(any|bool|dict|Exception|getattr|globals|hasattr|len|list|open|print|set|setattr|str|super)$
+    message: Obfuscation by overriding builtin constructs.
+    severity: ERROR
+    languages: 
+      - python

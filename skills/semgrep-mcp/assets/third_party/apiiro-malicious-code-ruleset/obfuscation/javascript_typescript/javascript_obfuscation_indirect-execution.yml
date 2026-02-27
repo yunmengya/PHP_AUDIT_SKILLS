@@ -1,0 +1,32 @@
+rules:
+  - id: javascript-obfuscation-indirect-execution
+    patterns:
+      - pattern-either:
+          - pattern-regex: .* = (['"])?(eval|Function)(\(.*\))*\1
+          - pattern-regex: (window|globalThis)\[(['"])(eval|Function)\2\]
+          - pattern-regex: (window|globalThis)\.(eval|Function)
+          - pattern: window['eval']
+          - pattern: window['Function']
+          - pattern: globalThis['eval']
+          - pattern: globalThis['Function']
+          - pattern: |
+              $VAR = window
+              ...
+              $VAR.eval
+          - pattern: |
+              $VAR = window
+              ...
+              $VAR.Function
+          - pattern: |
+              $VAR = globalThis
+              ...
+              $VAR.eval
+          - pattern: |
+              $VAR = globalThis
+              ...
+              $VAR.Function
+    severity: ERROR
+    message: Obfuscation by indirect calls.
+    languages:
+      - javascript
+      - typescript

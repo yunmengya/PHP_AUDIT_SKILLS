@@ -1,0 +1,12 @@
+{
+  "default": "r/all",
+  "configs": [
+    "r/all",
+    "p/trailofbits",
+    "php_taint_rules",
+    "third_party/semgrep-rules",
+    "third_party/trailofbits-semgrep-rules",
+    "third_party/apiiro-malicious-code-ruleset"
+  ],
+  "notes": "Default uses Semgrep Registry r/all and additional public rule sets. Local rule repos are expected under assets/third_party after running scripts/sync_rules.sh."
+}

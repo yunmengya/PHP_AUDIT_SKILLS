@@ -1,0 +1,21 @@
+rules:
+  - id: ruby-obfuscation-declarations
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $VAR
+                ...
+              end
+          - pattern: |
+              class $VAR
+                ...
+              end
+          - pattern: module $VAR
+          - pattern: $VAR = Class.new(...)
+      - metavariable-pattern:
+          metavariable: $VAR
+          pattern-regex: ^(@|\$){0,2}\d|(.)\3{2,}|.{128,}|_0x|([^a-zA-Z0-9_$@.[]])
+    message: Obfuscated declarations names.
+    severity: ERROR
+    languages:
+      - ruby

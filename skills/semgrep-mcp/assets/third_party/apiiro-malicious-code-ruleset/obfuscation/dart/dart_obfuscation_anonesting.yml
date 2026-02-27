@@ -1,0 +1,8 @@
+rules:
+  - id: dart-obfuscation-anonymous-nesting
+    pattern: |
+      ((...) { ((...) { ((...) { ... })() })() })()
+    message: Detect obfuscation by deep anonymous nesting.
+    severity: WARNING
+    languages: 
+      - dart

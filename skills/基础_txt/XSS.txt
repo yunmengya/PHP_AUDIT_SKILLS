@@ -1,0 +1,104 @@
+PHP 代码审计之 XSS( 跨站脚本攻击 )  
+pikachu 靶场安装  
+在本节的部分内容会用到 pikachu 靶场来进行演示教学 ,pikachu 源码会与文章一起下发，大家使用 phpstudy 将
+pikachu 放入 www 进行搭建即可，具体搭建方法如下：
+将源码放置在 phpstudy 中 WWW 目录下，修改inc/config.inc.php文件，将 phpstudy 中设置的数据
+库用户名、密码以及端口填入，这里注意如果数据库端口不是默认的 3306 ，那么需要在 DBHOST 中跟端
+口号。
+这里选择pikachu根目录即可， PHP 版本建议使用 PHP7 以下的版本。
+然后点击上方的初始化进行安装
+如果出现如下内容就表示安装成功了。
+1.XSS 原理  
+  XSS （ Cross Site Scripting ），为了不和层叠样式表 (Cascading Style Sheets, CSS) 的缩写混淆，故
+将跨站脚本  攻击缩写为 XSS ，他的中文名称为：跨站脚本攻击。而 XSS 的重点不在于跨站，而在于 XSS 中
+执行的 JavaScript 脚本情况。
+  Web 程序代码中把用户提交的参数未做过滤就直接输出到页面，参数中的特殊字符被恶意进行闭合
+造成原有的 html 页面被嵌入恶意的脚本内容，黑客可以利用该漏洞执行恶意 JavaScript 代码，当用户浏
+览该页之时，嵌入其中 Web 里面的 JavaScript 代码会  被执行，从而达到恶意攻击用户的目的。
+2.XSS 分类  
+XSS 常被分为三种类型：
+反射型 XSS: 直接将 HTTP 请求中的用户可控数据输出到 HTML 页面中的跨站脚本注入，由于用户可控
+数据没有被存储，因此只能在单次请求中生效。
+存储型 XSS: 又叫特久型 XSS ，直接将 HTTP 请求中的用户可控数据存储至数据库中，再从数据库中读
+取出来输出到 HTML 页面上，由于数据经过存储，可以持续被读取，攻击影响面和危害都较高。
+DOM-XSS: 特殊的反射型 XSS ，将用户可控数据通过 JavaScript 和 DOM 技术输出到 HTML 中，利用方
+式通常与反射型 XSS 类似。
+2.1 反射型 XSS  
+反射型 XSS 对于访问者来说是一次性的，当攻击者将构造好的恶意 URL 发送给访问者，访问者点击 URL 将
+我们的请求传递给服务器，服务器将不加处理的脚本 “ 反射 ” 回访问者的浏览器而使访问者的浏览器执行
+相应的脚本，最简单的代码如下。
+反射型 XSS 执行方式：浏览器 ——> 后端 ——> 浏览器
+示例代码：
+我们通过参数xss传入我们自定义的 XSS 脚本 , 脚本被前端页面解析并执行。
+在页面右击查看源码处我们可以发现我们输入的 JavaScript 脚本。
+2.2 存储型 XSS  
+  存储型 XSS 与反射型 XSS 的区别在于，存储型 XSS 是被存储在数据库中的，攻击者只需将 JavaScript
+脚本输入，后端将攻击者输入的 JavaScript 脚本保存到数据库中，访问者在每次访问存在 XSS 页面时存储
+在数据库中的 JavaScript 脚本就会被执行。
+存储型 XSS 执行方式：浏览器 ——> 后端 ——> 数据库 ——> 后端 ——> 浏览器
+在pikachu存储型 XSS 靶场中存在如下代码：
+xss_stored.php
+这里代码 24-26 行，通过 POST 接收参数后，将数据插入到数据库中。
+这里代码 80-83 行，通过select查询数据库中刚才插入的数据并通过echo输出content字段内容，在
+这个过程中将我们插入的数据保存到数据库中并且进行任何过滤所以造成存储型 XSS 。
+<?php
+highlight_file(__FILE__);
+echo  $_REQUEST['xss'] ;
+?>
+这里我们输入 JavaScript 代码，成功执行并弹窗。
+在数据库中也可以发现我们的 JavaScript 代码被存储到数据库中。
+2.3 DOM 型 XSS  
+  DOM 型 XSS 与反射型 XSS 差不多，只不过 DOM 型 XSS 中会调动一些 JavaScript 中的函数来获取客户端
+提交的内容，定义了一个节点名字和值，然后再返给客户端。
+DOM 型 XSS 执行方式：URL--> 浏览器
+在pikachuDOM 型 XSS 靶场中存在如下代码 :
+xss_dom.php
+在这里接收一个 GET 传入的值
+在代码 56-58 行，表单中调用domxss()函数 , 在代码 49-50 行，获取text内容赋值给变量str并拼接到 a 
+href 标签中通过 innerHTML 将内容输入到页面。
+通过闭合 '> 将我们想要执行的 JavaScript 代码分离出来
+3.XSS 审计函数  
+  在 XSS 审计中我们其实多关注一些输出打印函数即可，它们的作用就是将输入的内容显示在前端页
+面，只要这些函数中内容可控且输出前没有进行完善的过滤就会造成 XSS 漏洞。
+print
+4.XSS 审计注意点  
+4.1 htmlspecialchars 函数  
+  在htmlspecialchars()函数中，默认情况下不会对'进行转义，如果是代码中像下面这种情况，
+传入的 text 内容，在下面的 input 表单中输出且是被单引号包裹，我们就可以闭合单引号，在标签内构造
+XSS 来绕过htmlspecialchars()函数。
+我们可以在标签内闭合单引号，然后通过 onclick 在标签内构造一个点击事件来触发 XSS 。
+print_r
+echo
+printf
+sprintf
+die
+var_dump
+var_export
+<?php
+highlight_file(__FILE__);
+$content = htmlspecialchars($_GET['text']);
+?>
+<input type='text' class='find' value='<?=$content?>' >
+
+4.2 编解码中存在的问题  
+  很多时候开发在写代码时存在一些逻辑缺陷，导致过滤函数无法发挥实际的效果，如下代码中首先
+通过 text 传入参数，然后紧接着对传入的参数进行htmlspecialchars()实体化编码，这里似乎没有问
+题。但浏览器的运行机制会默认对传入的参数进行一次 url 解码，由于代码中最后一段又进行了一次 url 解
+码并使用echo输出。那么我们就可以对传入的内容进行两次 url 编码来绕过htmlspecialchars()函数
+的过滤，从而造成 xss 。
+我们对中特殊字符进行两次 URL 编码%253Cscript%253Ealert('xss')%253C/script%253E，由于浏
+览器会首先对我们传入的数据进行一次 URL 解码，变成%3Cscript%3Ealert('xss')%3C/script%3E，
+在传入htmlspecialchars()函数时就会绕过该函数的过滤，在最后echo时又进行一次 URL 解码，最
+终还原我们的 JavaScript 代码<script>alert('xss')</script>。
+<?php
+highlight_file(__FILE__);
+$content=$_REQUEST['text']; // 接收参数并进行 url 解码
+$cont=htmlspecialchars($content); // 对传入的特殊字符进行实体化编码
+echo urldecode($cont); // 最后， url 解码输出
+?>
+5.XSS 代码审计总结  
+
+在黑盒测试中 XSS 遵循一个见框就插的原则，而在 PHP 代码审计中我们主要关注上述的一些输出打印函数和代码
+中的一些编写逻辑来绕过某些过滤函数从而构造 XSS payload 进行利用。
+pikachu 靶场中 XSS 模块还有很多 XSS 关卡，大家可以在靶场练习的同时结合代码审计来了解靶场其中的过滤
+规则，这样可以更深入的了解 XSS 漏洞的触发原理。

@@ -1,0 +1,6 @@
+(eval '(println "..."))
+
+(load-string "(println \"...\")")
+
+(import 'clojure.lang.RT)
+(RT/var "clojure.core" "println") "..."

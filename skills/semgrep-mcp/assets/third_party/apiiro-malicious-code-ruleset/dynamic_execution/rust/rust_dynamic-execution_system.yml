@@ -1,0 +1,12 @@
+rules:
+  - id: ruby-dynamic-execution-system
+    pattern-either:
+      - pattern: $STD::new("cargo").arg("run")
+      - pattern: |
+          let $X = $STD::new("cargo");
+          ...
+          $X.arg("run");
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - rust

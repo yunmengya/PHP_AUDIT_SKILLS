@@ -1,0 +1,12 @@
+name: thinkphp
+route_files:
+- route/*.php
+- route.php
+- config/route.php
+controller_paths:
+- app/*/controller/*
+- application/*/controller/*
+entry_points:
+- public/index.php
+notes:
+- input($X), I($X), Request::param($X)

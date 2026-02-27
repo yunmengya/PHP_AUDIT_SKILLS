@@ -1,0 +1,22 @@
+rules:
+  - id: clojure-obfuscation-conditions
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-not: (while true ...)
+      - pattern-not: (while (true) ...)
+      - pattern-either:
+          - pattern: (if $VAR ...)
+          - pattern: (if-not $VAR ...)
+          - pattern: (when $VAR ...)
+          - pattern: (when-not $VAR ...)
+          - pattern: (while $VAR ...)
+          - pattern: (cond $VAR ...)
+          - pattern: (case $VAR ...)
+      - metavariable-regex:
+          metavariable: $VAR
+          # Match all non-literals, or the listed literals.
+          regex: ^\(?(?:not\s)?((?:[^a-zA-Z_@'"]|(['"])[^'"]*\2)+|true|false|nil)\)?$
+    message: Obfuscation by spurious conditions.
+    severity: WARNING
+    languages: 
+      - clojure

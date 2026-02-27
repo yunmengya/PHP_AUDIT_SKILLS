@@ -1,0 +1,24 @@
+rules:
+  - id: java-obfuscation-declarations
+    patterns:
+      - pattern-either:
+          - pattern: class $VAR { ... }
+          - pattern: class $VAR
+          - pattern: interface $VAR { ... }
+          - pattern: enum $VAR { ... }
+          - pattern: $TYPE $VAR = ...;
+          - pattern: $TYPE $VAR;
+          - pattern: private $TYPE $VAR;
+          - pattern: protected $TYPE $VAR;
+          - pattern: public $TYPE $VAR;
+          - pattern: static $TYPE $VAR;
+          - pattern: $TYPE $VAR(...) { ... }
+          - pattern: void $VAR(...) { ... }
+          - pattern: $TYPE[] $VAR = ...;
+      - metavariable-pattern:
+          metavariable: $VAR
+          pattern-regex: ^\d|(.)\1{3,}|_0x|.{128,}|([^a-zA-Z0-9_])
+    message: Obfuscated declarations names.
+    severity: ERROR
+    languages:
+      - java

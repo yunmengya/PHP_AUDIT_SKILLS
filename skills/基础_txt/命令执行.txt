@@ -1,0 +1,133 @@
+PHP 代码审计之命令执行  
+1. 命令执行原理  
+通过调用 PHP 中命令执行函数，且函数中的参数可控就会造成命令执行。以 Web 中一句话木马为例，常
+见的 PHP 一句话木马<?php system($_REQUEST['value']); ?>，这里通过system()函数将前端传
+入的值当做系统命令执行，其中value参数由前端传入。
+1.1 命令执行示例代码  
+cmd.php
+下面示例代码将前端传入的value参数值带到system()命令执行函数中去执行，值得注意的是
+system()函数自带回显，不用使用echo或者var_dump()进行输出。
+value传入calc.exe即可调用system()函数弹出计算器。
+2. 命令执行相关函数  
+exec()、shell_exec()、system()、popen()、passthru()、proc_open()、
+pcntl_exec()、  反引号 `` 实际上是使用 shell_exec() 函数。
+exec()  
+<?php
+$sys = $_REQUEST['value'];
+$cmd = system($sys);
+?>
+该函数无回显需使用echo进行输出，且只返回执行后的最后一行结果。
+示例代码：
+我们执行ipconfig只返回了结果中最后一行结果
+执行whoami结果将不受影响，因为返回结果只有一行
+shell_exec()  
+该函数无回显需使用echo或者var_dump进行输出，但返回结果所有内容。
+示例代码：
+我们传入系统命令ipconfig则会输出所有结果
+<?php
+$sys = $_REQUEST['value'];
+$cmd = exec($sys);
+echo $cmd;
+?>
+<?php
+$sys = $_REQUEST['value'];
+$cmd = shell_exec($sys);
+var_dump( $cmd);
+?>
+`` 反引号  
+反引号其实调用的是 shell_exec() 函数，当反引号中的变量可控时就会造成命令执行，且无回显。
+示例代码 :
+我们传入系统命令ipconfig则会输出所有结果
+system()  
+该函数会将输入的参数当做命令执行，有回显且返回所有内容。在实战中也是最常见的造成命令执行漏
+洞的函数之一。
+这里注意：如果目标是 LInux 则执行Bash命令，如果是 Windows 则执行cmd命令。
+passthru()  
+该函数与上述system()函数类似，也可将输入的参数当做命令执行，且函数执行后有回显。
+示例代码：
+<?php
+$sys = $_REQUEST['value'];
+$cmd = `$sys`;
+echo $cmd;
+?>
+<?php
+$sys = $_REQUEST['value'];
+$cmd = passthru($sys);
+?>
+我们传入系统命令dir则会输出所有结果
+popen()  
+该函数通常用于打开进程文件指针，但如果传入的参数可控也可造成命令执行，且该函数无回显 , 通过
+echo不回直接返回执行的结果，而是返回的是文件指针。
+示例代码：
+这里调用我们的popen()函数执行 calc.exe 打开了计算器。
+<?php
+$sys = $_REQUEST['value'];
+$cmd = popen($sys,'r');
+var_dump($cmd); ;
+?>
+proc_open()  
+ 执行一个命令，并且打开用来输入 / 输出的文件指针。   类似  popen()函数 , 但是  proc_open() 所需参
+数更多，且处理数据能力更强。
+3. 系统命令执行  
+在很多 IoT 设备如路由器中会存在如下类似的代码，本来设计的功能点是测试网络通信情况，但由于传
+入的参数没有进行严格的过滤就传入到命令执行函数中，最终导致命令执行。
+ping.html
+ping.php
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>系统命令执行 demo</title>
+  <meta name="keywords" content="" />
+  <meta name="description" content="" />
+</head>
+<body>
+<div id="main">
+  <div class="title">Ping 功能测试</div>
+  <form  action="ping.php" method="post" onsubmit="return enter()">
+    <label><input class="text" type="text"  placeholder=" 请输入 IP 地址 " name="ip" 
+/></label>
+    <label><input class="submit" type="submit" name="submit" value=" 测试 " />
+</label>
+  </form>
+</div>
+</body>
+</html>
+我们使用|来分割前面的ping命令，将我们的ipconfig命令单独分割出来造成命令执行。
+由于|会直接执行后面的命令，所以直接输出了ipconfig的内容。
+4. 命令执行漏洞利用姿势  
+常见管道符
+<?php
+header("content-type:text/html;charset=gbk");
+if(isset($_POST['submit'])){
+    $target = $_REQUEST['ip'];
+    //php_uname() 判断当前操作系统是否为 Windows NT
+    if(stristr(php_uname('s'),'Windows NT')){    
+
+        $cmd = shell_exec('ping '.$target);
+        echo '<pre>'.$cmd.'<pre>';
+
+    }else{
+
+        $cmd = shell_exec('ping -c 3 '.$target);
+        echo '<pre>'.$cmd.'<pre>';
+    }
+}
+由于 Linux 和 Windows 中命令执行的方式不同， Linux 中执行的是bash命令，而 Windows 执行的是cmd
+命令。常见的管道符如下：
+Windows ：
+| 直接执行后面的语句
+|| 如果前面执行的语句出错，那么才执行后面的语句
+& 前面和后面的语句都会被执行
+&& 前面语句出错后面的语句也不执行，只有前面的语句成功执行才执行后面的语句
+Linux:
+Linux 中除了上面的管道符外还有一个;
+; 前面的语句执行完成后，继续执行后面的语句。
+5. 命令执行代码审计总结  
+
+这些管道符大家可以可以在 cmd 命令行或者 bash 命令行进行测试，一般情况下如果在命令行中可以成功执行的
+话，在真实的业务系统也是可以执行的。
+在 PHP 中还有很多函数可以造成命令执行，但在代码审计中常见的命令执行危险函数已经给大家列出，大家在
+PHP 代码审计中只要多留意这些函数且该函数的参数是可以被我们所控制，这是命令执行漏洞存在的关键。下
+部分会讲 PHP 中的代码执行函数，其实命令执行和代码执行都是一样的，命令执行可以通过调用代码执行的函
+数实现代码执行，代码执行也可以通过调用命令执行的函数来实现命令执行。

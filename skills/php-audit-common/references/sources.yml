@@ -1,0 +1,47 @@
+version: 1
+sources:
+- name: php_get
+  kind: GET
+  patterns:
+  - $_GET[$X]
+- name: php_post
+  kind: POST
+  patterns:
+  - $_POST[$X]
+- name: php_request
+  kind: REQUEST
+  patterns:
+  - $_REQUEST[$X]
+- name: php_cookie
+  kind: COOKIE
+  patterns:
+  - $_COOKIE[$X]
+- name: php_files
+  kind: FILE
+  patterns:
+  - $_FILES[$X]
+- name: php_server
+  kind: HEADER
+  patterns:
+  - $_SERVER[$X]
+- name: php_env
+  kind: ENV
+  patterns:
+  - $_ENV[$X]
+- name: php_raw
+  kind: BODY
+  patterns:
+  - php://input
+- name: laravel_request
+  kind: REQUEST
+  patterns:
+  - request()->input($X)
+  - $request->input($X)
+  - $request->get($X)
+  - $request->post($X)
+- name: thinkphp_input
+  kind: REQUEST
+  patterns:
+  - input($X)
+  - I($X)
+  - Request::param($X)

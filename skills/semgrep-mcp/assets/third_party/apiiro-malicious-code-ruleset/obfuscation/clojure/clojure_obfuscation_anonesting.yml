@@ -1,0 +1,11 @@
+rules:
+  - id: clojure-obfuscation-generic
+    pattern: |
+        (fn [$X]
+          (fn [$Y]
+            (fn [$Z]
+                ...)))
+    message: Detect obfuscation by deep anonymous nesting.
+    severity: WARNING
+    languages: 
+      - clojure

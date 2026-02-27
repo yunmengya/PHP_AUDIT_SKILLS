@@ -1,0 +1,29 @@
+rules:
+  - id: lua-obfuscation-declarations
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: $VAR = ...
+              - pattern-not: $X.$Y = ...
+              - pattern-not: $X[...] = ...
+              - pattern-not-inside: $X = ...
+          - patterns:
+              - pattern: local $VAR = ...
+          - pattern: $TABLE.$VAR = ...
+          - pattern: |
+              function $VAR(...)
+              ...
+          - pattern: |
+              local function $VAR(...)
+              ...
+          - pattern: |
+              function $TABLE.$VAR(...)
+              ...
+          - pattern: for $VAR in ... do
+      - metavariable-pattern:
+          metavariable: $VAR
+          pattern-regex: ^\d|(.)\1{3,}|.{128,}|^_0x|([^a-zA-Z0-9_.])
+    message: Obfuscated declarations names.
+    severity: ERROR
+    languages:
+      - lua

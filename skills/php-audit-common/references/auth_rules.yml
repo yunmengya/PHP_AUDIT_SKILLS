@@ -1,0 +1,21 @@
+version: 1
+rules:
+  auth_middleware_patterns:
+    - auth
+    - auth:api
+    - jwt
+    - guard
+    - policy
+    - permission
+  csrf_middleware_patterns:
+    - csrf
+    - verifycsrf
+    - verifycsrftoken
+  ownership_fields:
+    - user_id
+    - owner_id
+    - uid
+    - created_by
+    - tenant_id
+    - org_id
+    - account_id

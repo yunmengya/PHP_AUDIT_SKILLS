@@ -1,0 +1,17 @@
+rules:
+  - id: dart-dynamic-system-commands
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: Process.$RUN('dart', ['-e', ...]);
+              - pattern: |
+                  $P = Process;
+                  ...
+                  $P.$RUN('dart', ['-e', ...]);
+          - metavariable-pattern:
+              metavariable: $RUN
+              pattern-regex: (run|runSync|start)
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - dart

@@ -1,0 +1,25 @@
+rules:
+  - id: python-obfuscation-indirect-eval
+    patterns:
+      - pattern-either:
+          - pattern: builtins.eval
+          - pattern: $VAR = eval
+          - pattern: globals()[...].eval
+          - pattern: |
+              $VAR = builtins
+              ...
+              $VAR.eval
+          - pattern: |
+              ...(..., 'eval')
+          - pattern: |
+              $VAR = 'eval'
+              ...
+              ...(..., $VAR)
+          - pattern: |
+              $VAR = globals()[...]
+              ...
+              $VAR.eval("...")
+    message: "Detected potential obfuscation by alternative usage of `eval`."
+    severity: ERROR
+    languages:
+      - python

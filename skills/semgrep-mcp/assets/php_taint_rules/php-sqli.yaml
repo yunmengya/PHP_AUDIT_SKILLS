@@ -1,0 +1,60 @@
+rules:
+  - id: php-sqli-taint
+    languages: [php]
+    message: "Tainted data used in SQL execution"
+    severity: ERROR
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[$X]
+      - pattern: $_POST[$X]
+      - pattern: $_REQUEST[$X]
+      - pattern: $_COOKIE[$X]
+      - pattern: $_SERVER[$X]
+      - pattern: request()->input($X)
+      - pattern: $REQ->input($X)
+      - pattern: $REQ->get($X)
+      - pattern: $REQ->post($X)
+      - pattern: input($X)
+      - pattern: I($X)
+    pattern-sanitizers:
+      - pattern: intval(...)
+      - pattern: floatval(...)
+      - pattern: filter_var(...)
+      - pattern: ctype_digit(...)
+      - pattern: preg_match(...)
+      - pattern: mysqli_real_escape_string(...)
+      - pattern: $DB->real_escape_string(...)
+      - pattern: PDO::quote(...)
+      - pattern: addslashes(...)
+    pattern-propagators:
+      - pattern: trim($X)
+        from: $X
+        to: trim($X)
+      - pattern: strtolower($X)
+        from: $X
+        to: strtolower($X)
+      - pattern: strtoupper($X)
+        from: $X
+        to: strtoupper($X)
+      - pattern: substr($X, ...)
+        from: $X
+        to: substr($X, ...)
+    pattern-sinks:
+      - pattern: mysql_query(...)
+      - pattern: mysqli_query(...)
+      - pattern: pg_query(...)
+      - pattern: sqlite_query(...)
+      - pattern: $DB->query(...)
+      - pattern: $DB->exec(...)
+      - pattern: $DB->prepare(...)
+      - pattern: PDO::query(...)
+      - pattern: PDO::exec(...)
+      - pattern: PDO::prepare(...)
+      - pattern: DB::select(...)
+      - pattern: DB::statement(...)
+      - pattern: DB::insert(...)
+      - pattern: DB::update(...)
+      - pattern: DB::delete(...)
+      - pattern: DB::raw(...)
+      - pattern: $Q->whereRaw(...)
+      - pattern: $Q->orderByRaw(...)

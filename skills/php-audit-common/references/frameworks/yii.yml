@@ -1,0 +1,10 @@
+name: yii
+route_files:
+- config/web.php
+- config/main.php
+controller_paths:
+- controllers/*
+entry_points:
+- web/index.php
+notes:
+- urlManager rules

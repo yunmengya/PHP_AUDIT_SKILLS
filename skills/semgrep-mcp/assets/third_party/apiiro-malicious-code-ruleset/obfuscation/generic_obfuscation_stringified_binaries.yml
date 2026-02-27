@@ -1,0 +1,42 @@
+rules:
+  - id: generic-obfuscation-stringified-binaries
+    pattern-either:
+
+      # Windows executable
+      - pattern-regex: (?i)['"]\s*(MZ\\x90)
+
+      # ELF executable 
+      - pattern-regex: (?i)['"]\s*(\\x7FELF|7f454c46|\\x7F\\x45\\x4C\\x46)
+
+      # .dmg start
+      - pattern-regex: (?i)['"]\s*(7801730D626260|\\x78\\x01\\x73\\x0D\\x62\\x62\\x60)
+
+      # .dmg end
+      - pattern-regex: (?i)(KOLY|4B4F4C59|\\x4B\\x4F\\x4C\\x59)\s*['"]
+
+      # .deb
+      - pattern-regex: (?i)['"]\s*(!<ar|213c6172|\\x21\\x3C\\x61\\x72)
+
+      # .rpm
+      - pattern-regex: (?i)['"]\s*(\\xED\\xAB\\xEE\\xDB|edabeedb)
+
+      # GZIP compressed executable
+      - pattern-regex: (?i)['"]\s*(\\x1f\\x8b)
+
+    message: "Binary file signature found in string"
+    severity: WARNING
+    languages:
+      - bash
+      - clojure
+      - csharp
+      - dart
+      - go
+      - java
+      - javascript
+      - typescript
+      - lua
+      - php
+      - python
+      - ruby
+      - rust
+      - scala

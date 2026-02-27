@@ -1,0 +1,9 @@
+rules:
+  - id: scala-dynamic-execution-eval
+    pattern-either:
+      - pattern: $SCALA.interpreter.IMain.eval
+      - pattern: $SCALA.mkToolBox().eval
+    message: Dynamic execution using script manager and runtime.
+    severity: ERROR
+    languages:
+      - scala

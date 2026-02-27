@@ -1,0 +1,16 @@
+rules:
+  - id: scala-obfuscation-conditions
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-not: while (true) ...
+      - pattern-either:
+          - pattern: if ($VAR) ...
+          - pattern: while ($VAR) ...
+          - pattern: $VAR match ...
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ^((?:[^a-zA-Z_'"]|(['"])[^'"]*\2)+|true|false|null)$
+    message: Obfuscation by spurious conditions.
+    severity: WARNING
+    languages: 
+      - scala

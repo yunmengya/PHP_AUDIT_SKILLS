@@ -1,0 +1,35 @@
+rules:
+  - id: ruby-obfuscation-conditions
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-not: |
+          while true
+            ...
+          end
+      - pattern-either:
+          - pattern: |
+              if $VAR
+                ...
+              end
+          - pattern: |
+              elseif $VAR
+                ...
+              end
+          - pattern: |
+              while $VAR
+                ...
+              end
+          - pattern: |
+              until $VAR
+                ...
+              end
+          - pattern: |
+              case $VAR
+      - metavariable-regex:
+          metavariable: $VAR
+          # Match all non-literals and the listed literals.
+          regex: ^((?:[^a-zA-Z_$@!'"]|(['"])[^'"]*\2)+|true|false|nil)$
+    message:  Detect obfuscation by spurious conditions.
+    severity: WARNING
+    languages:
+      - ruby

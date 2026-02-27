@@ -1,0 +1,10 @@
+name: symfony
+route_files:
+- config/routes.yaml
+- config/routes/*.yaml
+controller_paths:
+- src/Controller/*
+entry_points:
+- public/index.php
+notes:
+- #[Route(...)] annotations/attributes

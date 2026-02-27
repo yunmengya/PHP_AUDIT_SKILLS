@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SEM="${DIR}/semgrep_site/bin/semgrep"
+if [[ -x "$SEM" ]]; then
+  exec "$SEM" "$@"
+fi
+export PYTHONPATH="$DIR/semgrep_site${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m semgrep.console_scripts.entrypoint "$@"

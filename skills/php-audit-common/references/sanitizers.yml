@@ -1,0 +1,26 @@
+version: 1
+sanitizers:
+- category: sql
+  patterns:
+  - intval(...)
+  - floatval(...)
+  - filter_var(...)
+  - ctype_digit(...)
+  - preg_match(...)
+  - addslashes(...)
+  - mysqli_real_escape_string(...)
+  - PDO::quote(...)
+- category: xss
+  patterns:
+  - htmlspecialchars(...)
+  - htmlentities(...)
+  - strip_tags(...)
+- category: rce
+  patterns:
+  - escapeshellarg(...)
+  - escapeshellcmd(...)
+- category: file
+  patterns:
+  - basename(...)
+  - realpath(...)
+  - str_replace("..", "", ...)

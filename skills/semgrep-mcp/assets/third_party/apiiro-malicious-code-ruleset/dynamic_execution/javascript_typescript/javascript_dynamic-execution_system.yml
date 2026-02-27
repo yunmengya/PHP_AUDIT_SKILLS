@@ -1,0 +1,24 @@
+rules:
+  - id: javascript-dynamic-execution-system
+    patterns:
+      - pattern-either:
+        - pattern: $CHILD_PROCESS.exec($NODE, ...)
+        - pattern: |
+            $VAR = $CHILD_PROCESS
+            ...
+            $VAR.exec($NODE)
+        - pattern: |
+            var { exec } = $CHILD_PROCESS
+            ...
+            exec($NODE)
+      - metavariable-pattern:
+          metavariable: $CHILD_PROCESS
+          pattern: require('child_process')
+      - metavariable-pattern:
+          metavariable: $NODE
+          pattern-regex: 'node -e .*'
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - javascript
+      - typescript

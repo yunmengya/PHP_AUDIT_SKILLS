@@ -1,0 +1,9 @@
+rules:
+  - id: lua-dynamic-execution-multiple
+    pattern-either:
+      - pattern: load
+      - pattern: loadstring
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - lua

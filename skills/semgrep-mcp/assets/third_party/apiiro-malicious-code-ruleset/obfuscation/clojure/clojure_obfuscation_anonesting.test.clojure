@@ -1,0 +1,3 @@
+(fn [x] (fn [y] (fn [z] (fn [a] (do-something a)))))
+
+(map (fn [x] (fn [y] (fn [z] (+ x y z))))) coll

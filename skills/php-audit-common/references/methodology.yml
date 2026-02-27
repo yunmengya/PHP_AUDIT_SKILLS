@@ -1,0 +1,59 @@
+version: 1
+core_model:
+  source: "用户可控输入入口"
+  propagation: "参数传播/过滤/转换路径"
+  sink: "危险操作（SQL/命令/文件/模板等）"
+priority_formula: "(attack_surface * impact) / exploit_complexity"
+phases:
+  - id: phase1
+    name: "信息收集与攻击面识别"
+    outputs:
+      - "技术栈画像"
+      - "模块地图"
+      - "攻击面清单"
+      - "安全机制"
+  - id: phase2
+    name: "并行模式匹配扫描"
+    outputs:
+      - "高风险区域地图"
+  - id: phase3
+    name: "关键路径手工审计"
+    outputs:
+      - "证据链与可控性结论"
+  - id: phase4
+    name: "漏洞验证与攻击链构建"
+    outputs:
+      - "可利用性判断"
+      - "组合风险评估"
+  - id: phase5
+    name: "报告输出"
+    outputs:
+      - "审计报告"
+      - "终止决策记录"
+agent_rules:
+  derive_from_attack_surface: true
+  non_overlapping_search: true
+  parallelizable: true
+multi_round:
+  goals:
+    - "覆盖面"
+    - "深度"
+    - "关联度"
+  stop_questions:
+    - id: Q1
+      text: "有没有计划搜索但没搜到的区域？"
+    - id: Q2
+      text: "发现的入口点是否都追踪到了 Sink？"
+    - id: Q3
+      text: "高风险发现之间是否可能存在跨模块关联？"
+severity_model:
+  dimensions:
+    - reachability
+    - impact
+    - exploit_complexity
+  levels:
+    C: "9.0-10.0"
+    H: "7.0-8.9"
+    M: "4.0-6.9"
+    L: "0.1-3.9"
+  independent_vs_combined: true

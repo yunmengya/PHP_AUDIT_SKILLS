@@ -1,0 +1,1 @@
+<form action="http://target/path" method="POST"><input name="id" value="1" /></form>

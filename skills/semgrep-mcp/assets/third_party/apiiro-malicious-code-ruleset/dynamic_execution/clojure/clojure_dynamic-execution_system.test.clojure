@@ -1,0 +1,4 @@
+(require '[clojure.java.shell :refer [sh]])
+
+(def result (sh "clojure" "-e" "(println (+ 1 2 3))"))
+(println (:out result))

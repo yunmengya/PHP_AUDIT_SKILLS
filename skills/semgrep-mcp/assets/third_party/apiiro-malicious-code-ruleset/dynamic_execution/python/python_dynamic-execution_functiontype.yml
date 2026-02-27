@@ -1,0 +1,35 @@
+rules:
+  - id: python-dynamic-execution-functiontype
+    pattern-either:
+      - pattern: |
+          FunctionType(compile(..., ..., ...), ...)()
+      - pattern: |
+          $FUNC = FunctionType(compile(..., ..., ...), ...)
+          ...
+          $FUNC()
+      - pattern: |
+          $COMPILED = compile(..., ..., ...)
+          ...
+          $FUNC = FunctionType($COMPILED, ...)
+          ...
+          $FUNC()
+      - pattern: |
+          def $FUNC_NAME($CODE):
+              ...
+              $COMPILED = compile($CODE, ..., ...)
+              ...
+              $FUNC = FunctionType($COMPILED, ...)
+              ...
+              $FUNC()
+      - pattern: |
+          def $FUNC_NAME($CODE):
+              ...
+              $COMPILED = compile($CODE, ..., ...)
+              ...
+              return FunctionType($COMPILED, ...)
+          ...
+          $FUNC_NAME($PARAM)
+    languages:
+      - python
+    message: Detected dynamic execution using compile and FunctionType in different formats.
+    severity: ERROR

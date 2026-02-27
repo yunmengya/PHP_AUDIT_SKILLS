@@ -1,0 +1,10 @@
+rules:
+  - id: javascript-dynamic-execution-eval-Function
+    pattern-either:
+      - pattern: eval
+      - pattern: Function
+    languages:
+      - javascript
+      - typescript
+    message: Dynamic execution using eval and Function.
+    severity: ERROR

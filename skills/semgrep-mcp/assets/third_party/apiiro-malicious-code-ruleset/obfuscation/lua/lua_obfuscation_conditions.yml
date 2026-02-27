@@ -1,0 +1,11 @@
+rules:
+  - id: lua-obfuscation-conditions
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-not: while true do ... end
+      - pattern-either:
+          - pattern-regex: (if|while|until)\s(true|false|1|0|\[\]|\{\}|nil)\s
+    message: Common obfuscation techniques.
+    severity: WARNING
+    languages: 
+      - lua

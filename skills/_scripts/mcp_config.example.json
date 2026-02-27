@@ -1,0 +1,34 @@
+{
+  "tools": {
+    "semgrep-mcp": {
+      "command": "{python} {repo_root}/skills/semgrep-mcp/scripts/semgrep_mcp.py --project {project} --out {out} --ruleset {repo_root}/skills/semgrep-mcp/assets/rulesets.json",
+      "output_format": "json",
+      "output_path": "{out}/mcp_raw/semgrep-mcp.json"
+    },
+    "ripgrep-mcp": {
+      "command": "{python} {repo_root}/skills/_scripts/ripgrep_mcp.py --project {project} --out {out}",
+      "output_format": "json",
+      "output_path": "{out}/mcp_raw/ripgrep-mcp.json"
+    },
+    "composer-audit-mcp": {
+      "command": "{python} {repo_root}/skills/composer-audit-mcp/scripts/composer_audit_mcp.py --project {project} --out {out}",
+      "output_format": "json",
+      "output_path": "{out}/mcp_raw/composer-audit-mcp.json"
+    },
+    "report-writer-mcp": {
+      "command": "{python} {repo_root}/skills/report-writer-mcp/scripts/report_writer_mcp.py --project {project} --out {out}",
+      "output_format": "json",
+      "output_path": "{out}/mcp_raw/report-writer-mcp.json"
+    },
+    "ai-audit-mcp": {
+      "command": "{python} {repo_root}/skills/ai-audit-mcp/scripts/ai_audit_mcp.py --project {project} --out {out}",
+      "output_format": "json",
+      "output_path": "{out}/mcp_raw/ai-audit-mcp.json"
+    },
+    "ai-confirm-mcp": {
+      "command": "{python} {repo_root}/skills/ai-confirm-mcp/scripts/ai_confirm_mcp.py --mode confirm --project {project} --out {out} --model \"${{AI_CONFIRM_MODEL:-${{AI_AUDIT_MODEL:-sonnet}}}}\"",
+      "output_format": "json",
+      "output_path": "{out}/mcp_raw/ai-confirm-mcp.json"
+    }
+  }
+}

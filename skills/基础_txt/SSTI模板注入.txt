@@ -1,0 +1,163 @@
+PHP 代码审计之 SSTI 模板注入  
+1.SSTI 模板注入原理  
+SSTI(Server-Side Template Injection) 服务器模板注入也是注入的一种类型，它的原理与 SQL 注入有些类
+似， SQL 注入是从前端获取用户输入，然后通过后端代码带到数据库中进行查询来执行我们想要执行的
+SQL 语句。 SSTI 也是一样的，从前端获取参数值，然后在后端进行渲染处理时进行语句拼接执行。
+由于如今大部分框架都是基于 MVC 模式进行开发的，我们的输入通过  V(view) 接收，交给  C(controller) 
+，然后由  C 调用 M(model) 或者其他的  C 进行处理，最后再返回给  V ，这样就最终显示在我们的面前
+了，那么这里的  V 中就大量的用到了一种叫做模板的技术，而凡是使用模板的地方都有可能存在模板注
+入。
+1.1 PHP 常见模板引擎  
+1.2 模板引擎 payload 格式  
+2.SSTI 相关函数  
+在 PHP 中如果使用了如上所述的模板引擎，在这些模板引擎之中分别利用不同的模板函数进行模板的渲
+染，如果函数中存在可控参数，那么很大概率会存在 SSTI 模板注入，下面我们通过介绍上述不同的模板
+引擎来引出引擎中的 SSTI 相关函数。
+Smarty
+Smarty 算是一种很老的 PHP 模板引擎了，非常的经典，使用的比较广泛。
+Twig
+Twig 是来自于 Symfony 的模板引擎，它非常易于安装和使用。它的操作有点像 Mustache 和 liquid 。
+Blade
+Blade 是  Laravel 提供的一个既简单又强大的模板引擎。
+和其他流行的  PHP 模板引擎不一样， Blade 并不限制你在视图中使用原生 PHP 代码。所有 Blade 视图文件都
+将被编译成原生的 PHP 代码并缓存起来，除非它被修改，否则不会重新编译，这就意味着  Blade 基本上不会给
+你的应用增加任何额外负担。
+Smarty
+{php}echo `id`;{/php}   // 在 smarty 3.X 中废弃
+{}
+{literal}               //PHP5 中适用
+{if}{/if}
+Twig
+{{2*3}}
+Blade
+{{}}
+{!! !!}
+Twig  
+Twig 是一款灵活、快速、安全的 PHP 模板引擎。
+如果你接触过其他基于文本的模板语言，比如  Smarty 、 Django 、或者 Jinja ，你便能轻松掌握 Twig 。它
+坚持 PHP 的原则，并为模板环境添加了有用的功能，使其同时保持对设计师和开发者友好。
+Twig 由一个灵活的词法分析器和解析器驱动。这使得开发者可以自定义标签和过滤器，并创建自己的
+DSL 。
+Twig 已被用于许多开源项目，比如 Symfony, Drupal8, eZPublish,phpBB, Piwik, OroCRM ；并且许多框
+架也支持它，例如 Slim, Yii, Laravel, Codeigniter and Kohana 。
+安装
+将源码 (https://github.com/twigphp/Twig/tree/v1.16.1) 放置 phpstudy 中 www 目录下，并在 phpstudy
+下创建网站让其解析。
+
+代码示例：
+在根目录下创建 test.php 代码用于测试代码是否正常运行。
+Twig 首先使用一个加载器  Twig_Loader_Array 来定位模板，然后使用一个环境变量 
+Twig_Environment 来存储配置信息。其中，  render() 方法通过其第一个参数载入模板，并通过第二
+个参数中的变量来渲染模板。
+模板加载成功
+<?php
+require_once 'lib/Twig/Autoloader.php';
+Twig_Autoloader::register();
+$loader = new Twig_Loader_Array(array(
+    'index' => 'Hello {{ name }}!',
+));
+$twig = new Twig_Environment($loader);
+echo $twig->render('index',array('name'=>'World'));
+Twig 模板注入也是发生在直接将用户输入作为模板，比如下面的代码：
+这里我们需要渲染的内容用户可控，所以存在以下利用方式。
+在 Twig 1.X 版本中有三个全局变量
+这里主要就是利用  _self 变量，它会返回当前  \Twig\Template 实例，并提供了指向 
+Twig_Environment 的  env 属性，这样我们就可以继续调用  Twig_Environment 中的其他方法，从
+而进行  SSTI 。
+getFilter 里发现了危险函数  call_user_func。通过传递参数到该函数中，我们可以调用任意  PHP 
+函数。
+<?php
+include 'lib/Twig/Autoloader.php';
+Twig_Autoloader::register();
+$loader = new Twig_Loader_String();
+$twig = new Twig_Environment($loader);
+echo $twig->render($_GET['name']);
+?>
+通过调用 registerUndefinedFilterCallback() 函数调用回调函数传入 call_user_func() 来执行命令
+paylaod 如下 :
+{{_self.env.registerUndefinedFilterCallback("exec")}}
+{{_self.env.getFilter("calc")}}
+Twig 2.X 、 3.X 中也存在相应的模板注入问题，感兴趣的同学们可以学习一下先知社区的这篇文章：
+https://xz.aliyun.com/t/10056#toc-14
+Smarty  
+Smarty 是  PHP 的模板引擎，有助于将表示  (HTML/CSS) 与应用程序逻辑分离。
+在  3.X<3.1.42 和 4.X< 4.0.2 版本之前，攻击者可以通过制作恶意数学字符串来运行任意  PHP 代码。
+如果数学字符串作为用户提供的数据传递给数学函数，则外部用户可以通过制作恶意数学字符串来运行
+任意  PHP 代码。
+安装
+将源码 (https://github.com/twigphp/Twig/tree/v1.16.1) 放置 phpstudy 中 www 目录下，并在 phpstudy
+下创建网站让其解析，与上面 Twig 部署方式类似。
+我们可以直接使用其 demo 中的代码进行漏洞演示，如果大家想创建自己的 demo ，必须在自己的文件夹
+下创建 cache,config,templates,templates_c 四个文件夹。
+手动创建 demo1 文件夹，文件夹下相应创建如下目录以及文件
+我们来看一下 smarty.inc.php 这个文件，这是一个公共文件配置代码，我们打开看看具体内容。
+这里的目录路径要相对于自己的目录进行调整。
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>common</title>
+</head>
+网站主页 index.php 中代码如下：
+$smarty->assign('value','Hello World'); 的意思为用 Hello World 替代模板文件 index.tpl 里面的 value 字段
+的位置，也就是一个替换操作，具体等会看 index.tpl 文件就明白。
+templates 文件夹下创建 index.tpl 文件
+<body>
+<?php
+    include_once "../libs/Smarty.class.php";  // 第一步要包含 Smarty 类文件
+    $smarty = new Smarty();  // 实例化 Smarty 类
+    // 文件夹名字可自定义
+    $smarty->joined_config_dir="./config";     // 设置配置目录（非必选）
+    $smarty->cache_dir="./caches";          // 设置缓存目录
+    $smarty->caching=true;                  // 打开缓存
+    $smarty->cache_lifetime=1;         // 设置缓存时间
+    $smarty->joined_template_dir="./templates";     // 设置模板目录
+    $smarty->compile_dir = "./templates_c";         // 设置编译目录
+    $smarty->cache_dir = "./smarty_cache";
+    ?>
+</body>
+</html>
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>index</title>
+</head>
+<body>
+<?php
+    include "./smarty.inc.php";    // 包含 smarty.inc.php 配置文件
+    $smarty->assign('value','Hello World');   // 将变量 value 赋值为 hello world
+    $smarty->display('index.tpl');  // 这里的 index.tpl 文件名要与 index.php 文件名相对应
+?>
+</body>
+</html>
+代码如下：
+将 value 替换为我们上述的 Hello World 。
+
+如果这里displa()函数中我们的内容可控就会造成模板注入。
+这里 name 传入 XSS payload
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>hello</title>
+</head>
+<body>
+ Hi~{$value}!
+</body>
+</html>
+3.SSTI 漏洞利用  
+这里我们用一道 CTF 靶场来进行 SSTI 模板注入漏洞的演示：
+地址：https://buuoj.cn/challenges（注册登录即可）
+该题使用了 Smarty 模板，那么大概率和 Smarty 模板注入有关了。
+在页面的右上角显示了 IP 地址，猜测可能是通过 Smarty 模板获取 IP 地址并通过渲染显示在前端，我们可
+以尝试该处获取 IP 地址处是否可控。
+很明显这里的 IP 地址是从 XFF 获取，且直接通过 display() 进行渲染输入。
+可通过{$smarty.version}探测 smarty 版本为 3.1.30
+这里我们可以通过 {if  php 代码}{/if} 的形式在 {if} 标签中执行任意 PHP 代码。
+4.SSTI 模板注入代码审计总结  
+
+在 PHP 的中很多地方都使用到了模板去渲染文件， SSTI 在 PHP 中不仅应用在上述所说的一些模板引擎中，在很
+多例如 ThinkPHP 、 CMS 中的一些自定义模板引擎中都可能存在 SSTI 注入。在代码审计中要多去关注一些视图
+模板的功能点，在这些功能点处在去观察渲染时的参数是否可控。如果遇到上述引擎模板要重点去查看对应模
+板的利用方式从而进行针对性的利用。

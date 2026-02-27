@@ -1,0 +1,26 @@
+rules:
+  - id: python-obfuscation-methods-masking
+    patterns:
+
+      # Match only in files that have at least 3 normal lines
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  ...
+                  $NOT_ONE_LINER
+              - pattern-inside: |
+                  $NOT_ONE_LINER
+                  ...
+          - metavariable-regex:
+              metavariable: $NOT_ONE_LINER
+              regex: ^.{3,199}$
+
+      - pattern-either:
+          - pattern-regex: (\b(ascii|bytes|decode|encode|fromhex|f-strings)\b)(.*\1){3,}
+          - pattern-regex: (\b(lambda|platform|random|re\.escape|re\.split|re\.sub|replace|unhexlify)\b)(.*\1){3,}
+          - pattern-regex: (\b(chr|hex|index|join|oct|ord|repr|str)\b)\((.*\b\1\(){4,}
+          
+    message: Obfuscation by concatenation of string manipulating methods.
+    severity: WARNING
+    languages:
+      - python

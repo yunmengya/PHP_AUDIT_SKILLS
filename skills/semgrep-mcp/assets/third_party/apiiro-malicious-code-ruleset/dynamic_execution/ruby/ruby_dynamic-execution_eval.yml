@@ -1,0 +1,9 @@
+rules:
+  - id: ruby-dynamic-execution-eval
+    pattern-either:
+      - pattern: eval
+      - pattern: $OBJECT.instance_eval
+    message: Dynamic execution by eval.
+    severity: ERROR
+    languages:
+      - ruby

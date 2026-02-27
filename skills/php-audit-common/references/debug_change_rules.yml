@@ -1,0 +1,29 @@
+# Debug 变化判定规则
+# weak_change: 轻微变化，仍可能可控
+# strong_change: 强过滤/白名单/参数化，通常不可控
+weak_change:
+  - trim
+  - ltrim
+  - rtrim
+  - urldecode
+  - urlencode
+  - rawurldecode
+  - stripslashes
+  - str_replace
+  - preg_replace
+strong_change:
+  - intval
+  - (int)
+  - floatval
+  - boolval
+  - filter_var
+  - whitelist
+  - in_array
+  - parameterized_query
+  - prepare
+  - bindParam
+  - bindValue
+  - htmlspecialchars
+  - htmlentities
+  - htmlspecialchars_decode
+  - strip_tags

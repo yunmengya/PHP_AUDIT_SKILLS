@@ -1,0 +1,40 @@
+rules:
+  - id: python-obfuscation-reconstruction
+    patterns:
+
+      # Match only in files that have at least 3 normal lines
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  ...
+                  $NOT_ONE_LINER
+              - pattern-inside: |
+                  $NOT_ONE_LINER
+                  ...
+          - metavariable-regex:
+              metavariable: $NOT_ONE_LINER
+              regex: ^.{3,199}$
+
+      - pattern-either:
+          - pattern: |
+              ''.join([... for $C in $CONCAT])
+          - pattern: |
+              $VAR = $CONCAT
+              ...
+              ''.join([... for $C in $VAR])
+
+      # Matches a list of 6+ elements within square brackets:
+      # 1. In each element:
+      #    - (["']) matches the quote, (?:(?!\4).)* matches any character except the quote.
+      #    - A string/numeric (decimal, binary, octal, hex): \d+ or (0|\\{1,})[beoux]\d+ for 0x, \u, etc.
+      # 2. At least 6 comma-separated elements.
+      # 3. Last element can be a string/number.
+      # 4. Enclosed in square brackets with optional whitespace.
+      - metavariable-pattern:
+          metavariable: $CONCAT
+          pattern-regex: \[\s*((((["'])(?:(?!\4).)*\4)|(\d+|(0|\\{1,})[beoux]\d+))\s*,\s*){5,}(((((["'])(?:(?!\11).)))*\11)|(\d+|(0|\\{1,})[beoux]\d+))\s*\]
+    
+    message: Obfuscation by reconstruction of hardcoded data.
+    severity: WARNING
+    languages:
+      - python

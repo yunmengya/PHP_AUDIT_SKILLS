@@ -1,0 +1,41 @@
+{
+  "sources": {
+    "SecDictionary": {
+      "repo": "https://github.com/SexyBeast233/SecDictionary.git",
+      "commit": "db2b8acc6a90294493aba88db51c5393525d1020"
+    },
+    "fuzzDicts": {
+      "repo": "https://github.com/TheKingOfDuck/fuzzDicts.git",
+      "commit": "0652d6581311616576f347f9b7be61c9746462e4"
+    }
+  },
+  "mapping": {
+    "sql.txt": [
+      "SecDictionary/SQL注入/SQL注入登录绕过.txt",
+      "fuzzDicts/sqlDict/sql.txt"
+    ],
+    "xss.txt": [
+      "fuzzDicts/easyXssPayload/easyXssPayload.txt"
+    ],
+    "ssrf.txt": [
+      "fuzzDicts/ssrfDicts/ssrf.txt"
+    ],
+    "rce.txt": [
+      "SecDictionary/命令执行字典/RCE命令执行拼接字典.txt",
+      "fuzzDicts/rcePayloads/Unix-Commond-Inject-Payload-List.txt"
+    ],
+    "file.txt": [
+      "SecDictionary/filelak/H2-100.txt",
+      "SecDictionary/备份文件字典/备份文件-文件名-v2.0.txt"
+    ],
+    "xxe.txt": [
+      "built-in"
+    ],
+    "deserialize.txt": [
+      "built-in"
+    ],
+    "csrf.txt": [
+      "built-in"
+    ]
+  }
+}

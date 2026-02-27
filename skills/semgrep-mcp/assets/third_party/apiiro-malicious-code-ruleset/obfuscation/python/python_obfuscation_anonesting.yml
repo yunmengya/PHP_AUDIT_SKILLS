@@ -1,0 +1,8 @@
+rules:
+  - id: python-obfuscation-anonymous-nesting
+    pattern: |
+      lambda $X: (lambda $Y: (lambda $Z: ...))
+    message: Detect obfuscation by deep anonymous nesting.
+    severity: WARNING
+    languages: 
+      - python

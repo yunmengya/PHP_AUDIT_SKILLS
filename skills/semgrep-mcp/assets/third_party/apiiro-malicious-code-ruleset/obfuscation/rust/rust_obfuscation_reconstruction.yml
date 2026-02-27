@@ -1,0 +1,7 @@
+rules:
+  - id: rust-obfuscation-reconstruction
+    pattern-regex: format\!\(((((["'])(?:(?!\4).)*\4)|(\d+|(0|\\{1,})[beoux]\d+))\s*,\s*){5,}(((((["'])(?:(?!\11).)))*\11)|(\d+|(0|\\{1,})[beoux]\d+))\)
+    message: Obfuscation by reconstruction of hardcoded data.
+    severity: WARNING
+    languages:
+      - rust

@@ -1,0 +1,7 @@
+{
+  "evidence_score_min": 3,
+  "require_call_graph": true,
+  "consensus_runs": 2,
+  "consensus_threshold": 0.7,
+  "use_compact_context": true
+}

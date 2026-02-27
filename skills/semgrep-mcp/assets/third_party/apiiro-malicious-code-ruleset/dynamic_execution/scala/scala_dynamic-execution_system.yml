@@ -1,0 +1,16 @@
+rules:
+  - id: scala-dynamic-execution-system
+    pattern-either:
+      - pattern-regex: (['"])scala -e .*\1 \!\!
+      - patterns:
+          - pattern: val $X = $CMD
+          - pattern-inside: |
+              ...
+              $X.!
+          - metavariable-pattern:
+              metavariable: $CMD
+              pattern-regex: (["'])scala -e .*\1
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - scala

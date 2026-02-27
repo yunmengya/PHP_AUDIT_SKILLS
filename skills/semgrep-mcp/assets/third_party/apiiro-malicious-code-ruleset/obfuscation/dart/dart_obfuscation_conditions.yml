@@ -1,0 +1,18 @@
+rules:
+  - id: dart-obfuscation-conditions
+    patterns:
+      - pattern-regex: ^.{,401}$
+      - pattern-not-inside: '...'
+      - pattern-not: while (true) { ... }
+      - pattern-either:
+          - pattern: if ($VAR) { ... }
+          - pattern: while ($VAR) { ... }
+          - pattern: switch ($VAR) { ... }
+      - metavariable-regex:
+          metavariable: $VAR
+          # Match all non-literals, or the listed literals.
+          regex: ^(?!.*(?<!['"`])\b(?!true|false|null)[a-zA-Z_!]).*$
+    message: Obfuscation by spurious conditions.
+    severity: WARNING
+    languages: 
+      - dart

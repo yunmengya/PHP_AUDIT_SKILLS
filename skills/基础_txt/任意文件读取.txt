@@ -1,0 +1,127 @@
+PHP 代码审计之任意文件读取  
+1. 任意文件读取原理  
+在一些文件下载以及浏览的功能点中存在一些文件读取的函数，且参数中的文件名或者路径可以由用于
+控制且关键字符未能进行有效的过滤就会造成任意文件读取。
+2. 任意文件读取危害  
+①如果读取路径没有限制则可读取系统下任意敏感文件，如数据库账号密码，后台账号密码等 ......
+②通过任意文件读取将后端源码全部读取用来代码审计，找到更有价值的漏洞
+③通过收集到的信息与其他漏洞打组合拳造成更大的危害
+3. 任意文件读取相关函数  
+readfile()  
+该函数特点是不需要使用echo等输出函数进行输出
+代码示例：
+定义和用法：
+该函数读取一个文件，并写入到输出缓冲。
+语法：
+readfile(filename,include_path,context) 
+    filename    必需。规定要读取的文件。
+    include_path    可选。如果您还想在  include_path （在  php.ini 中）中搜索文件的话，请设
+置该参数为  '1' 。
+    context     可选。规定文件句柄的环境。 context 是一套可以修改流的行为的选项。
+返回值：
+如果成功，该函数返回从文件中读入的字节数。如果失败，该函数返回  FALSE 并附带错误信息。您可以通过
+在函数名前面添加一个  '@' 来隐藏错误输出。    
+<?php
+    highlight_file(__FILE__);
+    $filename = @$_REQUEST['filename']; 
+    readfile($filename); 
+?>
+file_get_contents()  
+该函数需要 echo 等输出函数输出。
+代码示例：
+如果在参数中没有进行严格的过滤，在 Windows 中我们可以使用 ../ 或者 ..\ 实现目录跳转。
+fopen()  
+该函数需要首先打开文件配合fread()函数通过文件字节大小进行文件读取，最后使用fclose()关闭
+打开的文件，且函数也需要使用 echo 等输出函数进行输出。
+定义和用法：
+该函数把整个文件读入一个字符串中。该函数是用于把文件的内容读入到一个字符串中的首选方法。
+语法：
+file_get_contents(path,include_path,context,start,max_length) 
+    path    必需。规定要读取的文件。
+    include_path    可选。如果您还想在  include_path （在  php.ini 中）中搜索文件的话，请设
+置该参数为  '1' 。
+    context     可选。规定文件句柄的环境。 context 是一套可以修改流的行为的选项。若使用 
+NULL ，则忽略。
+    start   可选。规定在文件中开始读取的位置。该参数是  PHP 5.1 中新增的。
+    max_length  可选。规定读取的字节数。该参数是  PHP 5.1 中新增的。
+返回值：
+如果读取文件存在则返回文件内容如果不存在则报出 No such file or directory
+<?php
+highlight_file(__FILE__);
+header("Content-Type:text/html; charset=utf-8");
+$filename = $_GET['filename'];
+echo file_get_contents($filename);
+?>
+fread()
+代码示例：
+如果这里filename打开的内容我们可以控制那么就可以通过 ../ 或者 ..\ 等方法来读取任意文件。
+Windows 、 Linux 常见敏感路径
+定义和用法：
+该函数用于打开文件或者  URL 。
+语法：
+fopen(filename,mode,include_path,context)
+    filename    必需。规定要打开的文件或  URL 。
+    mode    必需。规定要求到该文件 / 流的访问类型。如 r 、 r+ 、 w 、 w+ 等。
+    include_path    可选。如果也需要在  include_path 中检索文件的话，可以将该参数设为  1 或 
+TRUE 。
+    context     可选。规定文件句柄的环境。 Context 是可以修改流的行为的一套选项。
+返回值：
+如果打开失败，本函数返回  FALSE 。
+定义和用法：
+该函数从文件指针 stream 读取最多 length 个字节。该函数在遇上以下几种情况时停止读取文件： 
+    读取了  length 个字节
+    到达了文件末尾（ EOF ） 
+语法：
+fread(resource $stream, int $length)
+    stream  文件系统指针，是典型地由  fopen() 创建的  resource( 资源 ) 。
+    length   最多读取  length 个字节。
+返回值：
+返回所读取的字符串，  或者在失败时返回  false 。
+<?php
+highlight_file(__FILE__);
+$filename = $_GET['filename'];
+$f = fopen($filename,'r');
+echo fread($f,filesize($filename));
+fclose($f);
+?>
+Windows ： 
+C:\boot.ini     // 查看系统版本 
+4. 任意文件读取代码审计总结  
+
+C:\Windows\System32\inetsrv\MetaBase.xml      //IIS 配置文件 
+C:\Windows\repair\sam                        // 存储系统初次安装的密码 
+C:\Program Files\mysql\my.ini //Mysql 配置 
+C:\Program Files\mysql\data\mysql\user.MYD    //Mysql root 
+C:\Windows\php.ini                           //php 配置信息 
+C:\Windows\my.ini                          //Mysql 配置信息
+Linux ：
+/root/.ssh/authorized_keys 
+/root/.ssh/id_rsa 
+/root/.ssh/id_ras.keystore 
+/root/.ssh/known_hosts 
+/etc/passwd         查看用户文件文件 
+/etc/shadow         查看密码文件 
+/etc/my.cnf 
+/etc/httpd/conf/httpd.conf      查看 apache 的配置文件 
+/root/.bash_history             查看历史命令 
+/root/.mysql_history 
+/proc/self/fd/fd[0-9]*( 文件标识符 ) 
+/proc/mounts 
+/porc/config.gz 
+/root/.ssh/authorized_keys 
+/root/.ssh/id_rsa 
+/root/.ssh/id_ras.keystore 
+/root/.ssh/known_hosts //记录每个访问计算机用户的公钥 
+/etc/passwd 
+/etc/shadow 
+/etc/my.cnf //mysql 配置文件
+/etc/httpd/conf/httpd.conf //apache 配置文件 
+/root/.bash_history // 用户历史命令记录文件 
+/root/.mysql_history //mysql 历史命令记录文件 
+/proc/mounts        // 记录系统挂载设备 
+/porc/config.gz         //内核配置文件 
+/var/lib/mlocate/mlocate.db     // 全文件路径 
+/porc/self/cmdline          //当前进程的 cmdline 参数
+关于本节的 PHP 任意文件读取漏洞，在代码审计中我们只需要关注上面介绍到的三个 PHP 函数即可，了解他们的
+区别可以让大家在日后的代码审计中更快的定位漏洞点，而不用去纠结函数本身从而可以把精力放在如何绕过
+过滤或者通过任意文件读取来将该漏洞的危害最大化。

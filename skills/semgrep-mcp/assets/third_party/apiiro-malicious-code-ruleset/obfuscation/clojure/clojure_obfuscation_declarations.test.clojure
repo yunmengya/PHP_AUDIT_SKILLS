@@ -1,0 +1,16 @@
+;; TP
+(def _0x1234 ...)
+(let [vvv ...] ...)
+(loop [a-bc-de$ ...] ...)
+(defrecord _0xabcd ...)
+(deftype weird_typeuitresgyuihlersghljersgasd123 ...)
+
+;; FP
+(def valid-name ...)
+(defn valid-fn2 ...)
+(let [validvar ...] ...)
+(loop [valid-item ...] ...)
+(fn valid_function ...)
+(defrecord NormalRecord ...)
+(deftype Normal/Type ...)
+(extend-type NormalType (method ...))

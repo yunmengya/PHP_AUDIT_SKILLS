@@ -1,0 +1,11 @@
+rules:
+  - id: python-dynamic-execution-eval
+    pattern-either:
+      - pattern: eval
+      - pattern: exec
+      - pattern: __import__($PACKAGE).eval
+      - pattern: __import__($PACKAGE).exec
+    message: Dynamic execution using exec or eval.
+    severity: ERROR
+    languages:
+      - python

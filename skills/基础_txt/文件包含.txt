@@ -1,0 +1,91 @@
+PHP 代码审计之文件包含  
+1. 文件包含原理  
+当一个 PHP 文件需要调用另一个文件去完成某一个特定功能的时候就需要用到文件包含。文件包含相当
+于在一个 PHP 文件中，调用了另一个 PHP 文件，实现代码的共享。也就是说包含的文件可以使用被包含
+文件的变量、方法等。
+2. 文件包含的四种方式  
+require() 语句的性能与  include() 相类似 , 都是包含并运行指定的文件，而_once()则表示当在一个 PHP
+文件中 , 一个文件被重复包含时，且被包含文件只会被包含一次不会被重复包含，避免函数重定义，变量
+重新赋值等问题。
+include()
+代码示例：
+demo.php
+test.php
+demo.php成功包含test.php。
+<?php
+highlight_file(__FILE__);
+include 'test.php';
+echo $a;
+?>
+<?php
+highlight_file(__FILE__);
+$a = 6;
+$b = 38;
+$sum = $a + $b ;
+echo $sum.'<br/>';
+?>
+require()
+require() 也是同样的效果。
+include_once()
+代码示例：
+demo.php
+test.php
+当demo.php中包含了两次test.php文件，但该文件只执行了一次。
+require_once()
+require_once() 也同样只会包含一次。
+<?php
+highlight_file(__FILE__);
+include_once "test.php";
+echo $a;
+include_once "test.php";
+?>
+<?php
+highlight_file(__FILE__);
+$a = 6;
+$b = 38;
+$sum = $a + $b ;
+echo $sum.'<br/>';
+?>
+3. 四种文件包含的区别  
+3.1 include() 与 require() 的区别  
+对  include() 语句来说，在执行文件时每次都要进行读取和评估；而对于  require() 来说，文件只处理一
+次（实际上，文件内容替换   require() 语句）。这就意味着如果可能执行多次的代码，则使用  require()  
+效率比较高。另外一方面，如果每次执行代码时是读取不同的文件，或者有通过一组文件迭代的循环，
+就使用  include() 语句。
+include() ：在用到时加载；引入文件的时候，如果碰到错误，会给出提示，并继续运行下边的代码。
+require(): 在一开始就加载 ; 引入文件的时候，如果碰到错误，会给出提示，并停止运行（相当于 exit()
+了）下边的代码。
+3.2 include() 与 include_once() 的区别  
+include() : 在一个文件中多次包含同一个文件时，该文件会被多次包含并执行。
+include_once() ：在一个文件中多次包含同一个文件时，该文件只会被包含一次。
+4. 文件包含漏洞  
+当文件中存在include()、include_once()、require()、require_once()函数时，且该函数的
+参数可控，就会造成文件包含漏洞。
+4.1 文件包含的利用条件  
+文件包含函数中参数可控
+知道想要包含的文件位置或 ../ 、 ..\可用
+以include()为例，其他函数相同。
+代码示例：
+包含当前目录下的tupianma.jpg
+<?php
+highlight_file(__FILE__);
+$path = $_REQUEST['path'];
+@include "$path";
+?>
+也可通过../或者..\（ Windows 中）包含任意文件
+4.2 %00 截断  
+在 PHP 版本低于5.3.4且magic_quotes_gpc为OFF状态中可使用 %00 截断来绕过一些后缀限制。 ( 在做此
+练习之前要将 PHP 版本调制 5.3.4 以下，如果在小皮面板 V8.1 中无法下载 PHP5.2.18 请参考 upload 靶场
+12-16 关 )
+代码示例：
+在正常情况下我们无法顺利包含我们想要包含的文件，只能通过%00 截断，截断后面的内容。
+<?php
+highlight_file(__FILE__);
+$path = $_REQUEST['path'];
+ @include $path.'/web/admin/xxxx';
+?>
+这里就可以直接通过 %00 来截断后面的内容/web/admin/xxxx
+5. 文件包含代码审计总结  
+
+在实际情况中可能会遇到不同的过滤形式，我们在遇到实际情况时我们在对过滤绕过思虑进行讲解，本节大家
+只要了解 PHP 中文件包含这四个函数以及四个函数的区别这个在面试中也是常见的一个问题。

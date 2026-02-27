@@ -1,0 +1,249 @@
+PHP 代码审计之 XXE(XML 外部实体注入 )  
+1.XXE 原理  
+xxe 其实也叫做 XML 外部实体化注入，该漏洞是由于站点某些功能处可以人为引入不安全的外部实体数
+据，在处理数据时引发的不安全问题。
+那为什么会叫做外部实体注入而不叫内部实体注入呢？
+其实是由于 XXE 的危害主要来自于 dtd 文件中引入的外部实体，例如可以通过一些伪协议：如 file 、 ftp 、
+data 、 phar 等来达到我们想要的效果。
+2.XML 基础知识  
+我们在学习挖掘 XXE 漏洞时，首先得了解一下 XML 语法知识以及如何构造 XML 文档结构，这对于后面 XXE
+漏洞利用是必要的一步。
+2.1 XML 文档实例  
+XML 文档结构包括XML 声明、DTD 文档类型定义（可选）、文档元素。
+<note></note>描述文档的根元素；中间的<to></to>...<body></body>4 行描述根的  4 个子元素，
+这些元素都可以由用户自定义，格式有点像 HTML 、但是比 HTML 更加灵活。
+<!--XML 声明，它定义  XML 的版本（ 1.0 ）和所使用的编码（ UTF-8 : 万国码 , 可显示各种语言） -->
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 文档类型定义 -->
+<!DOCTYPE note [  <!-- 定义此文档是  note 类型的文档 -->
+<!ELEMENT note (to,from,heading,body)>  <!-- 定义 note 元素有四个元素 -->
+<!ELEMENT to (#PCDATA)>     <!-- 定义 to 元素为 ”#PCDATA” 类型 -->
+<!ELEMENT from (#PCDATA)>   <!-- 定义 from 元素为 ”#PCDATA” 类型 -->
+<!ELEMENT head (#PCDATA)>   <!-- 定义 head 元素为 ”#PCDATA” 类型 -->
+<!ELEMENT body (#PCDATA)>   <!-- 定义 body 元素为 ”#PCDATA” 类型 -->
+]]]>
+<!-- 文档元素 -->
+<note>
+<to>I</to>
+<from>Like</from>
+<heading>PHP</heading>
+<body>PHP is the best in the world!</body>
+</note>
+2.2 DTD( 文档类型定义 )  
+DTD 的作用是用来规定文档元素类型的， DTD 可以在 XML 文档内部申明，也可以引用外部 DTD 。
+DTD 代码示例：
+DTD 分为内部申明和外部申明, 我们所要利用的就是 DTD 中的外部申明。
+内部申明代码示例：
+内部申明格式：<!DOCTYPE 根元素  [ 元素申明 ]>
+外部申明代码示例：
+外部申明格式：<!DOCTYPE 根元素  SYSTEM ” 外部 DTD 文件 “>
+<!-- 文档类型定义 -->
+<!DOCTYPE note [  <!-- 定义此文档是  note 类型的文档 -->
+<!ELEMENT note (to,from,heading,body)>  <!-- 定义 note 元素有四个元素 -->
+<!ELEMENT to (#PCDATA)>     <!-- 定义 to 元素为 ”#PCDATA” 类型 -->
+<!ELEMENT from (#PCDATA)>   <!-- 定义 from 元素为 ”#PCDATA” 类型 -->
+<!ELEMENT head (#PCDATA)>   <!-- 定义 head 元素为 ”#PCDATA” 类型 -->
+<!ELEMENT body (#PCDATA)>   <!-- 定义 body 元素为 ”#PCDATA” 类型 -->
+]]]>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE note [
+  <!ELEMENT note (to,from,heading,body)>
+  <!ELEMENT to      (#PCDATA)>
+  <!ELEMENT from    (#PCDATA)>
+  <!ELEMENT heading (#PCDATA)>
+  <!ELEMENT body    (#PCDATA)>
+]>
+<!-- 文档元素 -->
+<note>
+<to>PHP is</to>
+<from>the best</from>
+<heading>in the</heading>
+<body> world!</body>
+</note>
+构成 DTD 文件内容的叫做 DTD 实体， DTD 实体分为内部实体、外部实体，内外部实体，又存在一般实
+体、参数实体。
+一般实体的引用方式为： & 实体名
+参数实体的引用方式为： % 实体名
+注意：在定义参数实体时 % 与参数实体中间要有空格分割且参数实体只能在 DTD 内部申明和引用
+参数实体可以嵌套进行使用，但是注意在里面的参数实体 % 要进行 HTML 实体编码。
+4.XXE 分类  
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE note SYSTEM "http://IP/eval.dtd">
+eval.dtd中的内容如上述 DTD格式相同
+<!ELEMENT note (to,from,heading,body)>
+<!ELEMENT to (#PCDATA)>
+<!ELEMENT from (#PCDATA)>
+<!ELEMENT heading (#PCDATA)>
+<!ELEMENT body (#PCDATA)>
+<!DOCTYPE ceshi [
+    <!ENTITY to  "PHP">     <!-- 内部一般实体  -->
+    <!ENTITY % from "is the best">     <!-- 内部参数实体  -->
+    <!ENTITY heading SYSTEM "http://ip/eval.dtd">    <!-- 外部一般实体  -->
+    <!ENTITY % body SYSTEM "file:///eval.dtd">        <!-- 外部参数实体  -->
+    %from;            <!-- 引用参数实体  -->
+]>
+<ceshi>&heading;</ceshi>  <!-- 引用一般实体  -->
+<!DOCTYPE ceshi [
+    <!ENTITY % body '<!ENTITY &#x25; content SYSTEM "http://ip/eval.dtd">'>
+]>
+<ceshi>&content;</ceshi>
+4.1 有回显 XXE  
+有回显 XXE 顾名思义就是在响应包中回显我们传入 payload 的结果建议大家做实验的时候使用 PHP5.2 、
+5.3 、 5.4 因为在这些版本中 libxml 的版本还是 2.7.X ，在 libxml 版本大于 2.9.1的时候 PHP 默认已经不解析
+外部实体了，如果是高版本 PHP 需要代码中libxml_disable_entity_loader(false)开启。
+这里我们构造 DTD 实体，将实体中的内容解析并输出到前端页面
+4.2 无回显 XXE （ bind XXE ）  
+无回显 XXE 则是返回包没有任何回显内容，我们无法在响应包中得到我们想要的数据。
+同样的测试代码这里却没有回显
+这种情况下我们如何判断该处是否存在 XXE 漏洞呢？
+其实我们可以引用外部参数实体，通过 DNSLOG 回显来判断此处是否存在 XXE, 然后在进行下一步的利
+用。
+3.XXE 相关函数  
+在 PHP 代码审计中常见的能够解析 XML 函数如下
+simplexml_load_string()  
+建议大家做实验的时候使用 PHP5.2 、 5.3 、 5.4 ，因为在这些版本中 libxml 的版本还是 2.7.X ，而在 libxml
+版本 ** 大于 2.9.1** 的时候 PHP 默认已经不解析外部实体了，如果是高版本 PHP 需要手动添加
+`libxml_disable_entity_loader(false)` 开启。
+代码示例：
+输出 XML 字符串中每个节点的元素名以及元素中的值
+
+不仅可以引用内部实体，重要的是可以引用外部实体。
+代码示例：
+定义和用法:
+该函数转换形式良好的 XML 字符串为 SimpleXMLElement 对象。
+语法：
+simplexml_load_string(data,classname,options,ns,is_prefix);
+    data    必需。规定形式良好的 XML 字符串。
+    classname   可选。规定新对象的 class 。
+    options     可选。规定附加的 Libxml 参数。通过指定选项为 1 或 0（ TRUE 或 FALSE ，例如 
+LIBXML_NOBLANKS(1)）进行设                 置。
+    ns  可选。规定命名空间前缀或 URI 。
+    is_prefix   可选。规定一个布尔值。如果 ns 是前缀则为 TRUE ，如果 ns 是 URI 则为 
+FALSE 。默认是 FALSE 。
+返回值：
+如果成功则返回 SimpleXMLElement 对象，如果失败则返回 FALSE 。
+<?php
+$note=<<<XML    // <<<XX 为 PHP 定界符格式，在其中的内容会被原样输出
+<note>
+<to>PHP</to>
+<from>is best</from>
+<heading>in the</heading>
+<body>world!</body>
+</note>
+XML;            // 定界符结尾
+
+$xml=simplexml_load_string($note);
+//var_dump($XML);
+echo $xml->getName() . "<br>";
+
+foreach($xml->children() as $key=>$value)
+{
+    echo $key . ": " . $value . "<br>";
+}
+?>
+php://input个可以访问请求的原始数据的只读流。当请求方式是 post ，并且 Content-Type 不等于 ”
+multipart/form-data” 时，可以使用 php://input 来获取原始请求的数据。
+个人理解php://input类似于$_POST，只是当 Content-Type 为multipart/form-data时也就是上传
+文件时即使请求体中有数据 php://input 也不会进行读取。
+simplexml_load_file()  
+该函数与simplexml_load_string() 函数的区别在于simplexml_load_file()函数传入的是 xml 文
+件而simplexml_load_string()传入的则是字符串。
+代码示例：
+note.xml
+<?php
+$note=file_get_contents('php://input');
+echo $note;
+$xml = simplexml_load_string($note);
+echo $xml;
+?>
+定义和用法:
+该函数转换指定的 XML 文件为 SimpleXMLElement 对象。
+语法：
+simplexml_load_file(file,classname,options,ns,is_prefix);
+    file    必需。规定 XML 文件路径。
+    classname   可选。规定新对象的 class 。
+    options     可选。规定附加的 Libxml 参数。通过指定选项为 1 或 0（ TRUE 或 FALSE ，例如 
+LIBXML_NOBLANKS(1)）进行设     置。  
+    ns  可选。规定命名空间前缀或 URI 。
+    is_prefix   可选。规定一个布尔值。如果 ns 是前缀则为 TRUE ，如果 ns 是 URI 则为 
+FALSE 。默认是 FALSE 。
+返回值：    
+如果成功则返回 SimpleXMLElement 对象，如果失败则返回 FALSE 。
+输出 XML 字符串中每个节点的元素名以及元素中的值
+simplexml_import_dom()  
+代码示例：
+首先需要调用DOMDocument类下的loadXML方法来解析指定的  XML 文本串，然后在调用
+simplexml_import_dom()函数将 XML 文本串转换为SimpleXMLElement对象。
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<note>
+<to>PHP</to>
+<from>is best</from>
+<heading>in the</heading>
+<body>world!</body>
+</note>
+<?php
+$xml=simplexml_load_file("note.xml");
+//var_dump($XML);
+echo $xml->getName() . "<br>";
+foreach($xml->children() as $key=>$value)
+{
+    echo $key . ": " . $value . "<br>";
+}
+?>
+定义和用法:
+该函数从 DOM 节点返回 SimpleXMLElement 对象。
+语法：
+simplexml_import_dom(node,classname);
+    node    必需。规定 DOM 元素节点。
+    classname   可选。规定新对象的 class 。
+返回值：
+如果成功则返回 SimpleXMLElement 对象，如果失败则返回 FALSE 。
+解析外部实体，并通过 file 协议读取文件。
+asXML()  
+实例化一个SimpleXMLElement类，然后调用类中的方法asXML()将 XML 文本串转换为字符串。
+<?php
+    $xmlfile = file_get_contents('php://input');
+    $dom = new DOMDocument();           
+    $dom->loadXML($xmlfile, LIBXML_NOENT | LIBXML_DTDLOAD); 
+    $xml = simplexml_import_dom($dom);
+    echo $xml;
+?>
+定义和用法:
+该函数格式化 XML （版本 1.0）中的 SimpleXML 对象的数据。
+语法：
+asXML(filename);
+    filename    可选。规定需要写入数据的文件的名称。
+返回值：    
+如果成功则返回一个字符串，如果失败则返回 FALSE 。如果指定了 filename 参数，成功则返回 TRUE ，失
+败则返回 FALSE 。
+
+5.XXE 漏洞  
+此次 xxe 漏洞就以XXE-Lab靶场为例，只需要将源码放入 phpstudy 的 www 目录下访问即可，靶场源码会
+随文档一起打包下发。
+安装完成界面如下
+burp 抓包发现，该登录方法通过 xml 格式来传递登录需要的数据
+<?php
+$note=<<<XML
+<note>
+<to>PHP</to>
+<from>is best</from>
+<heading>in the</heading>
+<body>world!</body>
+</note>
+XML;
+$xml=new SimpleXMLElement($note);
+echo $xml->asXML();
+?> 
+查看前端代码，在代码 102 行，自定义函数doLogin()，接收两个参数并将参数以 xml 形式传递给
+doLogin.php文件进行处理，在代码 118 行，通过填入的username和password值，通过后端返回的
+状态码在前端展示提示信息。
+在代码第 12 行，使用php://input接收 POST 数据，通过loadXML()方法来解析我们传入的 XML 内容，
+最后通过simplexml_import_dom()将内容转换为SimpleXMLElement对象，上面传入到解析 XML 的过
+程中没有任何过滤已经造成了 xxe ，且代码 32 行会将我们输入的内容进行输出，从而我们可以判定此处
+xxe 存在回显。
+
+6.XXE 代码审计总结  
+
+对于 XXE 来说我们首先要了解 XML 的语法以及基础结构，这样我们在发现 XXE 的时候可以轻松的构造可利用的
+payload ，对于危险函数我们要了解各函数的用法以及他们之前的区别，这样对于大家在后续审计项目的时候
+会有很大的帮助。

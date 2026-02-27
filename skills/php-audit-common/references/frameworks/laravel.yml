@@ -1,0 +1,11 @@
+name: laravel
+route_files:
+- routes/web.php
+- routes/api.php
+- routes/*.php
+controller_paths:
+- app/Http/Controllers/*
+entry_points:
+- public/index.php
+notes:
+- request()->input($X), $request->input($X)

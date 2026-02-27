@@ -1,0 +1,13 @@
+rules:
+  - id: python-detect-pickle-execution
+    pattern-either:
+      - pattern: |
+          $FUNC = pickle.loads(...)
+          ...
+          $FUNC(...)
+      - pattern: |
+          pickle.loads(...)()
+    languages:
+      - python
+    message: Detected dynamic execution of deserialized code using pickle.
+    severity: WARNING

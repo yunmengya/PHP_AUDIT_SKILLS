@@ -1,0 +1,7 @@
+rules:
+  - id: ruby-dynamic-execution-system
+    pattern-regex: (system|exec)\((['"])ruby -e .*\1\)
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - ruby

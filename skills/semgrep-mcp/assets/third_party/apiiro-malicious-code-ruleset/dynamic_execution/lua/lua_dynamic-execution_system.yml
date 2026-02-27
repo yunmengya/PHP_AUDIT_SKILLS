@@ -1,0 +1,7 @@
+rules:
+  - id: lua-dynamic-execution-system
+    pattern-regex: os.execute\((['"])lua -e .*\1\)
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - lua

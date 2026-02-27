@@ -1,0 +1,28 @@
+rules:
+  - id: php-xss-taint
+    languages: [php]
+    message: "Tainted data output without encoding (XSS)"
+    severity: WARNING
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[$X]
+      - pattern: $_POST[$X]
+      - pattern: $_REQUEST[$X]
+      - pattern: $_COOKIE[$X]
+      - pattern: request()->input($X)
+      - pattern: $REQ->input($X)
+      - pattern: input($X)
+    pattern-sanitizers:
+      - pattern: htmlspecialchars(...)
+      - pattern: htmlentities(...)
+      - pattern: strip_tags(...)
+    pattern-propagators:
+      - pattern: trim($X)
+        from: $X
+        to: trim($X)
+    pattern-sinks:
+      - pattern: echo $X
+      - pattern: print $X
+      - pattern: printf(...)
+      - pattern: die($X)
+      - pattern: exit($X)

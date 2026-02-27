@@ -1,0 +1,78 @@
+version: 1
+sinks:
+- category: sql
+  patterns:
+  - mysql_query(...)
+  - mysqli_query(...)
+  - pg_query(...)
+  - sqlite_query(...)
+  - PDO::query(...)
+  - PDO::exec(...)
+  - PDO::prepare(...)
+  - DB::select(...)
+  - DB::statement(...)
+  - DB::insert(...)
+  - DB::update(...)
+  - DB::delete(...)
+  - DB::raw(...)
+  - $DB->query(...)
+  - $DB->exec(...)
+  - $DB->prepare(...)
+  - $Q->whereRaw(...)
+  - $Q->orderByRaw(...)
+- category: rce
+  patterns:
+  - system(...)
+  - exec(...)
+  - shell_exec(...)
+  - passthru(...)
+  - popen(...)
+  - proc_open(...)
+  - pcntl_exec(...)
+  - eval(...)
+  - assert(...)
+- category: file
+  patterns:
+  - include $X
+  - include_once $X
+  - require $X
+  - require_once $X
+  - file_get_contents(...)
+  - readfile(...)
+  - fopen(...)
+  - file(...)
+  - file_put_contents(...)
+  - fwrite(...)
+  - unlink(...)
+  - rename(...)
+  - copy(...)
+  - mkdir(...)
+  - rmdir(...)
+  - move_uploaded_file(...)
+- category: ssrf
+  patterns:
+  - curl_init(...)
+  - curl_setopt(...)
+  - curl_exec(...)
+  - file_get_contents(...)
+  - fopen(...)
+  - fsockopen(...)
+  - stream_socket_client(...)
+  - get_headers(...)
+- category: xss
+  patterns:
+  - echo $X
+  - print $X
+  - printf(...)
+  - vprintf(...)
+  - die($X)
+  - exit($X)
+- category: ssti
+  patterns:
+  - $TWIG->render(...)
+  - $BLADE->render(...)
+- category: deserialize
+  patterns:
+  - unserialize(...)
+  - igbinary_unserialize(...)
+  - yaml_parse(...)

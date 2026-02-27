@@ -1,0 +1,50 @@
+version: 1
+frameworks:
+  laravel:
+    route_files:
+      - routes/web.php
+      - routes/api.php
+    auth_keywords:
+      - auth
+      - middleware
+      - guard
+      - policy
+    csrf_keywords:
+      - VerifyCsrfToken
+      - csrf
+  thinkphp:
+    route_files:
+      - route/app.php
+      - config/route.php
+    auth_keywords:
+      - middleware
+      - auth
+    csrf_keywords:
+      - csrf
+  symfony:
+    route_files:
+      - config/routes.yaml
+      - config/routes
+    auth_keywords:
+      - security
+      - firewall
+    csrf_keywords:
+      - csrf
+  yii:
+    route_files:
+      - config/web.php
+      - config/main.php
+    auth_keywords:
+      - accessControl
+      - roles
+    csrf_keywords:
+      - csrf
+  codeigniter:
+    route_files:
+      - app/Config/Routes.php
+      - application/config/routes.php
+    auth_keywords:
+      - filter
+      - auth
+    csrf_keywords:
+      - csrf

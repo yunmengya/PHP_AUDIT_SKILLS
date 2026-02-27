@@ -1,0 +1,225 @@
+PHP 代码审计之 SQL 注入漏洞原理  
+
+1.SQL 注入原理  
+  SQL 注入就是攻击者通过把恶意的 SQL 注入插入到 Web 表单的输入页面中，且插入的恶意语句会导
+致原有的 SQL 语句发生改变，从而达到攻击者的目的去让它执行一些危险的数据操作，进一步欺骗服务
+器去执行一些非本意的操作。简单来讲，所有可以涉及到数据库增删改查的系统功能点都有可能存在
+SQL 注入漏洞。
+一个简单的攻击原理举例：
+  在 SQL 注入中，我们更应该关注的是业务逻辑，例如业务中可能设计到的增删改查操作，下面通过
+一个简单的代码小 demo 来进行 SQL 注入的演示：
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SQL 注入小 demo</title>
+</head>
+<body>
+用户名：
+<form method="GET">     //form 表单通过 get 方式接收数据
+    <input type="text" name="name" size="50" />    // 通过 name 参数接收数据
+    <br>
+    <input type="submit" value=" 点击查询 " style="margin-top:50px;">
+    <?php
+        $db = mysqli_connect("localhost","root","123456","demo"); // 建立 mysql 连接
+        if(!$db){
+                echo " 数据库链接失败！ ";
+                exit();
+        }
+        $name = $_GET['name']; // 通过前端设置的 name 参数将数据接收到后端进行处理
+        $sql = "select * from user where name = '".$name."';";
+        echo " 输出当前执行的 SQL 主句： ".$sql."";
+        $result = mysqli_query($db,$sql);  // 执行 SQL 语句
+    while($row=mysqli_fetch_array($result))   // 取出一行数据的所有内容以数组的形式返回
+1.1 PHP MySQLi 基本函数  
+  PHP  MySQLi 函数允许访问  MySQL 数据库服务器。  通俗来说 MySQLi 下的函数用来处理 PHP 中关
+于数据增删改查的操作。
+mysqli_connect()  
+mysqli_query()  
+    {
+        echo " 账号： ".$row['user']."";      // 输出一行数据的 user 字段值
+        echo " 密码： ".$row['passwd']."";   // 输出一行数据的 passwd 字段值
+    }
+    mysqli_close($db);          // 关闭 mysql 连接
+    ?>
+</form>
+</body>
+</html>
+mysqli_fetch_array()  
+mysqli_close()  
+为了方便演示实际的业务流程，我们创建demo数据库，并且创建user表，在表中插入演示数据。
+这里简单演示了一下通过查询来获取数据的操作原理。
+1.2 问题引申：  
+  我们知道某些业务功能会涉及到数据库交互，如上所示，我们是不是可以通过正常功能插入恶意
+SQL 语句来实现我们想要达到的目的呢？
+例如这样：
+2.SQL 注入分类  
+  SQL 注入大致分为以下五大类，下面我们通过实际的 PHP 代码进行分析。
+2.1 报错注入  
+2.1.1 示例代码  
+  通过传入id参数且传入的id参数未做过滤直接拼接到 SQL 语句中执行，直接使用
+mysqli_error()进行报错处理没有对报错进行良好的错误处理，所以导致报错注入的产生。
+<?php
+if(isset($_GET['id']))    // 判断是否存在 id 参数传入
+{
+    header("Content-type:text/html;charset=utf-8");
+2.1.2 PHP 函数介绍  
+mysqli_error()
+2.1.3 测试  
+当正常查询id=1时输出user以及passwd字段的值php、123456。
+当输入id=1',mysqli_error() 捕获错误信息，并将 SQL 语句报错。
+    $db = mysqli_connect("localhost:3307","root","123456","demo"); // 连接一个数据
+库
+    if(!$db){
+        echo " 数据库链接失败！ ";
+        exit();
+    }
+    $id=$_GET['id'];                // 获取 id 参数值
+    $sql="SELECT * FROM user WHERE id='$id' LIMIT 0,1";  // 将 id 参数值直接拼接到 SQL
+语句
+    $result=mysqli_query($db,$sql);         // 执行 SQL 语句
+    $row = @mysqli_fetch_array($result);   // 取出第一行查询到的值以数组形式返回
+    if($row)
+    {
+    echo 'Your Login name:'. $row['user'];  // 查询到 id 为 xxx 的 user 字段值并输出
+    echo "<br>";
+    echo 'Your Password:' .$row['passwd'];  // 查询到 id 为 xxx 的 passwd 字段值并输出
+    }
+    else
+    {
+    echo mysqli_error($db);         // 如果语句出现错误直接输出错误
+    }
+    mysqli_close($db);              // 关闭 mysql 连接
+}
+?>
+我们闭合 SQL 语句中的单引号即可执行我们想要的查询的内容
+测试语句：
+2.2 宽字节注入  
+2.2.1 代码示例  
+  mysql 中有一个特性，由于gbk是多字节编码，两个字节代表一个汉字，所以%df和后面的转义字
+符\也就是%5c会组成了一个汉字運，而'就逃逸了出来造成 SQL 注入。在审计 SQL 注入时，要着重注
+意 MySQL 中设置的字符编码，如果为 gbk ，那么很可能存在宽字节注入。
+2.2.2 PHP 函数介绍  
+1' and (select extractvalue("anything",concat('~',( user()))))%20--%20qwe
+<?php
+if(isset($_GET['id']))
+{
+    header("Content-type:text/html;charset=utf-8");
+    $db = mysqli_connect("localhost:3307","root","123456","demo");
+    mysqli_query($db,"SET NAMES 'gbk'");    // 设置 MySQL 字符编码为 gbk
+    if(!$db){
+        echo " 数据库链接失败！ ";
+        exit();
+    }
+    $id=addslashes($_GET['id']);    // 通过 addslashes() 对特殊字符进行转义
+    $sql="SELECT * FROM user WHERE id='$id' LIMIT 0,1";
+    echo " 输出 SQL 语句： ".$sql."<br><br>";
+    $result=mysqli_query($db,$sql);
+    $row = @mysqli_fetch_array($result);
+    if($row)     //
+    {
+        echo 'Your Login name:'. $row['user'];
+        echo "<br>";
+        echo 'Your Password:' .$row['passwd'];
+    }
+    else
+    {
+        echo mysqli_error($db);
+    }
+    mysqli_close($db);
+}
+?>
+addslashes()
+2.2.3 测试  
+  我们发现输入'时，'被 addslashes() 转义。
+  我们使用%df和前面的\闭合也就是%5c，然后我们的 %27 也就是'直接逃逸出来，这时我们就能
+构造自己想要执行的 SQL 语句，造成 SQL 注入。
+测试语句：
+2.3 盲注  
+  在盲注中不管是布尔盲注还是时间型盲注，页面显示不会有明显的变化，代码审计中只能通过查看
+源代码闭合原有的 SQL 语句，然后利用 MySQL 中延时的方式来判断是否存在 SQL 注入。
+2.3.1 代码示例  
+1%df%27 and extractvalue(1,concat(0x7e,(select user()),0x7e)) -- qwe
+  这里为了进行盲注的演示，在代码中特意加入了一条 if 判断，当mysqli_fetch_array()查询的结
+果集为NULL的时候，返回 id=1 的数据内容，这就让我们无法判断插入的 SQL 语句是否执行成功 , 只能通
+过延时来进行测试。
+2.3.2 测试  
+当我们查询数据库中存在的数据时返回指定字段的内容
+当我们查询数据库中不存在的数据时，由于mysqli_fetch_array()查询结果为NULL，所以返回 id=1
+的指定字段内容
+由于我们在代码审计时可以一目了然看到 SQL 语句的构造情况 , 所以我们只需闭合相应的特殊字符，通过
+sleep() 函数使页面延时，从而判断此处是否存在注入点，进而进行下一步的注入。
+测试语句：
+<?php
+if(isset($_GET['id']))
+{
+    header("Content-type:text/html;charset=utf-8");
+    $db = mysqli_connect("localhost:3307","root","123456","demo");
+    if(!$db){
+        echo " 数据库链接失败！ ";
+        exit();
+    }
+    $id=$_GET['id'];
+    $sql="SELECT * FROM user WHERE id='$id' LIMIT 0,1";
+    $result=mysqli_query($db,$sql);
+    $row = @mysqli_fetch_array($result);
+    if(!$row)  // 如果查询的结果集为 NULL 的话，返回 id=1 的数据
+    {
+        $sql="SELECT * FROM user WHERE id='1' LIMIT 0,1";
+        $result=mysqli_query($db,$sql);
+        $row = @mysqli_fetch_array($result);
+    }
+    if($row)
+    {
+        echo 'Your Login name:'. $row['user'];
+        echo "<br>";
+        echo 'Your Password:' .$row['passwd'];
+    }
+    mysqli_close($db);
+}
+?>
+2.4 二次注入  
+2.4.1 代码示例  
+  二次注入的逻辑是在第一次insert或update操作时代码存在转义而无法造成注入，但数据在被
+插入数据库时转义会消失，正常的 SQL 语句将会被存储到数据库中，在第二次调用插入的数据时被还原
+的 SQL 语句将被拼接到正常的 SQL 语句中造成二次注入。
+2.4.2 PHP 函数介绍  
+2312'%20or%20sleep(5)%20--%20qwe
+<?php
+if(isset($_GET['user']))
+{
+    header("Content-type:text/html;charset=utf-8");
+    $db = mysqli_connect("localhost:3307","root","123456","demo");
+    if(!$db){
+        echo " 数据库链接失败！ ";
+        exit();
+    }
+    // 第一次更新操作
+    $user=addslashes($_GET['user']);
+    $sql="update user set user='$user' where id=1";  // 修改 id=1 的用户名
+    echo " 输出第一次的 SQL 语句： ".$sql."<br><br>";
+    $result=mysqli_query($db,$sql);
+    // 第二次查询操作
+    $sql = "select * from user where id=1";
+    $result=mysqli_query($db,$sql);
+    $row = @mysqli_fetch_array($result);
+    $sql = "select * from user where user = '$row[2]'";  // 查询结果集中下标为
+2(name) 的一行数据
+    echo " 输出第二次查询的 SQL 语句 :".$sql."<br><br>";
+    $result=mysqli_query($db,$sql);
+    var_dump(mysqli_fetch_row($result));  // 取出查询到的结果集并以数组的形式返回
+    mysqli_close($db);
+}
+?>
+mysqli_fetch_row()
+2.4.3 测试  
+输入'时，'被addslashes()转义，这里无法造成注入
+但在数据库中存储时转义\被清除
+但在第二次调用时转义后的 SQL 语句被拼接在正常的 SQL 语句中，造成二次注入。
+测试语句：
+3.SQL 注入代码审计总结  
+
+ps: Navicat 15 安装包以及破解方式同教程一起下发，大家可以根据教程进行破解使用。
+' union select 1,2,database(),3 -- qwe
+在审计 SQL 注入的时候，我们首先要找到对应的传参点，更要多关注代码中正常 SQL 语句的规则和过滤情况，
+最重要的是要闭合正常的 SQL 语句来，最终执行我们想要执行的 SQL 语句。

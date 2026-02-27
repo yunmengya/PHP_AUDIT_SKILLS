@@ -1,0 +1,114 @@
+# It's a stretch to call this obfuscation, but its simplicity and effectiveness (for open-source monitoring) made us prioritize coverage over rigor. Also, the datasets include hundreds of identical, simple use cases that generate noise, often with these URLs, so this rule helps minimize repetitive noise.
+rules:
+  - id: generic-hide-remotely
+    # Taint analysis is better with other tools. This is a base-level filter.
+    patterns:
+      - pattern-inside: '...'
+      - pattern-either:
+
+          # Testing services. Some could rarely appear in production, most should not. Very comfortable for staging and exfiltration.
+          - pattern-regex: (i?)\bbeeceptor\.com\b
+          - pattern-regex: (i?)\bburpcollaborator\.(net|me)\b
+          - pattern-regex: (i?)\b(cn|row)\.byted-dast\.com\b
+          - pattern-regex: (i?)\bherokuapp\.com\b
+          - pattern-regex: (i?)\bid\.repl\.co\b
+          - pattern-regex: (i?)\binteract\.sh\b
+          - pattern-regex: (i?)\bpipedream\.net\b
+          - pattern-regex: (i?)\brun\.mocky\.io/v./
+          - pattern-regex: (i?)\bngrok(-free)?\.(app|dev|io)\b
+          - pattern-regex: (i?)\bnona\.run\b
+          - pattern-regex: (i?)\boastify\.com\b
+          - pattern-regex: (i?)\boast\.(fun|live|me|online|pro|site)\b
+          - pattern-regex: (i?)\brequestbin\.com\b
+          - pattern-regex: (i?)\brequestcatcher\.com\b
+          - pattern-regex: (i?)\btreehouse\.com\b
+          - pattern-regex: (i?)\btypedwebhook\.tools/webhook/
+          - pattern-regex: (i?)\bwebhook\.site\b
+          - pattern-regex: (i?)\bwebhulktest\.com\b
+          - pattern-regex: (i?)\bwebhook-test\.com\b
+          - pattern-regex: (i?)\bworkers\.dev\b
+          - pattern-regex: (i?)\bsideloadly\.io\b
+          - pattern-regex: (i?)\bsmee\.io\b
+          - pattern-regex: (i?)\bzicp\.fun\b
+          - pattern-regex: (i?)\.22\.ax\b
+
+          # Sharing services. Should never be used in production.
+          - pattern-regex: (i?)discord\.com/api/webhooks
+          - pattern-regex: (i?)cdn\.discordapp\.com/attachments/
+          - pattern-regex: (i?)api\.telegram\.org\b
+          - pattern-regex: (i?)files\.catbox.moe/
+          - pattern-regex: (i?)paste\.bingner\.com/paste/
+          - pattern-regex: (i?)\banonpaste\.org\b
+          - pattern-regex: (i?)\bclbin\.com\b
+          - pattern-regex: (i?)\bdpaste\.org\b
+          - pattern-regex: (i?)\bdropboxusercontent\.com\b
+          - pattern-regex: (i?)\bfiletransfer.io/\b
+          - pattern-regex: (i?)\bghostbin\.site\b
+          - pattern-regex: (i?)\bgist\.github\.com\b
+          - pattern-regex: (i?)\bgofile\.io/d/
+          - pattern-regex: (i?)\bjustpaste\.it\b
+          - pattern-regex: (i?)\blimewire\.com/assets/
+          - pattern-regex: (i?)\bmega\.nz\b
+          - pattern-regex: (i?)\bpaste\.ee/p/
+          - pattern-regex: (i?)\b(p|h)astebin\.com\b
+          - pattern-regex: (i?)\b(p|h)asteb\.in\b
+          - pattern-regex: (i?)\bpastie\.org/p/
+          - pattern-regex: (i?)\bprivatebin\.(net|io)/\?
+          - pattern-regex: (i?)\bprivnote\.com\b
+          - pattern-regex: (i?)\brentry\.co\b
+          - pattern-regex: (i?)\bsendspace\.com/file/
+          - pattern-regex: (i?)\btelegra\.ph/
+          - pattern-regex: (i?)\btransfer\.sh\b
+          - pattern-regex: (i?)\b0bin\.net/paste/
+          - pattern-regex: (i?)\b0x0\.st\b
+
+          # Private mail
+          - pattern-regex: (i?)\bsendinc\.com\b
+          - pattern-regex: (i?)\btutanota\.com\b
+
+          # Port-forwarding services
+          - patterns:
+              - pattern-regex: \blocaltunnel\b
+              - pattern-regex: \blt\s--port\s
+          - pattern-regex: (i?)\bply\.gg\b
+          - pattern-regex: (i?)(\.requestrepo\.com|requestrepo\.com/r/)\b
+          - pattern-regex: \bserveo\s(http|tcp)\s\d
+          - pattern-regex: (i?)\btermbin\.com\b
+
+          # Get IP
+          - pattern-regex: (i?)checkip\.amazonaws\.com\b
+          - pattern-regex: (i?)myip\.dnsomatic\.com\b
+          - pattern-regex: (i?)checkip\.dyndns\.org\b
+          - pattern-regex: (i?)\bcurlmyip\.com\b
+          - pattern-regex: (i?)\bicanhazip\.com\b
+          - pattern-regex: (i?)\bident\.me\b
+          - pattern-regex: (i?)\bifconfig\.me\b
+          - pattern-regex: (i?)(https?:\/\/|['"]|\b)ip\.me\b
+          - pattern-regex: (i?)\bipecho\.net\b
+          - pattern-regex: (i?)\bapi\.ipify\.org\b
+          - pattern-regex: (i?)\bipinfo\.io\b
+          - pattern-regex: (i?)\bip-api.com\b
+          - pattern-regex: (i?)\bjsonip\.com\b
+          - pattern-regex: (i?)\bmyexternalip\.com\b
+          - pattern-regex: (i?)\bapi\.myip\.com\b
+          - pattern-regex: (i?)\bwhatismyipaddress\.com\b
+          - pattern-regex: (i?)\bwtfismyip\.com\b
+          - pattern-regex: (i?)whatismyip.akamai.com\b
+
+    message: Hiding payloads remotely. Leveraged to detect some staging and exfiltration. 
+    severity: ERROR
+    languages:
+      - bash
+      - clojure
+      - csharp
+      - dart
+      - go
+      - java
+      - javascript
+      - typescript
+      - lua
+      - php
+      - python
+      - ruby
+      - rust
+      - scala

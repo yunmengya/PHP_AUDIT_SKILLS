@@ -1,0 +1,2 @@
+eval $cmd
+bash -c '...'

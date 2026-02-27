@@ -1,0 +1,11 @@
+; TP
+(if true (println "True"))
+(when (> 2 1) (println "noise"))
+(cond (nil) (println "Nil"))
+(case []
+  1 "One"
+  2 "Two"
+  "Default")
+
+; FP
+(while (not x) (println @x))

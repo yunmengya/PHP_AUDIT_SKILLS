@@ -1,0 +1,9 @@
+name: codeigniter
+route_files:
+- app/Config/Routes.php
+- application/config/routes.php
+controller_paths:
+- app/Controllers/*
+- application/controllers/*
+entry_points:
+- public/index.php

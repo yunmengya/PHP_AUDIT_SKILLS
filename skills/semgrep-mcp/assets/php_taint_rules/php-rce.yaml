@@ -1,0 +1,36 @@
+rules:
+  - id: php-rce-taint
+    languages: [php]
+    message: "Tainted data used in command/code execution"
+    severity: ERROR
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[$X]
+      - pattern: $_POST[$X]
+      - pattern: $_REQUEST[$X]
+      - pattern: $_COOKIE[$X]
+      - pattern: request()->input($X)
+      - pattern: $REQ->input($X)
+      - pattern: input($X)
+    pattern-sanitizers:
+      - pattern: escapeshellarg(...)
+      - pattern: escapeshellcmd(...)
+      - pattern: intval(...)
+      - pattern: preg_match(...)
+    pattern-propagators:
+      - pattern: trim($X)
+        from: $X
+        to: trim($X)
+      - pattern: substr($X, ...)
+        from: $X
+        to: substr($X, ...)
+    pattern-sinks:
+      - pattern: system(...)
+      - pattern: exec(...)
+      - pattern: shell_exec(...)
+      - pattern: passthru(...)
+      - pattern: popen(...)
+      - pattern: proc_open(...)
+      - pattern: pcntl_exec(...)
+      - pattern: eval(...)
+      - pattern: assert(...)

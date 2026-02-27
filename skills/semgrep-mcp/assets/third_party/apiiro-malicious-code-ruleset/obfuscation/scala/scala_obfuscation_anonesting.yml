@@ -1,0 +1,10 @@
+rules:
+  - id: scala-obfuscation-anonymous-nesting
+    pattern: |
+      ($X: $_) => 
+        ($Y: $_) => 
+          ($Z: $_) => ...
+    message: Detect obfuscation by deep anonymous nesting.
+    severity: WARNING
+    languages: 
+      - scala

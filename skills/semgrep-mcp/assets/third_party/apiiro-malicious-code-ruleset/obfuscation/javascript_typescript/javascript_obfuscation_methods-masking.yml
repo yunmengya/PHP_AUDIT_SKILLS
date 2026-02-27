@@ -1,0 +1,33 @@
+rules:
+  - id: javascript-obfuscation-methods-masking
+    patterns:
+
+      # Match only in files that have at least 3 normal lines
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  ...
+                  $NOT_ONE_LINER
+              - pattern-inside: |
+                  $NOT_ONE_LINER
+                  ...
+          - metavariable-regex:
+              metavariable: $NOT_ONE_LINER
+              regex: ^.{3,199}$
+
+      - pattern-either:
+        - pattern-regex: (\bparseInt\(.*){4,}
+        - pattern-regex: \b((Base64|DatatypeConverter|Random|String|StringBuilder|StringBuffer)\.)(.*\b\2){4,}
+        - pattern-regex: (\.(append|charAt|concat|delete|format|indexOf|insert))\b(.*\2\b){3,}
+        - pattern-regex: (\.(join|lastIndexOf|replace|replaceAll|setCharAt|split|startsWith))\b(.*\2\b){3,}
+        - pattern-regex: (\.(substring|toString|valueOf))(?!\w|\$)(.*\2\b){3,}
+        
+    paths:
+       exclude:
+          - "*.json"
+          - "*.min.js"
+    message: Obfuscation by concatenation of string manipulating methods.
+    severity: WARNING
+    languages:
+      - javascript
+      - typescript

@@ -1,0 +1,13 @@
+rules:
+  - id: javascript-obfuscation-override
+    pattern-either:
+      - patterns:
+          - pattern: $IMPOSTOR.prototype.$METHOD = $OVERRIDE
+          - metavariable-pattern:
+              metavariable: $IMPOSTOR
+              pattern-regex: ^(Array|Boolean|Date|Error|Function|Number|Object|Promise|RegExp|String|Symbol|URL|define|jQuery|require)$
+    message: Obfuscation by overriding builtin constructs.
+    severity: ERROR
+    languages: 
+      - javascript
+      - typescript

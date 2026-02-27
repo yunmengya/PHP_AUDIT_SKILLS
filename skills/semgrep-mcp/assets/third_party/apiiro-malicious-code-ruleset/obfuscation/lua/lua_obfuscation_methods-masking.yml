@@ -1,0 +1,11 @@
+rules:
+  - id: lua-obfuscation-reconstruction
+    patterns:
+      - pattern-regex: ^.{,401}$
+      - pattern-either:
+          - pattern-regex: (?<!\w)(\.\.|concat|gsub|ipairs|toString)(?!\w)(.*(?<!\w)\1(?!\w)){4,}
+          - pattern-regex: (\.(char|format|rep)\()(.*\.\1\(){4,}
+    message: Obfuscation by concatenation of string manipulating methods.
+    severity: WARNING
+    languages:
+      - lua

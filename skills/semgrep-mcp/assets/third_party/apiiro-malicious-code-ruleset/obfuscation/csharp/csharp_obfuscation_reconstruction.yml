@@ -1,0 +1,15 @@
+rules:
+  - id: csharp-obfuscation-reconstruction
+    patterns:
+      - pattern-either:
+          - pattern: |
+              string.Concat($CONCAT)
+          - pattern: |
+              string.Join("...", $CONCAT)
+      - metavariable-pattern:
+          metavariable: $CONCAT
+          pattern-regex: \{\s*((((["'])(?:(?!\4).)*\4)|(\d+|(0|\\{1,})[beoux]\d+))\s*,\s*){5,}(((((["'])(?:(?!\11).)))*\11)|(\d+|(0|\\{1,})[beoux]\d+))\s*\}
+    message: Obfuscation by concatenation of string manipulating methods.
+    severity: WARNING
+    languages:
+      - csharp

@@ -1,0 +1,12 @@
+rules:
+  - id: csharp-obfuscation-methods-masking
+    patterns:
+      - pattern-regex: ^.{,401}$
+      - pattern-either:
+          - pattern-regex: (?<!\w|\$|@)(Convert|Encoding)\.((?<!\w|\$|@).*\1\.){4,}
+          - pattern-regex: \.(Concat|Format|Join|Replace|Split)(?!\w|\$|@)(.*\.\1(?!\w|\$|@)){4,}
+          - pattern-regex: (?<!\w|\$|@)(GetBytes|IndexOf|new Random|StringBuilder|Substring)(?!\w|\$|@)(.*(?<!\w|\$|@)\1(?!\w|\$|@)){4,}
+    message: Obfuscation by reconstruction of hardcoded data.
+    severity: WARNING
+    languages:
+      - csharp

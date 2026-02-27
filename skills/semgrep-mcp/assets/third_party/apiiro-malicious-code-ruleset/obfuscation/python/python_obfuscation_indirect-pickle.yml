@@ -1,0 +1,20 @@
+rules:
+  - id: python-obfuscation-indirect-pickle
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = pickle.loads
+          - pattern: $VAR.import_module('pickle')
+          - pattern: getattr(pickle, 'loads')
+          - pattern: |
+              $VAR = getattr
+              ...
+              $VAR(pickle, ...)
+          - pattern: __import__('pickle')
+          - pattern: |
+              $VAR = __import__
+              ...
+              $VAR('pickle')
+    message: "Detected potential obfuscation by alternative usage of `Pickle`."
+    severity: WARNING
+    languages:
+      - python

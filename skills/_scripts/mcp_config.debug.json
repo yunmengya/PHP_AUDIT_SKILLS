@@ -1,0 +1,9 @@
+{
+  "tools": {
+    "ai-confirm-debug-mcp": {
+      "command": "{python} {repo_root}/skills/ai-confirm-mcp/scripts/ai_confirm_mcp.py --mode debug-suggest --project {project} --out {out} --model \"${{AI_CONFIRM_MODEL:-${{AI_AUDIT_MODEL:-sonnet}}}}\" --rounds \"${{AI_DEBUG_ROUNDS:-2}}\" --candidates-per-round \"${{AI_DEBUG_CANDIDATES_PER_ROUND:-5}}\" --timeout \"${{AI_DEBUG_TIMEOUT:-30}}\"",
+      "output_format": "json",
+      "output_path": "{out}/mcp_raw/ai-confirm-mcp-debug.json"
+    }
+  }
+}

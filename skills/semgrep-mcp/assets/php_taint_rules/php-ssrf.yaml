@@ -1,0 +1,30 @@
+rules:
+  - id: php-ssrf-taint
+    languages: [php]
+    message: "Tainted URL used in request (SSRF)"
+    severity: WARNING
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[$X]
+      - pattern: $_POST[$X]
+      - pattern: $_REQUEST[$X]
+      - pattern: $_COOKIE[$X]
+      - pattern: request()->input($X)
+      - pattern: $REQ->input($X)
+      - pattern: input($X)
+    pattern-sanitizers:
+      - pattern: filter_var(...)
+      - pattern: preg_match(...)
+      - pattern: parse_url(...)
+    pattern-propagators:
+      - pattern: trim($X)
+        from: $X
+        to: trim($X)
+    pattern-sinks:
+      - pattern: curl_init(...)
+      - pattern: curl_setopt(...)
+      - pattern: file_get_contents(...)
+      - pattern: fopen(...)
+      - pattern: fsockopen(...)
+      - pattern: stream_socket_client(...)
+      - pattern: get_headers(...)

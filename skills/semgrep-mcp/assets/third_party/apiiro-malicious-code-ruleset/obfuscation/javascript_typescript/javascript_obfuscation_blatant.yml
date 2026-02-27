@@ -1,0 +1,10 @@
+rules:
+  - id: javascript-obfuscation-blatant
+    pattern-either:
+      - pattern-regex: .*(\$\=~\[\]|\!\[\]\+""|{}\+"").*
+      - pattern-regex: .*(\[\]\+\[\]|\!\!\[\]).*
+    message:  Detect jjencode and jsfuck.
+    severity: ERROR
+    languages: 
+      - javascript
+      - typescript

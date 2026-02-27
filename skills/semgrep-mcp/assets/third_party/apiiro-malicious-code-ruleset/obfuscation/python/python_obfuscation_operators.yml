@@ -1,0 +1,27 @@
+rules:
+  - id: generic-obfuscation-operators
+    patterns:
+
+      # Match only in files that have at least 3 normal lines
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  ...
+                  $NOT_ONE_LINER
+              - pattern-inside: |
+                  $NOT_ONE_LINER
+                  ...
+          - metavariable-regex:
+              metavariable: $NOT_ONE_LINER
+              regex: ^.{3,199}$
+
+      # Detect obfuscation
+      - pattern-regex: ([~\^&\*\+].+){9,}
+
+      # Exclude false-positives
+      - pattern-not-inside: r'...'
+      - pattern-not-inside: rf'...'
+    message: Obfuscation containing operators that are uncommon in sequences of 10 or more consecutive occurrences.
+    severity: WARNING
+    languages: 
+      - python

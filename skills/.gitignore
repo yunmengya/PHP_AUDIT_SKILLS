@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Local Python venvs
+.venv/
+
+# Sample audit outputs (regeneratable)
+_samples/*_audit/

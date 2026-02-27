@@ -1,0 +1,7 @@
+rules:
+  - id: clojure-obfuscation-methods-masking
+    pattern-regex: \((str|subs|clojure\.string|re-find|re-seq|re-matches)\s(.*\(\1\s){4,}
+    message: Obfuscation by concatenation of string manipulating methods.
+    severity: WARNING
+    languages:
+      - clojure

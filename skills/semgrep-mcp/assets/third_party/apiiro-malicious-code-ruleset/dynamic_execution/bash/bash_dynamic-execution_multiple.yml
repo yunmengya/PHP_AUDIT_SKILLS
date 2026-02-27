@@ -1,0 +1,9 @@
+rules:
+  - id: bash-dynamic-execution-exec-eval
+    pattern-either:
+        - pattern: eval
+        - pattern: bash -c '...'
+    message: Dynamic execution.
+    severity: ERROR
+    languages:
+      - bash

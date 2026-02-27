@@ -1,0 +1,18 @@
+[
+  {
+    "case_id": "SQLI-001",
+    "vuln_type": "sql_injection",
+    "entry": "GET /user?id=",
+    "input": "1 OR 1=1",
+    "final_value": "1 OR 1=1",
+    "sink": {"file": "app/Repo.php", "line": 88, "function": "query"},
+    "result": "confirmed",
+    "notes": "变量未过滤，1:1 拼接成立",
+    "change_type": "no_change",
+    "trace_chain": [
+      {"file": "app/Controller.php", "line": 12, "code": "$id=$_GET['id'];"},
+      {"file": "app/Repo.php", "line": 88, "code": "$sql=...$id"}
+    ],
+    "source_path": "app/Repo.php:88"
+  }
+]

@@ -1,0 +1,7 @@
+rules:
+  - id: bash-obfuscation-dev-null
+    pattern-regex: (.*\/dev\/null){4,}
+    message: Line contains 3 or more occurrences of '/dev/null'
+    severity: WARNING
+    languages:
+      - bash

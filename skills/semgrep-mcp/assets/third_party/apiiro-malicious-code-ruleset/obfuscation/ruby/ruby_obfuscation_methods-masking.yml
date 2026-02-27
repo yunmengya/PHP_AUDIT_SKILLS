@@ -1,0 +1,12 @@
+rules:
+  - id: ruby-obfuscation-methods-masking
+    patterns:
+      - pattern-regex: ^.{,401}$
+      - pattern-either:
+          - pattern-regex: (?<!\w|\$|@)(ord|chr|\.unpack|pack|gsub|tr|sub)(?!\w|\$|@)(.*(?<!\w|\$|@)\1(?!\w|\$|@)){4,}
+          - pattern-regex: (?<!\w|\$|@)(inspect|join|split|reverse|slice|scan|traverse)(?<!\w|\$|@)(.*(?<!\w|\$|@)\1(?!\w|\$|@)){4,}
+          - pattern-regex: (?<!\w|\$|@)(Base64|random_bytes|rand|to_s)(?<!\w|\$|@)(.*(?<!\w|\$|@)\1(?!\w|\$|@)){4,}
+    message: Obfuscation by concatenation of string manipulating methods.
+    severity: WARNING
+    languages:
+      - ruby

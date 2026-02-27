@@ -1,0 +1,8 @@
+rules:
+  - id: lua-obfuscation-anonymous-functions
+    pattern: |
+      function() function() function() ... end end end
+    message: "Deeply nested anonymous functions detected"
+    severity: WARNING
+    languages: 
+      - lua

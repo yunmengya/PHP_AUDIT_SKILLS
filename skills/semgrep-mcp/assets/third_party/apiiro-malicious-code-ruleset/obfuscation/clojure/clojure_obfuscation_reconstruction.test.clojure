@@ -1,0 +1,5 @@
+;; TP
+(clojure.string/join ", " ['a' 'b' 1 2 3 4 '5'])
+
+;; FP
+(clojure.string/join ", " ['a' 'b' c 1 2 3 4 '5'])

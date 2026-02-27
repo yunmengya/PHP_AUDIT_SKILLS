@@ -1,0 +1,12 @@
+services:
+  debug:
+    build:
+      context: ../..
+      dockerfile: skills/docker/Dockerfile
+    working_dir: /app
+    volumes:
+      - ../..:/app
+    environment:
+      - PYTHONIOENCODING=utf-8
+      - SKILLS_IN_DOCKER=1
+    command: ["sleep", "infinity"]

@@ -1,0 +1,184 @@
+PHP 代码审计之变量覆盖  
+1. 变量覆盖原理  
+变量覆盖顾名思义变量原有的值被覆盖掉了，其实就是我们传入的值可以覆盖掉代码中原有的变量值可
+能导致代码逻辑变化且有可能直接 getshell 。
+2. 变量覆盖相关函数  
+$  
+在某些场景下$的不正当使用会导致变量覆盖漏洞的产生
+在 PHP 中$$表示的是一个可变变量获取了一个普通变量的值作为这个可变变量的变量名。
+代码示例：
+通过调试我们发现$$arg=world在上面一步的赋值($arg=hello)将 hello 赋值给变量$arg，在下面
+hello就会变成变量名 $hello 。
+大多数的业务场景是在foreach遍历数组时使用$$导致原本变量被覆盖。
+代码示例：
+<?php
+highlight_file(__FILE__);
+$arg='hello';
+$$arg='world';
+echo $arg;
+echo $$arg;
+?>
+先来看下 foreach() 函数是如何进行数组遍历的
+foreach()
+再回到最上面的代码其中$num被初始化为 20 ，通过foreach将我们传入的键值对进行遍历并赋值，但
+如果在函数中不正确的使用了$$那么这里的初始化值就会被修改。
+
+<?php
+highlight_file(__FILE__);
+$num=20;
+foreach ($_REQUEST as $key => $value) {    // 将 request 数组中的键名赋给 $key ，键值赋给
+$value
+    $$key = $value;                 // 将键值赋给 $$num
+}
+echo $num;
+?>
+PHP 4 引入了 foreach 结构,这只是一种遍历数组简便方法。 foreach 仅能用于数组，当试图将其用于其
+它数据类型或者一个未初始化的变量时会产生错误。有两种语法，第二种比较次要但却是第一种的有用的扩
+展。
+第一种格式遍历给定的 array_expression 数组。每次循环中，当前单元的值被赋给 $value 并且数组内
+部的指针向前移一步（因此下一次循环中将会得到下一个单元）。
+$myArray=array("1"=>"val1","2"=>"val2","3"=>"val3");
+foreach($myArray as $val) {
+
+   print($val." ");
+}
+其结果会输出： val1 val2 val3
+第二种格式做同样的事，只是除了当前单元的键名也会在每次循环中被赋给变量 $key。
+$myArray=array("1"=>"val1","2"="val2","3"=>"val3");
+foreach($myArray as $key=>$val) {
+   print($key."=>".$val.";");
+}
+其结果会输出： 1=>val1;2=>val2;3=>val3
+extract()  
+代码示例：
+将数组中的键值转化为变量名，这时我们上面初始化的$a的值就会被覆盖 , 而如果该函数在参数中设置
+了EXTR_SKIP则已有变量不会被覆盖。
+定义和用法：
+该函数从数组中将变量导入到当前的符号表。
+该函数使用数组键名作为变量名，使用数组键值作为变量值。针对数组中的每个元素，将在当前符号表中创建
+对应的一个变量。
+语法：
+extract(array,extract_rules,prefix) 
+    array           必需。规定要使用的数组。
+    extract_rules   可选。 extract() 函数将检查每个键名是否为合法的变量名，同时也检查和符号
+表中已存在的变量名是否冲突。对不合                    法和冲突的键名的处理将根据此参数决定。
+
+                    EXTR_OVERWRITE - 默认。如果有冲突，则覆盖已有的变量。
+                    EXTR_SKIP - 如果有冲突，不覆盖已有的变量。
+                    EXTR_PREFIX_SAME - 如果有冲突，在变量名前加上前缀 prefix 。
+                    EXTR_PREFIX_ALL - 给所有变量名加上前缀 prefix 。
+                    EXTR_PREFIX_INVALID - 仅在不合法或数字变量名前加上前缀 prefix 。
+                    EXTR_IF_EXISTS - 仅在当前符号表中已有同名变量时，覆盖它们的值。其它的
+都不处理。
+                    EXTR_PREFIX_IF_EXISTS - 仅在当前符号表中已有同名变量时，建立附加了前
+缀的变量名，其它的都不处理。
+                    EXTR_REFS - 将变量作为引用提取。导入的变量仍然引用了数组参数的值。
+
+    prefix          可选。如果 extract_rules 参数的值是 EXTR_PREFIX_SAME 、
+EXTR_PREFIX_ALL 、          
+                    EXTR_PREFIX_INVALID 或 EXTR_PREFIX_IF_EXISTS ，则 prefix 是必需
+的。
+                    该参数规定了前缀。前缀和数组键名之间会自动加上一个下划线。
+返回值：
+该函数返回成功设置的变量数目。
+<?php
+highlight_file(__FILE__);
+$a = "Original";
+$my_array = array("a" => "Cat","b" => "Dog", "c" => "Horse");
+extract($my_array);
+echo "\$a = $a; \$b = $b; \$c = $c";
+?>
+parse_str()  
+代码示例：
+该函数可以解析传入的变量，那么如果代码中变量已存在同名变量那么就会将已存在变量值进行覆盖。
+import_request_variables()  
+版本要求： PHP 4 >= 4.1.0, PHP 5 < 5.4.0
+定义和用法：
+该函数把查询字符串解析到变量中。
+    注释：如果未设置 array 参数，由该函数设置的变量将覆盖已存在的同名变量。
+    注释： php.ini 文件中的 magic_quotes_gpc 设置影响该函数的输出。如果已启用，那么在 
+parse_str() 解析之前，变量会被          addslashes() 转换。
+语法：
+parse_str(string,array) 
+    string  必需。规定要解析的字符串。
+    array   可选。规定存储变量的数组名称。该参数指示变量存储到数组中。
+返回值：
+没有返回值。
+<?php
+highlight_file(__FILE__);
+$name = "php";
+parse_str("name=ShenJi&age=33",$myArray);
+print_r($myArray);
+?>
+代码示例：
+使用该函数时要将 PHP 版本调到 PHP5.4 以下。
+这里我们以 get 方式导入全局作用域并在变量名前加入前缀 get_ ，那么当 PHP 文件中定义过相同变量时那
+么该变量值将会被覆盖
+这里我们就覆盖掉了上面 get_user 的变量值为我们传入的变量值
+3. 变量覆盖漏洞  
+3.1 $$ 变量覆盖  
+如业务系统中存在如下代码我们该如何绕过 var_dump() 函数来执行代码呢？
+示例代码：
+定义和用法：
+将 GET ／ POST ／ Cookie 变量导入到全局作用域中,如果你禁止了 register_globals ，但又想用到一些
+全局变量，那么此函数就很有用。
+语法：
+bool import_request_variables ( string $types [, string $prefix ] )
+    $types：必须，指定需要导入的变量，可以用字母 G 、 P 和 C 分别表示 GET 、 POST 和 Cookie ，这些字母
+不区分大小写，所以你可以使           用 g 、 p 和 c 的任何组合。 POST 包含了通过 POST 方法上传的文件
+信息。注意这些字母的顺序，当使用 gp 时， POST 变量将使用相同的名字覆盖     GET 变量。任何 GPC 以
+外的字母都将被忽略。
+    $prefix：可选 变量名的前缀，置于所有被导入到全局作用域的变量之前。所以如果你有个名为 
+userid 的 GET 变量，同时提供了             pref_ 作为前缀，那么你将获得一个名为 $pref_userid
+的全局变量。虽然 prefix 参数是可选的，但如果不指定前缀，或者指定一个空字     符串作为前缀，你
+将获得一个 E_NOTICE 级别的错误。
+返回值：
+无。
+<?php
+highlight_file(__FILE__);
+$get_user=admin;
+import_request_variables("g", "get_");
+echo $get_user;
+?>
+可以看到当我们输入 v=v=123 ，本应该我们的 $v 的值为v=123，但是当我们进入下面的$$v时，$v的
+值被覆盖就变成了 123 ，所以var_dump()输出了 123 。
+这时我们就需要考虑该如何逃逸出var_dump()函数来通过eval()来执行代码呢？
+其实我们可以将前面的)闭合，使用; 隔开多个语句即可逃逸出 var_dump() 函数来通过 eval() 执行我们的
+代码
+完整的 payload 其实是：
+3.2 关于 extract 的一道 ctf 题目  
+以下是一道关于 extract() 函数的 CTF 题目，这里就用到了该函数将原有变量覆盖，来读取 flag 。
+代码示例：
+这段代码的意思是 text 内容我们并不知道，要使我们传入的$arg参数内容和 flag.php 中$text的内容相
+同才可以读取到 flag.
+<?php
+highlight_file(__FILE__);
+$v = $_REQUEST['v'];
+//echo $v;
+eval("var_dump($$v);");
+?>
+eval("var_dump(123);system("ipconfig");");
+<?php
+highlight_file(__FILE__);
+$text = "XXXXXXXXXXXX";
+include 'flag.php';       // 同级目录下创建一个 flag.php 文件
+extract($_GET);
+if(isset($arg)){
+代码中有extract()函数且以 GET 方式传入数据，那我们就可以传入text=123&arg=123, 在
+extract()函数中相当于是$text=123&$arg=123, 这样我们就将 $text 原有变量值覆盖，并且传入
+$arg的值为 123 成功绕过判断读取到 flag 。
+4. 变量覆盖代码审计总结  
+
+    $content = trim($text);
+    if($arg == $content){
+        echo $flag;
+    }
+    else{
+      echo "error!!!";
+    }
+}
+?>
+变量覆盖、反序列化在 PHP 代码审计中算是两大难搞的洞 , 因为这些漏洞在审计时需要很足的代码功底和对代码
+逻辑的分析能力，现在我们首先要对这些可能存在变量覆盖的函数或者字符进行了解知道他们的功能以及该如
+何利用，这样在代码中遇到这些函数或字符的时候，我们的大脑才能敏感起来，这样才可能找到该类型的漏
+洞。

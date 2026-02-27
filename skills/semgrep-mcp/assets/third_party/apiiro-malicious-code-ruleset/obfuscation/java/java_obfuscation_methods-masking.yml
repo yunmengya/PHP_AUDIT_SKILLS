@@ -1,0 +1,13 @@
+rules:
+  - id: java-obfuscation-methods-masking
+    patterns:
+      - pattern-regex: ^.{,401}$
+      - pattern-either:
+          - pattern-regex: (?<!\w|\$)(Base64|DatatypeConverter|Random|String|StringBuilder|StringBuffer)\.(.*(?<!\w|\$)\1\.){4,}
+          - pattern-regex: \.(append|charAt|concat|delete|format|indexOf|insert)(?!\w|\$)(.*\.\1(?!\w|\$)){4,}
+          - pattern-regex: \.(join|lastIndexOf|replace|replaceAll|setCharAt|split|startsWith)(.*\.\1(?!\w|\$)){4,}
+          - pattern-regex: \.(substring|toString|valueOf)(.*\.\1(?!\w|\$)){4,}
+    message: Obfuscation by concatenation of string manipulating methods.
+    severity: WARNING
+    languages:
+      - java

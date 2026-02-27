@@ -1,0 +1,24 @@
+rules:
+  - id: generic-one-liners
+    pattern-regex: ^.{400,}$
+    paths:
+       exclude:
+          - "*.json"
+          - "*.min.js"
+    message: Minified, compressed, obfuscated or any other form of unreadable files is excluded from the scan, because although a strong indicator of maliciousness, its FP rate is relatively higher. It is highly recommended to store such files in CDN, cloud buckets, etc. and keep the codebase readable.
+    severity: INFO
+    languages:
+      - bash
+      - clojure
+      - csharp
+      - dart
+      - go
+      - java
+      - javascript
+      - typescript
+      - lua
+      - php
+      - python
+      - ruby
+      - rust
+      - scala

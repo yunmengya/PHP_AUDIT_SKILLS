@@ -1,0 +1,20 @@
+rules:
+  - id: csharp-dynamic-execution-multiple
+    pattern-either:
+      - pattern: System.Diagnostics.Process.Start("dotnet", ...)
+      - pattern: process.StartInfo.FileName = "dotnet"
+      - patterns:
+          - pattern:
+              ProcessStartInfo $PSI = new ProcessStartInfo
+              {
+                  FileName = "dotnet",
+                  Arguments = $CODE,
+                  ...
+              };
+          - metavariable-regex:
+              metavariable: $CODE
+              regex: .*script -e 
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - csharp

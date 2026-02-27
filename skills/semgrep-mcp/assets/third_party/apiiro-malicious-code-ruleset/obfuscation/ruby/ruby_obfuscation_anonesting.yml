@@ -1,0 +1,12 @@
+rules:
+  - id: ruby-obfuscation-anonymous-nesting
+    pattern: |
+      ->($X) {
+        ->($Y) {
+          ->($Z) { ... }
+        }
+      }
+    message: Detect obfuscation by deep anonymous nesting.
+    severity: WARNING
+    languages: 
+      - ruby

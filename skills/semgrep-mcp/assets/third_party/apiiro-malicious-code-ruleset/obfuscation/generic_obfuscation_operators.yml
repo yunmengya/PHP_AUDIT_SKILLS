@@ -1,0 +1,23 @@
+rules:
+  - id: generic-obfuscation-operators
+    patterns:
+      - pattern-not-inside: '...'
+      - pattern-regex: ^.{,1000}$
+      - pattern-regex: ^[^'"`\n]*([~\^&\*\+][^'"`\n]*[^~<>\^&\*\+]){9,}[^'"`\n]*$
+    paths:
+       exclude:
+          - "*.json"
+          - "*.min.js"
+    message: Obfuscation containing operators that are uncommon in sequences of 10 or more consecutive occurrences.
+    severity: WARNING
+    languages: 
+      - clojure
+      - dart
+      - go
+      - java
+      - javascript
+      - typescript
+      - lua
+      - php
+      - ruby
+      - scala

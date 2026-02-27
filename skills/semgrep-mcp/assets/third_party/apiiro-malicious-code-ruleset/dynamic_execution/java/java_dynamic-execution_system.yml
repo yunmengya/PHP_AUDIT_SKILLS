@@ -1,0 +1,12 @@
+rules:
+  - id: java-dynamic-execution-system
+    pattern-either:
+      - pattern: $RUNTIME.exec("java -e '...'");
+      - pattern: new ProcessBuilder("java", "-e", "...")
+      - pattern: $RUNTIME.exec("kotlin -e '...'");
+      - pattern: new ProcessBuilder("kotlin", "-e", "...")
+    message: Dynamic execution by system commands.
+    severity: ERROR
+    languages:
+      - java
+      - kotlin
