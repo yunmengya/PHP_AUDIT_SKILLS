@@ -10,14 +10,14 @@ description: Trace call chains and parameter flows for PHP routes, identify sink
 
 ## 输入
 - 项目根目录
-- 可选：{project}_audit/route_mapper/routes.json
+- 可选：{out}/route_mapper/routes.json
 
 ## 输出
-- {project}_audit/route_tracer/call_graph.json
-- {project}_audit/route_tracer/call_graph.md
-- {project}_audit/route_tracer/{route_name}/trace.json
-- {project}_audit/route_tracer/{route_name}/trace.md
-- {project}_audit/route_tracer/{route_name}/sinks.json
+- {out}/route_tracer/call_graph.json
+- {out}/route_tracer/call_graph.md
+- {out}/route_tracer/{route_name}/trace.json
+- {out}/route_tracer/{route_name}/trace.md
+- {out}/route_tracer/{route_name}/sinks.json
 
 ## 工作流
 0. 先运行 call_graph.py 生成全量调用图（call_graph.json）。

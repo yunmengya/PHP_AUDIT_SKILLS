@@ -9,11 +9,11 @@ description: Aggregate audit findings into a unified summary report.
 聚合各模块的 findings 输出，生成统一摘要报告。
 
 ## 输入
-- {project}_audit 目录（包含 findings.json / auth_evidence.json）
+- {out} 目录（包含 findings.json / auth_evidence.json）
 
 ## 输出
-- {project}_audit/report_summary.json
-- {project}_audit/report_summary.md
+- {out}/report_summary.json
+- {out}/report_summary.md
 
 ## 脚本
 - 执行：`scripts/report_writer_mcp.py`

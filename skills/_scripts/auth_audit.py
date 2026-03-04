@@ -149,7 +149,7 @@ def main() -> None:
             fid = stable_id("AUTH", controller_file, 0, r.get("path") or "")
             findings.append({
                 "id": fid,
-                "title": "Possible Missing Authorization",
+                "title": "可能缺少鉴权控制",
                 "severity": "medium",
                 "independent_severity": "medium",
                 "combined_severity": "medium",
@@ -166,7 +166,7 @@ def main() -> None:
                 "validation": [],
                 "controllability": "conditional",
                 "poc": {"method": r.get("method"), "path": r.get("path"), "notes": "仅模板，不执行"},
-                "notes": "No auth keyword or ownership check found in handler body.",
+                "notes": "在处理函数中未发现鉴权关键词或归属校验。",
             })
 
     findings = apply_rule_audit_quick_filter(findings, "auth_audit")
@@ -175,24 +175,24 @@ def main() -> None:
     os.makedirs(out_dir, exist_ok=True)
 
     # auth_routes.md
-    lines = ["# Auth Routes", ""]
+    lines = ["# 鉴权路由映射", ""]
     route_rows = []
     for r in auth_routes:
-        own = "yes" if r.get("ownership_checks") else "no"
-        middlewares = ", ".join(r.get("middlewares") or []) or "none"
+        own = "是" if r.get("ownership_checks") else "否"
+        middlewares = ", ".join(r.get("middlewares") or []) or "无"
         route_rows.append(
             [
                 r.get("method") or "-",
                 r.get("path") or "-",
                 r.get("controller") or "-",
                 r.get("action") or "-",
-                f"{', '.join(r.get('auth_keywords') or []) or 'none'} / ownership:{own}",
+                f"{', '.join(r.get('auth_keywords') or []) or '无'} / 归属校验:{own}",
                 middlewares,
             ]
         )
     lines.append(
         markdown_table(
-            ["Method", "Path", "Controller", "Action", "Auth Keywords", "Middlewares"],
+            ["方法", "路径", "控制器", "动作", "鉴权关键词", "中间件"],
             [[compact_text(c) for c in row] for row in route_rows],
         )
     )
@@ -200,7 +200,7 @@ def main() -> None:
         f.write("\n".join(lines) + "\n")
 
     # auth_findings.md
-    f_lines = ["# Auth Findings", "", f"Total: {len(findings)}", ""]
+    f_lines = ["# 鉴权风险发现", "", f"总数：{len(findings)}", ""]
     f_rows = []
     for fnd in findings:
         route = fnd.get("route") or {}
@@ -212,7 +212,7 @@ def main() -> None:
         ])
     f_lines.append(
         markdown_table(
-            ["ID", "Method", "Path", "Title"],
+            ["编号", "方法", "路径", "标题"],
             [[compact_text(c) for c in row] for row in f_rows],
         )
     )
@@ -237,22 +237,22 @@ def main() -> None:
     ]
     m_rows = []
     for r in auth_routes:
-        own = "yes" if r.get("ownership_checks") else "no"
-        middlewares = ", ".join(r.get("middlewares") or []) or "none"
+        own = "是" if r.get("ownership_checks") else "否"
+        middlewares = ", ".join(r.get("middlewares") or []) or "无"
         m_rows.append(
             [
                 r.get("method") or "-",
                 r.get("path") or "-",
                 r.get("controller") or "-",
                 r.get("action") or "-",
-                ", ".join(r.get("auth_keywords") or []) or "none",
+                ", ".join(r.get("auth_keywords") or []) or "无",
                 own,
                 middlewares,
             ]
         )
     m_lines.append(
         markdown_table(
-            ["Method", "Path", "Controller", "Action", "Auth Keywords", "Ownership", "Middlewares"],
+            ["方法", "路径", "控制器", "动作", "鉴权关键词", "归属校验", "中间件"],
             [[compact_text(c) for c in row] for row in m_rows],
         )
     )
@@ -280,7 +280,7 @@ def main() -> None:
         ])
     r_lines.append(
         markdown_table(
-            ["ID", "Method", "Path", "Title"],
+            ["编号", "方法", "路径", "标题"],
             [[compact_text(c) for c in row] for row in summary_rows],
         )
     )
@@ -307,7 +307,7 @@ def main() -> None:
         ])
     r_lines.append(
         markdown_table(
-            ["ID", "标题", "路由", "独立等级", "组合等级", "置信度", "可控性", "可利用性", "AI理由", "证据摘要", "证据"],
+            ["编号", "标题", "路由", "独立等级", "组合等级", "置信度", "可控性", "可利用性", "AI理由", "证据摘要", "证据"],
             [[compact_text(c) for c in row] for row in detail_rows],
         )
     )
@@ -344,7 +344,7 @@ def main() -> None:
 
     write_module_html(out_dir, "auth_audit", "鉴权审计报告", findings)
 
-    print(f"Wrote {len(findings)} findings to {out_dir}")
+    print(f"已写入 {len(findings)} 条鉴权发现到 {out_dir}")
 
 
 if __name__ == "__main__":

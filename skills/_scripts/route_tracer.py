@@ -504,35 +504,35 @@ def write_trace(route: Dict, trace: Dict, out_root: str) -> None:
 def render_trace_md(trace: Dict) -> str:
     route = trace.get("route", {})
     lines = [
-        f"# Trace for {route.get('method')} {route.get('path')}",
+        f"# 路由追踪：{route.get('method')} {route.get('path')}",
         "",
-        "## Source",
+        "## 输入源",
         json_block(trace.get("source")),
         "",
-        "## Sink",
+        "## 危险函数",
         json_block(trace.get("sink")),
         "",
-        "## Taint",
+        "## 污点传播",
     ]
     for t in trace.get("taint", []):
         lines.append(f"- {t.get('file')}:{t.get('line')} {t.get('code')}")
     lines.append("")
-    lines.append("## Validation")
+    lines.append("## 校验逻辑")
     for v in trace.get("validation", []):
         lines.append(f"- {v.get('line')}: {v.get('code')}")
     lines.append("")
-    lines.append(f"## Controllability: {trace.get('controllability')}")
+    lines.append(f"## 可控性：{trace.get('controllability')}")
     lines.append("")
-    lines.append(f"## Call Graph Used: {trace.get('call_graph_used')}")
+    lines.append(f"## 是否使用调用图：{trace.get('call_graph_used')}")
     if trace.get("entry_fallback"):
         lines.append("")
-        lines.append(f"## Entry Fallback: {trace.get('entry_file')}")
+        lines.append(f"## 入口兜底文件：{trace.get('entry_file')}")
     return "\n".join(lines) + "\n"
 
 
 def json_block(obj) -> str:
     if not obj:
-        return "(none)"
+        return "（无）"
     return "```json\n" + json.dumps(obj, ensure_ascii=False, indent=2) + "\n```"
 
 

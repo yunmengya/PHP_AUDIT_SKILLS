@@ -14,9 +14,9 @@ description: Audit XSS and SSTI risks in PHP and output evidence-based findings.
 - 可选：route_tracer 输出
 
 ## 输出
-- {project}_audit/xss_ssti_audit/findings.json
-- {project}_audit/xss_ssti_audit/findings.md
-- {project}_audit/xss_ssti_audit/{project}_xss_ssti_audit_{timestamp}.md
+- {out}/xss_ssti_audit/findings.json
+- {out}/xss_ssti_audit/findings.md
+- {out}/xss_ssti_audit/{project}_xss_ssti_audit_{timestamp}.md
 
 ## 工作流
 1. 定位输出点与模板渲染点。

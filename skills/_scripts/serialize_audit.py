@@ -52,7 +52,7 @@ def findings_from_triggers(triggers: List[Dict]) -> List[Dict]:
     for t in triggers[:50]:
         findings.append({
             "id": f"SER-TRIG-{seq:03d}",
-            "title": "Deserialization Trigger",
+            "title": "反序列化触发点",
             "severity": "medium",
             "independent_severity": "medium",
             "combined_severity": "medium",
@@ -70,7 +70,7 @@ def findings_from_triggers(triggers: List[Dict]) -> List[Dict]:
             "validation": [],
             "controllability": "conditional",
             "poc": None,
-            "notes": "Trigger-only scan without route_tracer evidence.",
+            "notes": "仅触发点扫描，未使用 route_tracer 证据链。",
         })
         seq += 1
     return findings
@@ -86,7 +86,7 @@ def main() -> None:
     out_root = build_output_root(project_root, args.out)
 
     traces = load_traces(out_root)
-    new_findings = extract_findings_from_traces(traces, ["deserialize"], "Possible Deserialization", "SER")
+    new_findings = extract_findings_from_traces(traces, ["deserialize"], "可能存在反序列化风险", "SER")
 
     triggers = scan_triggers(project_root)
     pop_candidates = find_pop_candidates(project_root)
@@ -101,9 +101,9 @@ def main() -> None:
     existing = load_findings(os.path.join(out_dir, "findings.json"))
     merged = merge_findings(existing, new_findings)
 
-    write_findings(out_dir, "Serialize Audit Findings", merged)
+    write_findings(out_dir, "反序列化风险发现", merged)
     write_module_report(out_dir, "serialize_audit", "反序列化审计报告", merged)
-    print(f"Wrote {len(merged)} findings to {out_dir}")
+    print(f"已写入 {len(merged)} 条反序列化发现到 {out_dir}")
 
 
 if __name__ == "__main__":

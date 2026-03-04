@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -54,10 +55,10 @@ RESULT_CN = {
 }
 
 RESULT_ALIAS_TEXT = {
-    "confirmed": "已确认可利用（confirmed）",
-    "conditional": "条件成立（conditional）",
-    "rejected": "已排除（rejected）",
-    "skipped": "已跳过（skipped）",
+    "confirmed": "已确认可利用",
+    "conditional": "条件成立",
+    "rejected": "已排除",
+    "skipped": "已跳过",
 }
 
 HUMAN_TERM_LABELS = {
@@ -80,6 +81,45 @@ DOMAIN_CN_LABELS = {
 CN_REPORT_MD = "总报告.md"
 CN_REPORT_APPENDIX_MD = "总报告_技术附录.md"
 CN_REPORT_JSON = "总报告.json"
+CN_REPORT_ALIAS_MD = "最终报告.md"
+CN_REPORT_ALIAS_APPENDIX_MD = "最终报告_技术附录.md"
+CN_REPORT_ALIAS_JSON = "最终报告.json"
+
+PRIMARY_STATIC_MD = "最终静态审计结果.md"
+PRIMARY_DYNAMIC_MD = "动态debug审计报告.md"
+PRIMARY_AI_VERIFY_MD = "AI深入验证最终报告.md"
+
+ARCHIVE_ROOT = "归档"
+ARCHIVE_STAGE_DIR = os.path.join(ARCHIVE_ROOT, "阶段报告")
+ARCHIVE_DEBUG_DIR = os.path.join(ARCHIVE_ROOT, "调试证据")
+ARCHIVE_BURP_DIR = os.path.join(ARCHIVE_ROOT, "Burp模板")
+ARCHIVE_QUALITY_DIR = os.path.join(ARCHIVE_ROOT, "质量门禁")
+ARCHIVE_BINDING_DIR = os.path.join(ARCHIVE_ROOT, "结论绑定")
+BINDING_MATRIX_MD = "静态_动态_AI_结论对照表.md"
+
+DEBUG_EVIDENCE_JSON = "动态调试证据.json"
+DEBUG_PROCESS_JSON = "动态调试过程.json"
+DEBUG_POC_JSON = "动态调试PoC.json"
+DEBUG_FUNC_TRACE_JSON = "函数追踪证据.json"
+
+RESULT_CN_PLAIN = {
+    "confirmed": "已确认",
+    "conditional": "有条件成立",
+    "rejected": "已排除",
+    "skipped": "已跳过",
+}
+
+AUTH_HINT_KEYWORDS = (
+    "auth",
+    "jwt",
+    "token",
+    "login",
+    "session",
+    "permission",
+    "role",
+    "guard",
+    "middleware",
+)
 
 
 def file_sha256(path: str) -> str:
@@ -170,21 +210,54 @@ def load_findings(out_root: str) -> Tuple[List[Dict[str, Any]], List[str]]:
 
 
 def load_debug_evidence(out_root: str) -> List[Dict[str, Any]]:
-    path = os.path.join(out_root, "debug_verify", "debug_evidence.json")
-    data = _load_json(path, [])
-    return data if isinstance(data, list) else []
+    path = os.path.join(out_root, "debug_verify", DEBUG_EVIDENCE_JSON)
+    data = _load_json(path, None)
+    if isinstance(data, list):
+        return data
+    return []
 
 
 def load_debug_process(out_root: str) -> List[Dict[str, Any]]:
-    path = os.path.join(out_root, "debug_verify", "debug_process.json")
-    data = _load_json(path, [])
-    return data if isinstance(data, list) else []
+    path = os.path.join(out_root, "debug_verify", DEBUG_PROCESS_JSON)
+    data = _load_json(path, None)
+    if isinstance(data, list):
+        return data
+    return []
 
 
 def load_debug_func_trace(out_root: str) -> List[Dict[str, Any]]:
-    path = os.path.join(out_root, "debug_verify", "debug_func_trace.json")
-    data = _load_json(path, [])
-    return data if isinstance(data, list) else []
+    path = os.path.join(out_root, "debug_verify", DEBUG_FUNC_TRACE_JSON)
+    data = _load_json(path, None)
+    if isinstance(data, list):
+        return data
+    return []
+
+
+def load_route_auth_map(out_root: str) -> Dict[str, Dict[str, Any]]:
+    path = os.path.join(out_root, "route_mapper", "routes.json")
+    data = _load_json(path, None)
+    if not isinstance(data, list):
+        return {}
+
+    mapping: Dict[str, Dict[str, Any]] = {}
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        method = str(item.get("method") or "ANY").split("|")[0].strip().upper() or "ANY"
+        route_path = str(item.get("path") or "").strip() or "/"
+        middlewares = item.get("middlewares") if isinstance(item.get("middlewares"), list) else []
+        mw_text = " ".join([str(m).lower() for m in middlewares])
+        has_auth_hint = any(k in mw_text for k in AUTH_HINT_KEYWORDS)
+        auth_required = bool(has_auth_hint)
+        key = f"{method} {route_path}"
+        mapping[key] = {
+            "auth_required": auth_required,
+            "middlewares": middlewares,
+        }
+        if method == "ANY":
+            any_key = f"GET {route_path}"
+            mapping.setdefault(any_key, mapping[key])
+    return mapping
 
 
 def dedup_key(f: Dict[str, Any]) -> str:
@@ -365,10 +438,10 @@ def build_dynamic_reason(
 
 def build_evidence_refs(trace_case_file: str, burp_template_ref: str = "") -> List[str]:
     refs = [
-        "debug_verify/debug_evidence.json",
-        "debug_verify/debug_process.json",
-        "debug_verify/debug_poc.json",
-        "debug_verify/debug_func_trace.json",
+        f"debug_verify/{DEBUG_EVIDENCE_JSON}",
+        f"debug_verify/{DEBUG_PROCESS_JSON}",
+        f"debug_verify/{DEBUG_POC_JSON}",
+        f"debug_verify/{DEBUG_FUNC_TRACE_JSON}",
     ]
     trace = str(trace_case_file or "").strip()
     if trace and trace != "-":
@@ -811,6 +884,7 @@ def build_case_rows(
     debug_process: List[Dict[str, Any]],
     debug_func_trace: List[Dict[str, Any]],
     burp_templates: Optional[List[str]] = None,
+    route_auth_map: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     debug_map = {str(d.get("case_id")): d for d in debug_evidence if isinstance(d, dict) and d.get("case_id")}
     process_map = {str(d.get("case_id")): d for d in debug_process if isinstance(d, dict) and d.get("case_id")}
@@ -823,6 +897,8 @@ def build_case_rows(
             case_id = hashlib.md5(json.dumps(f, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:10]
 
         module = module_from_source(f)
+        sink_obj = f.get("sink") if isinstance(f.get("sink"), dict) else {}
+        route_obj = f.get("route") if isinstance(f.get("route"), dict) else {}
         debug_row = debug_map.get(case_id, {})
         process_row = process_map.get(case_id, {})
         trace_row = trace_map.get(case_id, {})
@@ -863,6 +939,10 @@ def build_case_rows(
         trace_case_file = normalize_artifact_path(trace_case_file_raw, out_root)
         trace_case_data = resolve_trace_case(trace_case_file_raw, out_root)
         selected_trace = trace_case_data.get("selected") if isinstance(trace_case_data.get("selected"), dict) else {}
+        attempt_rounds = trace_case_data.get("attempts") if isinstance(trace_case_data.get("attempts"), list) else []
+        attempt_rounds = normalize_paths_in_value(attempt_rounds, project_root, out_root)
+        if str(result or "skipped") == "skipped":
+            result = normalize_result(str(selected_trace.get("result") or result))
 
         transform_steps = trace_row.get("transform_steps")
         if not isinstance(transform_steps, list):
@@ -896,12 +976,28 @@ def build_case_rows(
 
         dynamic_status = normalize_result(result)
         dynamic_is_supported = dynamic_supported(dynamic_status)
+        auth_requirement, auth_requirement_text = resolve_auth_requirement(
+            module=module,
+            title=str(f.get("title") or ""),
+            entry=entry,
+            route_obj=route_obj,
+            route_auth_map=route_auth_map or {},
+        )
+        verify_status = verify_status_text(dynamic_status)
+        exploit_conclusion = direct_exploit_text(dynamic_status, auth_requirement)
+        vuln_code = extract_vuln_code_snippet(sink_obj, transform_steps)
         burp_template_ref = resolve_case_burp_template(
             {
                 "case_id": case_id,
                 "entry": entry,
             },
             burp_templates or [],
+        )
+        burp_file_name = burp_payload_filename(
+            case_id=case_id,
+            vuln_type=vuln_type,
+            title=str(f.get("title") or ""),
+            burp_template_ref=burp_template_ref,
         )
         evidence_refs = build_evidence_refs(
             normalize_path_for_report(trace_case_file, project_root, out_root),
@@ -947,6 +1043,12 @@ def build_case_rows(
                 "request_source": str(debug_row.get("request_source") or ""),
                 "poc_cmd": poc_cmd,
                 "poc_short": compact_text(poc_cmd, 100),
+                "verify_status": verify_status,
+                "auth_requirement": auth_requirement,
+                "auth_requirement_text": auth_requirement_text,
+                "exploit_conclusion": exploit_conclusion,
+                "vuln_code": vuln_code,
+                "vuln_code_short": compact_text(vuln_code, 120) if vuln_code else "-",
                 "execution_mode": str(process_row.get("execution_mode") or debug_row.get("execution_mode") or "-"),
                 "http_status": process_row.get("http_status") if process_row.get("http_status") is not None else debug_row.get("http_status"),
                 "sink_probe_hit": bool(process_row.get("sink_probe_hit") or debug_row.get("sink_probe_hit") or trace_row.get("sink_probe_hit")),
@@ -963,6 +1065,7 @@ def build_case_rows(
                 if debug_row.get("matched_attempt_index") is not None
                 else selected_trace.get("matched_attempt_index"),
                 "attempt_count": safe_int(debug_row.get("attempt_count"), 0),
+                "attempt_rounds": attempt_rounds,
                 "ai_status": str(process_row.get("ai_realtime_status") or "-"),
                 "status": str(process_row.get("status") or "skipped"),
                 "trace_case_file": normalize_path_for_report(trace_case_file, project_root, out_root),
@@ -980,6 +1083,7 @@ def build_case_rows(
                 "dynamic_reason": dynamic_reason,
                 "evidence_refs": evidence_refs,
                 "burp_template_ref": burp_template_ref,
+                "burp_payload_file": burp_file_name,
                 "static_conclusion": static_conclusion_text(
                     {
                         "severity": severity,
@@ -1204,6 +1308,119 @@ def human_vuln_name(vuln_type: str) -> str:
     return DOMAIN_CN_LABELS.get(detect_domain(vuln_type), str(vuln_type or "其他漏洞"))
 
 
+def safe_slug_text(text: str, max_len: int = 40) -> str:
+    raw = str(text or "").strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "_", raw).strip("_")
+    if not slug:
+        return "payload"
+    return slug[:max_len].rstrip("_") or "payload"
+
+
+def parse_method_path_from_entry(entry: str) -> Tuple[str, str]:
+    raw = str(entry or "").strip()
+    if not raw:
+        return "", ""
+    parts = raw.split()
+    if len(parts) >= 2:
+        method = parts[0].strip().upper()
+        path = parts[1].strip()
+        if path:
+            if not path.startswith("/") and not path.startswith("http://") and not path.startswith("https://"):
+                path = "/" + path
+            return method, path
+    return "", ""
+
+
+def resolve_auth_requirement(
+    module: str,
+    title: str,
+    entry: str,
+    route_obj: Dict[str, Any],
+    route_auth_map: Dict[str, Dict[str, Any]],
+) -> Tuple[str, str]:
+    method = str(route_obj.get("method") or "").split("|")[0].strip().upper()
+    route_path = str(route_obj.get("path") or "").strip()
+    if not route_path:
+        method, route_path = parse_method_path_from_entry(entry)
+    if route_path and not route_path.startswith("/") and not route_path.startswith("http://") and not route_path.startswith("https://"):
+        route_path = "/" + route_path
+
+    keys: List[str] = []
+    if method and route_path:
+        keys.append(f"{method} {route_path}")
+    if route_path:
+        keys.append(f"ANY {route_path}")
+        keys.append(f"GET {route_path}")
+
+    for key in keys:
+        route_row = route_auth_map.get(key)
+        if not isinstance(route_row, dict):
+            continue
+        if route_row.get("auth_required"):
+            return "need_auth", "✅ 需登录"
+        return "no_auth", "❌ 无需"
+
+    lower_title = str(title or "").lower()
+    if module == "auth_audit" or "authorization" in lower_title or "鉴权" in str(title or ""):
+        return "no_auth", "❌ 无需"
+    return "unknown", "⚪ 待确认"
+
+
+def verify_status_text(status: str) -> str:
+    normalized = normalize_result(status)
+    mapping = {
+        "confirmed": "✅ 已确认存在",
+        "conditional": "⚠️ 有条件成立",
+        "rejected": "❎ 已排除",
+        "skipped": "⏭️ 已跳过",
+    }
+    return mapping.get(normalized, "⏭️ 已跳过")
+
+
+def direct_exploit_text(status: str, auth_requirement: str) -> str:
+    normalized = normalize_result(status)
+    if normalized == "confirmed":
+        if auth_requirement == "no_auth":
+            return "无需认证，可直接利用"
+        if auth_requirement == "need_auth":
+            return "需要认证后可利用"
+        return "已确认可利用，认证条件待确认"
+    if normalized == "conditional":
+        if auth_requirement == "no_auth":
+            return "无需认证，满足条件后可利用"
+        if auth_requirement == "need_auth":
+            return "需要认证且满足条件后可利用"
+        return "有条件成立，需补充认证条件验证"
+    if normalized == "rejected":
+        return "未复现可利用路径，当前已排除"
+    return "未完成动态验证，暂不下利用结论"
+
+
+def extract_vuln_code_snippet(
+    sink_obj: Dict[str, Any],
+    transform_steps: List[Dict[str, Any]],
+) -> str:
+    if isinstance(sink_obj, dict):
+        sink_code = str(sink_obj.get("code") or "").strip()
+        if sink_code:
+            return sink_code
+    for step in transform_steps:
+        if not isinstance(step, dict):
+            continue
+        expr = str(step.get("expr") or "").strip()
+        if expr:
+            return expr
+    return ""
+
+
+def burp_payload_filename(case_id: str, vuln_type: str, title: str, burp_template_ref: str) -> str:
+    base = os.path.basename(str(burp_template_ref or "").strip())
+    if base and base != "-" and base.lower() not in {"any_root.txt", "get_root.txt", "post_root.txt"}:
+        return base
+    suffix = safe_slug_text(title or vuln_type)
+    return f"{case_id}_{suffix}.txt"
+
+
 def to_human_case(case: Dict[str, Any]) -> Dict[str, Any]:
     vuln_type = str(case.get("vuln_type") or "")
     impact, precondition, _ = impact_pack(vuln_type)
@@ -1220,6 +1437,10 @@ def to_human_case(case: Dict[str, Any]) -> Dict[str, Any]:
         "vuln_name": human_vuln_name(vuln_type),
         "severity_text": SEVERITY_CN.get(str(case.get("severity") or "low"), str(case.get("severity") or "low")),
         "result_alias": result_alias_text(result),
+        "verify_status": str(case.get("verify_status") or verify_status_text(result)),
+        "auth_requirement_text": str(case.get("auth_requirement_text") or "⚪ 待确认"),
+        "exploit_conclusion": str(case.get("exploit_conclusion") or direct_exploit_text(result, str(case.get("auth_requirement") or "unknown"))),
+        "vuln_code_short": compact_text(case.get("vuln_code") or "-", max_len=180),
         "location": str(case.get("location") or "-"),
         "entry": str(case.get("entry") or "-"),
         "trigger": precondition,
@@ -1230,8 +1451,9 @@ def to_human_case(case: Dict[str, Any]) -> Dict[str, Any]:
         "dynamic_supported_text": str(case.get("dynamic_support_text") or dynamic_supported_text(result)),
         "fix_code": fix_code,
         "fix_config": fix_config,
-        "retest": f"修复后应为已排除（rejected）。{fix_test}",
+        "retest": f"修复后应为已排除。{fix_test}",
         "group_count": safe_int(case.get("group_count"), 1),
+        "burp_template_ref": str(case.get("burp_template_ref") or "-"),
     }
 
 
@@ -1241,8 +1463,14 @@ def render_human_case(case: Dict[str, Any]) -> List[str]:
     lines.append(
         f"### [{h['case_id']}] {h['vuln_name']} | {h['severity_text']} | {h['result_alias']}"
     )
+    lines.append(f"- 验证状态：{h['verify_status']}")
+    lines.append(f"- 危险等级：{h['severity_text']}")
+    lines.append(f"- 认证需求：{h['auth_requirement_text']}")
+    lines.append(f"- 利用结论：{h['exploit_conclusion']}")
     lines.append(f"- 发生位置：`{h['location']}`")
     lines.append(f"- 请求入口：`{h['entry']}`")
+    lines.append(f"- 漏洞代码：`{h['vuln_code_short']}`")
+    lines.append(f"- Burp 模版：`{h['burp_template_ref']}`")
     lines.append(f"- 触发条件：{h['trigger']}")
     lines.append(f"- 实际影响：{h['impact']}")
     if h["group_count"] > 1:
@@ -1263,7 +1491,7 @@ def render_human_case(case: Dict[str, Any]) -> List[str]:
     lines.append(f"2. {h['fix_config']}")
     lines.append(f"- 复测标准：{h['retest']}")
     lines.append(
-        f"- 技术附录：[`查看 {h['case_id']} 详细证据`](final_report_appendix.md#{case.get('appendix_anchor')})"
+        f"- 技术附录：[`查看 {h['case_id']} 详细证据`]({CN_REPORT_APPENDIX_MD}#{case.get('appendix_anchor')})"
     )
     lines.append("")
     return lines
@@ -1292,7 +1520,7 @@ def remediation_rows_human(case_rows: List[Dict[str, Any]]) -> List[List[str]]:
                 action,
                 "应用研发负责人",
                 due,
-                "复测结果=已排除（rejected）",
+                "复测结果=已排除",
             ]
         )
     if not rows:
@@ -1483,6 +1711,10 @@ def dynamic_result_rows(case: Dict[str, Any]) -> List[List[str]]:
         ["case_id", str(case.get("case_id") or "-")],
         ["静态结论", str(case.get("static_conclusion") or static_conclusion_text(case))],
         ["调试结论", RESULT_CN.get(str(case.get("result") or "skipped"), str(case.get("result") or "-"))],
+        ["验证状态", str(case.get("verify_status") or verify_status_text(str(case.get("result") or "skipped")))],
+        ["认证需求", str(case.get("auth_requirement_text") or "⚪ 待确认")],
+        ["利用结论", str(case.get("exploit_conclusion") or "-")],
+        ["危险等级", SEVERITY_CN.get(str(case.get("severity") or "low"), str(case.get("severity") or "low"))],
         ["动态状态", RESULT_CN.get(str(case.get("dynamic_status") or "skipped"), str(case.get("dynamic_status") or "-"))],
         ["是否支持静态结论", str(case.get("dynamic_support_text") or dynamic_supported_text(str(case.get("dynamic_status") or "skipped")))],
         ["运行状态", run_status_text(case.get("status"))],
@@ -1498,6 +1730,7 @@ def dynamic_result_rows(case: Dict[str, Any]) -> List[List[str]]:
         ["请求摘要", request_brief_from_preview(case.get("request_preview"))],
         ["响应摘要", response_header_brief(case.get("response_header_preview"))],
         ["绑定说明", compact_text(case.get("dynamic_reason") or "-", 160)],
+        ["漏洞代码", compact_text(case.get("vuln_code") or "-", 160)],
         ["证据引用", compact_text(evidence_ref_text, 160)],
         ["Burp 模版", str(case.get("burp_template_ref") or "-")],
         ["动态说明", reasons_text],
@@ -1524,6 +1757,12 @@ def compact_case_for_report(case: Dict[str, Any]) -> Dict[str, Any]:
         "request_source",
         "poc_cmd",
         "poc_short",
+        "verify_status",
+        "auth_requirement",
+        "auth_requirement_text",
+        "exploit_conclusion",
+        "vuln_code",
+        "vuln_code_short",
         "execution_mode",
         "http_status",
         "sink_probe_hit",
@@ -1532,6 +1771,7 @@ def compact_case_for_report(case: Dict[str, Any]) -> Dict[str, Any]:
         "stop_reason",
         "matched_attempt_index",
         "attempt_count",
+        "attempt_rounds",
         "ai_status",
         "status",
         "trace_case_file",
@@ -1541,6 +1781,7 @@ def compact_case_for_report(case: Dict[str, Any]) -> Dict[str, Any]:
         "dynamic_reason",
         "evidence_refs",
         "burp_template_ref",
+        "burp_payload_file",
         "static_conclusion",
         "group_key",
         "group_count",
@@ -1679,6 +1920,583 @@ def collect_burp_template_files(out_root: str) -> List[str]:
     return files
 
 
+def ensure_archive_layout(out_root: str) -> Dict[str, str]:
+    paths = {
+        "root": os.path.join(out_root, ARCHIVE_ROOT),
+        "stage": os.path.join(out_root, ARCHIVE_STAGE_DIR),
+        "debug": os.path.join(out_root, ARCHIVE_DEBUG_DIR),
+        "burp": os.path.join(out_root, ARCHIVE_BURP_DIR),
+        "quality": os.path.join(out_root, ARCHIVE_QUALITY_DIR),
+        "binding": os.path.join(out_root, ARCHIVE_BINDING_DIR),
+    }
+    for p in paths.values():
+        os.makedirs(p, exist_ok=True)
+    return paths
+
+
+def copy_file_if_exists(src: str, dst: str) -> None:
+    if not src or not os.path.isfile(src):
+        return
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    try:
+        shutil.copy2(src, dst)
+    except Exception:
+        return
+
+
+def copy_tree_if_exists(src_dir: str, dst_dir: str) -> None:
+    if not src_dir or not os.path.isdir(src_dir):
+        return
+    os.makedirs(dst_dir, exist_ok=True)
+    for root, _, files in os.walk(src_dir):
+        rel = os.path.relpath(root, src_dir)
+        target_root = dst_dir if rel == "." else os.path.join(dst_dir, rel)
+        os.makedirs(target_root, exist_ok=True)
+        for name in files:
+            src = os.path.join(root, name)
+            dst = os.path.join(target_root, name)
+            copy_file_if_exists(src, dst)
+
+
+def remove_file_if_exists(path: str) -> None:
+    if not path or not os.path.isfile(path):
+        return
+    try:
+        os.remove(path)
+    except Exception:
+        return
+
+
+def read_text_file(path: str) -> str:
+    if not path or not os.path.isfile(path):
+        return ""
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except Exception:
+        return ""
+
+
+def status_cn_plain(value: Any) -> str:
+    key = normalize_result(str(value or "skipped"))
+    return RESULT_CN_PLAIN.get(key, "已跳过")
+
+
+def load_ai_deep_summary(out_root: str) -> Dict[str, Any]:
+    path = os.path.join(out_root, "ai_deep_audit", "ai_deep_audit_summary.json")
+    if not os.path.isfile(path):
+        return {}
+    try:
+        data = json.load(open(path, "r", encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def request_source_cn(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    mapping = {
+        "rules": "规则字典",
+        "route_candidates": "路由候选",
+        "route_hint": "路由推断",
+        "fallback": "兜底生成",
+        "ai_realtime": "AI实时补全",
+        "ai_artifacts": "AI产物",
+        "manual": "人工指定",
+    }
+    return mapping.get(raw, str(value or "-") or "-")
+
+
+def payload_source_cn(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    mapping = {
+        "dictionary": "字典",
+        "wordlist": "字典",
+        "rules": "规则",
+        "route_input_map": "路由输入",
+        "ai_realtime": "AI实时补全",
+        "ai_artifacts": "AI产物",
+        "manual": "人工指定",
+    }
+    return mapping.get(raw, str(value or "-") or "-")
+
+
+def build_round_signal_text(round_row: Dict[str, Any]) -> str:
+    signals: List[str] = []
+    status_code = round_row.get("http_status")
+    if status_code not in (None, ""):
+        signals.append(f"HTTP {status_code}")
+    if round_row.get("sink_probe_hit"):
+        signals.append("命中危险函数探针")
+    if round_row.get("taint_var_reached_sink"):
+        signals.append("用户输入到达危险函数")
+    dynamic_reasons = round_row.get("dynamic_reasons")
+    if isinstance(dynamic_reasons, list):
+        for reason in dynamic_reasons[:2]:
+            text = str(reason).strip()
+            if text:
+                signals.append(text)
+    if not signals:
+        return "无明显动态信号"
+    return "；".join(signals[:3])
+
+
+def build_case_round_rows(case: Dict[str, Any]) -> List[Dict[str, Any]]:
+    rounds_raw = case.get("attempt_rounds") if isinstance(case.get("attempt_rounds"), list) else []
+    rows: List[Dict[str, Any]] = []
+    for idx, item in enumerate(rounds_raw, start=1):
+        if not isinstance(item, dict):
+            continue
+        result_key = normalize_result(str(item.get("result") or "skipped"))
+        request_preview = item.get("request_preview")
+        request_brief = request_brief_from_preview(request_preview)
+        row = {
+            "round_index": safe_int(item.get("attempt_index"), idx),
+            "payload_source": payload_source_cn(item.get("payload_source")),
+            "request_source": request_source_cn(item.get("request_source")),
+            "request_brief": request_brief,
+            "signal_text": build_round_signal_text(item),
+            "round_result": status_cn_plain(result_key),
+        }
+        rows.append(row)
+
+    if rows:
+        rows.sort(key=lambda x: safe_int(x.get("round_index"), 0))
+        return rows
+
+    fallback_result = status_cn_plain(case.get("result"))
+    return [
+        {
+            "round_index": 1,
+            "payload_source": payload_source_cn(case.get("payload_source")),
+            "request_source": request_source_cn(case.get("request_source")),
+            "request_brief": request_brief_from_preview(case.get("request_preview")),
+            "signal_text": compact_text(case.get("dynamic_reason") or "无明显动态信号", max_len=140),
+            "round_result": fallback_result,
+        }
+    ]
+
+
+def render_static_md(
+    main_cases: List[Dict[str, Any]],
+    all_cases: List[Dict[str, Any]],
+    project_root: str,
+    out_root: str,
+) -> str:
+    summary_main = summarize_cases(main_cases)
+    summary_raw = summarize_cases(all_cases)
+    lines: List[str] = []
+    lines.append(f"# {os.path.basename(project_root)} 最终静态审计结果")
+    lines.append("")
+    lines.append(f"> 生成时间：{time.strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"> 项目路径：`{project_root}`")
+    lines.append(f"> 输出目录：`{out_root}`")
+    lines.append("")
+    lines.append("## 一、静态结果总览")
+    lines.append("")
+    lines.append(
+        markdown_table(
+            ["指标", "值"],
+            [
+                ["原始命中", str(summary_raw.get("total", 0))],
+                ["去重后命中", str(summary_main.get("total", 0))],
+                ["严重/高危", str(summary_main.get("critical_high", 0))],
+                ["最高风险", str(SEVERITY_CN.get(str(summary_main.get("max_severity") or "low"), summary_main.get("max_severity") or "low"))],
+            ],
+        )
+    )
+    lines.append("")
+    lines.append(markdown_table(["类别", "严重", "高危", "中危", "低危", "总计"], risk_overview_rows(main_cases)))
+    lines.append("")
+    lines.append("## 二、静态漏洞清单（去重后）")
+    lines.append("")
+    rows: List[List[str]] = []
+    for case in main_cases:
+        rows.append(
+            [
+                str(case.get("case_id") or "-"),
+                str(case.get("vuln_type") or "-"),
+                str(SEVERITY_CN.get(str(case.get("severity") or "low"), case.get("severity") or "low")),
+                f"`{case.get('entry') or '-'}`",
+                f"`{case.get('location') or '-'}`",
+                str(case.get("static_conclusion") or static_conclusion_text(case)),
+            ]
+        )
+    if not rows:
+        rows.append(["-", "-", "-", "-", "-", "-"])
+    lines.append(markdown_table(["案例ID", "漏洞类型", "严重度", "入口", "位置", "静态结论"], rows))
+    lines.append("")
+    lines.append("## 三、关联报告")
+    lines.append("")
+    lines.append(f"- 动态调试审计报告：`{PRIMARY_DYNAMIC_MD}`")
+    lines.append(f"- AI 深入验证最终报告：`{PRIMARY_AI_VERIFY_MD}`")
+    lines.append(f"- 静态/动态/AI 绑定矩阵：`{ARCHIVE_BINDING_DIR}/{BINDING_MATRIX_MD}`")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def render_dynamic_md(
+    all_cases: List[Dict[str, Any]],
+    project_root: str,
+    out_root: str,
+) -> str:
+    ordered = sorted(all_cases, key=case_priority_tuple, reverse=True)
+    lines: List[str] = []
+    lines.append(f"# {os.path.basename(project_root)} 动态debug审计报告")
+    lines.append("")
+    lines.append(f"> 生成时间：{time.strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"> 输出目录：`{out_root}`")
+    lines.append("")
+    counts = {"confirmed": 0, "conditional": 0, "rejected": 0, "skipped": 0}
+    for case in ordered:
+        key = normalize_result(str(case.get("result") or "skipped"))
+        counts[key] = counts.get(key, 0) + 1
+    lines.append("## 一、动态调试结果总览")
+    lines.append("")
+    lines.append(
+        markdown_table(
+            ["状态", "数量"],
+            [
+                ["已确认", str(counts["confirmed"])],
+                ["有条件成立", str(counts["conditional"])],
+                ["已排除", str(counts["rejected"])],
+                ["已跳过", str(counts["skipped"])],
+            ],
+        )
+    )
+    lines.append("")
+    top_rows: List[List[str]] = []
+    for case in ordered:
+        top_rows.append(
+            [
+                str(case.get("case_id") or "-"),
+                str(case.get("vuln_type") or "-"),
+                status_cn_plain(case.get("result")),
+                str(case.get("http_status") if case.get("http_status") is not None else "-"),
+                bool_text(case.get("sink_probe_hit")),
+                bool_text(case.get("taint_var_reached_sink")),
+                str(case.get("attempt_count") if case.get("attempt_count") is not None else "-"),
+                str(case.get("request_source") or "-"),
+                str(case.get("payload_source") or "-"),
+            ]
+        )
+    if not top_rows:
+        top_rows.append(["-", "-", "-", "-", "-", "-", "-", "-", "-"])
+    lines.append(
+        markdown_table(
+            ["案例ID", "漏洞类型", "状态", "HTTP", "探针命中", "到达危险函数", "尝试次数", "请求来源", "Payload来源"],
+            top_rows,
+        )
+    )
+    lines.append("")
+    lines.append("## 二、动态调试明细（逐条）")
+    lines.append("")
+    if not ordered:
+        lines.append("（无动态调试结果）")
+        lines.append("")
+    for idx, case in enumerate(ordered, 1):
+        ref, payload = burp_template_payload(case, out_root)
+        status_text = str(case.get("verify_status") or verify_status_text(str(case.get("result") or "skipped")))
+        risk_text = SEVERITY_CN.get(str(case.get("severity") or "low"), str(case.get("severity") or "low"))
+        auth_text = str(case.get("auth_requirement_text") or "⚪ 待确认")
+        if "需登录" in auth_text:
+            risk_text = f"{risk_text}（需认证）"
+        evidence_parts: List[str] = []
+        evidence_parts.append(f"危险函数探针命中={bool_text(case.get('sink_probe_hit'))}")
+        evidence_parts.append(f"用户输入到达危险函数={bool_text(case.get('taint_var_reached_sink'))}")
+        if case.get("http_status") is not None:
+            evidence_parts.append(f"HTTP状态={case.get('http_status')}")
+        if case.get("attempt_count") is not None:
+            evidence_parts.append(f"尝试次数={case.get('attempt_count')}")
+        evidence_text = "；".join([str(x) for x in evidence_parts if str(x).strip()]) or "-"
+        lines.append(f"### {idx}) {case.get('case_id') or '-'} - {case.get('vuln_type') or '-'}")
+        lines.append("")
+        lines.append(
+            markdown_table(
+                ["项目", "结论"],
+                [
+                    ["状态", f"**{status_text}**"],
+                    ["风险等级", risk_text],
+                    ["认证需求", auth_text],
+                    ["接口", f"`{case.get('entry') or '-'}`"],
+                    ["执行模式", str(case.get("execution_mode") or "-")],
+                    ["验证PoC", f"`{compact_text(case.get('poc_cmd') or '-', 180)}`"],
+                    ["关键证据", evidence_text],
+                    ["说明", compact_text(case.get("dynamic_reason") or "-", 180)],
+                ],
+            )
+        )
+        lines.append("")
+        lines.append("#### 动态调试过程（逐轮）")
+        lines.append("")
+        round_rows = build_case_round_rows(case)
+        round_table_rows: List[List[str]] = []
+        for row in round_rows:
+            round_table_rows.append(
+                [
+                    f"第{row.get('round_index')}轮",
+                    str(row.get("payload_source") or "-"),
+                    str(row.get("request_source") or "-"),
+                    compact_text(row.get("request_brief") or "-", 110),
+                    compact_text(row.get("signal_text") or "-", 140),
+                    str(row.get("round_result") or "-"),
+                ]
+            )
+        lines.append(
+            markdown_table(
+                ["轮次", "Payload来源", "请求来源", "请求摘要", "关键响应信号", "本轮结论"],
+                round_table_rows if round_table_rows else [["-", "-", "-", "-", "-", "-"]],
+            )
+        )
+        first_status = str(round_table_rows[0][5]) if round_table_rows else status_cn_plain(case.get("result"))
+        final_status = status_cn_plain(case.get("result"))
+        lines.append("")
+        if first_status != final_status:
+            lines.append(f"**状态变化：** {first_status} -> {final_status}")
+        else:
+            lines.append(f"**状态变化：** {final_status}（单轮判定）")
+        lines.append("")
+        lines.append("#### Burp复现模版")
+        lines.append("")
+        lines.append(f"- Burp模版路径：`{ref}`")
+        lines.append("")
+        lines.append("```http")
+        lines.append(safe_code_text(payload))
+        lines.append("```")
+        lines.append("")
+    lines.append("## 三、证据索引")
+    lines.append("")
+    lines.append(f"- `debug_verify/{DEBUG_EVIDENCE_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_PROCESS_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_POC_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_FUNC_TRACE_JSON}`")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def burp_template_payload(case: Dict[str, Any], out_root: str) -> Tuple[str, str]:
+    ref = str(case.get("burp_template_ref") or "").strip()
+    if not ref or ref == "-":
+        return "-", "（未找到 Burp 复现模版）"
+    full = os.path.join(out_root, ref)
+    content = read_text_file(full).strip()
+    if not content:
+        return ref, "（Burp 复现模版为空或读取失败）"
+    return ref, content
+
+
+def render_binding_matrix_md(cases: List[Dict[str, Any]]) -> str:
+    lines: List[str] = []
+    lines.append("# 静态_动态_AI_结论对照表")
+    lines.append("")
+    rows: List[List[str]] = []
+    for case in cases:
+        dynamic_cn = status_cn_plain(case.get("dynamic_status") or case.get("result"))
+        ai_cn = status_cn_plain(case.get("result"))
+        support = str(case.get("dynamic_support_text") or dynamic_supported_text(str(case.get("dynamic_status") or "skipped")))
+        consistent = "是" if dynamic_cn == ai_cn else "否"
+        note = "三方一致" if consistent == "是" else "存在差异，需复核"
+        rows.append(
+            [
+                str(case.get("case_id") or "-"),
+                str(case.get("static_conclusion") or static_conclusion_text(case)),
+                dynamic_cn,
+                ai_cn,
+                consistent,
+                note if support == "支持" else f"{note}（{support}）",
+            ]
+        )
+    if not rows:
+        rows.append(["-", "-", "-", "-", "-", "-"])
+    lines.append(markdown_table(["案例编号", "静态结论", "动态结论", "AI最终结论", "是否一致", "说明"], rows))
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def render_ai_verify_md(
+    main_cases: List[Dict[str, Any]],
+    project_root: str,
+    out_root: str,
+) -> str:
+    deep_summary = load_ai_deep_summary(out_root)
+    focus_results = {"confirmed", "conditional"}
+    focus_cases = [case for case in main_cases if normalize_result(str(case.get("result") or "skipped")) in focus_results]
+    hidden_cases = len(main_cases) - len(focus_cases)
+    target_statuses = deep_summary.get("target_statuses") if isinstance(deep_summary.get("target_statuses"), list) else []
+    target_text = "、".join([status_cn_plain(x) for x in target_statuses]) if target_statuses else "有条件成立"
+
+    lines: List[str] = []
+    lines.append(f"# {os.path.basename(project_root)} AI深入验证最终报告")
+    lines.append("")
+    lines.append(f"> 项目：`{os.path.basename(project_root)}`")
+    lines.append(f"> 时间：`{time.strftime('%Y-%m-%d %H:%M:%S')}`")
+    lines.append("> 执行环境：`Docker + 真实请求(curl) + AI深度验证`")
+    lines.append(f"> 输出目录：`{out_root}`")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("## 一、验证结果")
+    lines.append("")
+    counts = {"confirmed": 0, "conditional": 0}
+    for case in focus_cases:
+        key = normalize_result(str(case.get("result") or "skipped"))
+        if key in counts:
+            counts[key] += 1
+    lines.append(
+        markdown_table(
+            ["指标", "值"],
+            [
+                ["目标状态", target_text],
+                ["目标案例数", str(deep_summary.get("target_case_count") or len(focus_cases))],
+                ["本轮选中数", str(deep_summary.get("selected_case_count") or len(focus_cases))],
+                ["实际尝试数", str(deep_summary.get("attempted_case_count") or len(focus_cases))],
+                ["升级为已确认", str(deep_summary.get("promoted_to_confirmed_count") or 0)],
+                ["重点案例数", str(len(focus_cases))],
+                ["已确认", str(counts["confirmed"])],
+                ["有条件成立", str(counts["conditional"])],
+            ],
+        )
+    )
+    if hidden_cases > 0:
+        lines.append("")
+        lines.append(f"- 说明：`已排除/已跳过` 共 `{hidden_cases}` 条，已归档，不在本报告展开。")
+    lines.append("")
+    summary_rows: List[List[str]] = []
+    for case in focus_cases:
+        status_text = str(case.get("verify_status") or verify_status_text(str(case.get("result") or "skipped")))
+        summary_rows.append(
+            [
+                str(case.get("case_id") or "-"),
+                str(case.get("vuln_type") or "-"),
+                status_text,
+                "Docker + PHP片段 + curl",
+                f"`{case.get('entry') or '-'}`",
+                str(case.get("auth_requirement_text") or "⚪ 待确认"),
+            ]
+        )
+    if not summary_rows:
+        summary_rows.append(["-", "-", "-", "-", "-", "-"])
+    lines.append(markdown_table(["漏洞名称", "类型", "状态", "验证方式", "接口", "认证需求"], summary_rows))
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("## 二、验证过程")
+    lines.append("")
+    if not focus_cases:
+        lines.append("（无可用验证过程）")
+        lines.append("")
+    for idx, case in enumerate(focus_cases, 1):
+        ref, payload = burp_template_payload(case, out_root)
+        status_text = str(case.get("verify_status") or verify_status_text(str(case.get("result") or "skipped")))
+        risk_text = SEVERITY_CN.get(str(case.get("severity") or "low"), str(case.get("severity") or "low"))
+        auth_text = str(case.get("auth_requirement_text") or "⚪ 待确认")
+        if "需登录" in auth_text:
+            risk_text = f"{risk_text}（需认证）"
+        evidence_parts: List[str] = []
+        evidence_parts.append(f"危险函数探针命中={bool_text(case.get('sink_probe_hit'))}")
+        evidence_parts.append(f"用户输入到达危险函数={bool_text(case.get('taint_var_reached_sink'))}")
+        if case.get("http_status") is not None:
+            evidence_parts.append(f"HTTP状态={case.get('http_status')}")
+        if case.get("attempt_count") is not None:
+            evidence_parts.append(f"尝试次数={case.get('attempt_count')}")
+        evidence_text = "；".join([str(x) for x in evidence_parts if str(x).strip()]) or "-"
+        verify_method = "Docker + PHP片段 + curl + AI多轮验证"
+        lines.append(f"### {idx}) {case.get('case_id') or '-'} - {case.get('vuln_type') or '-'}")
+        lines.append("")
+        lines.append(
+            markdown_table(
+                ["项目", "结论"],
+                [
+                    ["状态", f"**{status_text}**"],
+                    ["风险等级", risk_text],
+                    ["认证需求", auth_text],
+                    ["接口", f"`{case.get('entry') or '-'}`"],
+                    ["验证方式", verify_method],
+                    ["验证PoC", f"`{compact_text(case.get('poc_cmd') or '-', 180)}`"],
+                    ["关键证据", evidence_text],
+                    ["说明", compact_text(case.get("dynamic_reason") or "-", 180)],
+                ],
+            )
+        )
+        lines.append("")
+        lines.append("#### 动态调试过程（逐轮）")
+        lines.append("")
+        round_rows = build_case_round_rows(case)
+        round_table_rows: List[List[str]] = []
+        for row in round_rows:
+            round_table_rows.append(
+                [
+                    f"第{row.get('round_index')}轮",
+                    str(row.get("payload_source") or "-"),
+                    str(row.get("request_source") or "-"),
+                    compact_text(row.get("request_brief") or "-", 110),
+                    compact_text(row.get("signal_text") or "-", 140),
+                    str(row.get("round_result") or "-"),
+                ]
+            )
+        lines.append(
+            markdown_table(
+                ["轮次", "Payload来源", "请求来源", "请求摘要", "关键响应信号", "本轮结论"],
+                round_table_rows if round_table_rows else [["-", "-", "-", "-", "-", "-"]],
+            )
+        )
+        first_status = str(round_table_rows[0][5]) if round_table_rows else status_cn_plain(case.get("result"))
+        final_status = status_cn_plain(case.get("result"))
+        if first_status != final_status:
+            lines.append("")
+            lines.append(f"**状态变化：** {first_status} -> {final_status}")
+        else:
+            lines.append("")
+            lines.append(f"**状态变化：** {final_status}（单轮判定）")
+        lines.append("")
+        lines.append("#### Burp复现模版")
+        lines.append("")
+        lines.append(f"- Burp模版路径：`{ref}`")
+        lines.append("")
+        lines.append("```http")
+        lines.append(safe_code_text(payload))
+        lines.append("```")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("")
+    lines.append("## 三、结论对照（静态 / 动态 / AI）")
+    lines.append("")
+    matrix_rows: List[List[str]] = []
+    for case in focus_cases:
+        dynamic_cn = status_cn_plain(case.get("dynamic_status") or case.get("result"))
+        ai_cn = status_cn_plain(case.get("result"))
+        consistent = "是" if dynamic_cn == ai_cn else "否"
+        note = "三方一致" if consistent == "是" else "需人工复核"
+        matrix_rows.append(
+            [
+                str(case.get("case_id") or "-"),
+                str(case.get("static_conclusion") or static_conclusion_text(case)),
+                dynamic_cn,
+                ai_cn,
+                consistent,
+                note,
+            ]
+        )
+    if not matrix_rows:
+        matrix_rows.append(["-", "-", "-", "-", "-", "-"])
+    lines.append(markdown_table(["案例编号", "静态结论", "动态结论", "AI最终结论", "是否一致", "说明"], matrix_rows))
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("## 四、证据索引")
+    lines.append("")
+    lines.append(f"- `debug_verify/{DEBUG_EVIDENCE_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_PROCESS_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_POC_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_FUNC_TRACE_JSON}`")
+    lines.append("- `route_mapper/burp_templates/`")
+    lines.append("- `debug_verify/trace_cases/`")
+    lines.append(f"- `{ARCHIVE_BINDING_DIR}/{BINDING_MATRIX_MD}`")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def render_md(
     main_cases: List[Dict[str, Any]],
     all_cases: List[Dict[str, Any]],
@@ -1710,9 +2528,7 @@ def render_md(
     lines.append(
         f"- 最高风险为 **{SEVERITY_CN.get(summary_main['max_severity'], summary_main['max_severity'])}**，上线建议 **{go_no_go_text(summary_main['go_no_go'])}**。"
     )
-    lines.append(
-        "- 判定口径：`已确认可利用（confirmed）`、`条件成立（conditional）`、`已排除（rejected）`。"
-    )
+    lines.append("- 判定口径：`已确认可利用`、`条件成立`、`已排除`。")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -1749,8 +2565,8 @@ def render_md(
             [
                 ["原始命中数", str(summary_raw["total"])],
                 ["去重后问题数", str(summary_main["total"])],
-                ["已确认可利用（confirmed）", str(summary_main["confirmed"])],
-                ["条件成立（conditional）", str(summary_main["conditional"])],
+                ["已确认可利用", str(summary_main["confirmed"])],
+                ["条件成立", str(summary_main["conditional"])],
                 ["严重/高危", str(summary_main["critical_high"])],
             ],
         )
@@ -1835,7 +2651,7 @@ def render_md(
     )
     if not dynamic_rows:
         dynamic_rows.append(["-", "-", "-", "-", "-", "-", "-", "-"])
-    lines.append("### 4.3 动态 Debug 结果（去重代表）")
+    lines.append("### 4.3 动态调试结果（去重代表）")
     lines.append("")
     lines.append(
         markdown_table(
@@ -1869,26 +2685,50 @@ def render_md(
         lines.append("（无 Burp 模版）")
     lines.append("")
 
+    lines.append("### 4.6 可利用验证清单（便于导入 Burp）")
+    lines.append("")
+    exploit_rows: List[List[str]] = []
+    for case in main_cases[:50]:
+        exploit_rows.append(
+            [
+                str(case.get("burp_payload_file") or "-"),
+                str(human_vuln_name(str(case.get("vuln_type") or "-"))),
+                str(case.get("auth_requirement_text") or "⚪ 待确认"),
+                str(case.get("verify_status") or verify_status_text(str(case.get("result") or "skipped"))),
+                str(SEVERITY_CN.get(str(case.get("severity") or "low"), str(case.get("severity") or "low"))),
+                compact_text(case.get("exploit_conclusion") or "-", max_len=60),
+            ]
+        )
+    if not exploit_rows:
+        exploit_rows.append(["-", "-", "-", "-", "-", "-"])
+    lines.append(
+        markdown_table(
+            ["文件名", "漏洞", "认证需求", "验证状态", "危险等级", "利用说明"],
+            exploit_rows,
+        )
+    )
+    lines.append("")
+
     lines.append("---")
     lines.append("")
     lines.append("## 5. 附录入口")
     lines.append("")
-    lines.append("- 详细技术附录：`final_report_appendix.md`")
+    lines.append(f"- 详细技术附录：`{CN_REPORT_APPENDIX_MD}`")
     lines.append("- 动态变化已提供颜色标识与表格总览；若客户端不支持颜色，请按 `[高危]/[中危]/[信息]` 标签阅读。")
     lines.append("- 证据索引：")
-    lines.append(f"- `debug_verify/debug_evidence.json`")
-    lines.append(f"- `debug_verify/debug_process.json`")
-    lines.append(f"- `debug_verify/debug_func_trace.json`")
+    lines.append(f"- `debug_verify/{DEBUG_EVIDENCE_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_PROCESS_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_FUNC_TRACE_JSON}`")
     lines.append(f"- `debug_verify/trace_cases/`")
     lines.append(f"- `route_mapper/burp_templates/`")
     if burp_templates:
         preview = ", ".join([f"`{x}`" for x in burp_templates[:5]])
         lines.append(f"- Burp 模版文件：{preview}")
         if len(burp_templates) > 5:
-            lines.append(f"- 其余 {len(burp_templates) - 5} 个见附录 `D. Burp 模版`")
+            lines.append(f"- 其余 {len(burp_templates) - 5} 个见附录 `E. Burp 模版`")
     else:
         lines.append("- Burp 模版文件：`无`")
-    lines.append(f"- `final_report.json`")
+    lines.append(f"- `{CN_REPORT_JSON}`")
     lines.append("")
     lines.append("## 元信息")
     lines.append("")
@@ -1930,16 +2770,16 @@ def render_appendix_md(
         raw_rows.append(["-", "-", "-", "-", "-", "-", "-", "-"])
     lines.append(
         markdown_table(
-            ["case_id", "类型", "严重度", "判定", "入口", "位置", "证据分", "归并键"],
+            ["案例ID", "类型", "严重度", "判定", "入口", "位置", "证据分", "归并键"],
             raw_rows,
         )
     )
     lines.append("")
 
-    lines.append("## B. 动态 Debug 过程与结果（按case_id）")
+    lines.append("## B. 动态调试过程与结果（按案例ID）")
     lines.append("")
     if not ordered:
-        lines.append("（无动态 Debug 结果）")
+        lines.append("（无动态调试结果）")
         lines.append("")
     for case in ordered:
         case_id = str(case.get("case_id") or "-")
@@ -1988,7 +2828,31 @@ def render_appendix_md(
         lines.append("</details>")
         lines.append("")
 
-    lines.append("## C. PoC命令全集")
+    lines.append("## C. 可利用验证清单")
+    lines.append("")
+    exploit_rows: List[List[str]] = []
+    for case in ordered:
+        exploit_rows.append(
+            [
+                str(case.get("burp_payload_file") or "-"),
+                str(human_vuln_name(str(case.get("vuln_type") or "-"))),
+                str(case.get("auth_requirement_text") or "⚪ 待确认"),
+                str(case.get("verify_status") or verify_status_text(str(case.get("result") or "skipped"))),
+                str(SEVERITY_CN.get(str(case.get("severity") or "low"), str(case.get("severity") or "low"))),
+                compact_text(case.get("exploit_conclusion") or "-", max_len=72),
+            ]
+        )
+    if not exploit_rows:
+        exploit_rows.append(["-", "-", "-", "-", "-", "-"])
+    lines.append(
+        markdown_table(
+            ["文件名", "漏洞", "认证需求", "验证状态", "危险等级", "利用说明"],
+            exploit_rows,
+        )
+    )
+    lines.append("")
+
+    lines.append("## D. PoC命令全集")
     lines.append("")
     poc_rows: List[List[str]] = []
     for case in ordered:
@@ -2002,10 +2866,10 @@ def render_appendix_md(
         )
     if not poc_rows:
         poc_rows.append(["-", "-", "-", "-"])
-    lines.append(markdown_table(["case_id", "类型", "入口", "PoC命令"], poc_rows))
+    lines.append(markdown_table(["案例ID", "类型", "入口", "PoC命令"], poc_rows))
     lines.append("")
 
-    lines.append("## D. Burp 模版")
+    lines.append("## E. Burp 模版")
     lines.append("")
     if not burp_templates:
         lines.append("（无 Burp 模版）")
@@ -2034,16 +2898,16 @@ def render_appendix_md(
             lines.append("</details>")
             lines.append("")
 
-    lines.append("## E. 证据文件索引")
+    lines.append("## F. 证据文件索引")
     lines.append("")
-    lines.append(f"- `final_report.md`")
-    lines.append(f"- `final_report.json`")
-    lines.append(f"- `debug_verify/debug_evidence.json`")
-    lines.append(f"- `debug_verify/debug_process.json`")
-    lines.append(f"- `debug_verify/debug_func_trace.json`")
+    lines.append(f"- `{CN_REPORT_MD}`")
+    lines.append(f"- `{CN_REPORT_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_EVIDENCE_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_PROCESS_JSON}`")
+    lines.append(f"- `debug_verify/{DEBUG_FUNC_TRACE_JSON}`")
     lines.append(f"- `debug_verify/trace_cases/`")
     lines.append(f"- `route_mapper/burp_templates/`")
-    lines.append(f"- `evidence_check.md`")
+    lines.append(f"- `证据校验.md`")
     lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -2052,6 +2916,10 @@ def build_cn_report_text(report_text: str) -> str:
     text = str(report_text or "")
     text = text.replace("final_report_appendix.md", CN_REPORT_APPENDIX_MD)
     text = text.replace("final_report.json", CN_REPORT_JSON)
+    text = text.replace("debug_verify/debug_evidence.json", f"debug_verify/{DEBUG_EVIDENCE_JSON}")
+    text = text.replace("debug_verify/debug_process.json", f"debug_verify/{DEBUG_PROCESS_JSON}")
+    text = text.replace("debug_verify/debug_poc.json", f"debug_verify/{DEBUG_POC_JSON}")
+    text = text.replace("debug_verify/debug_func_trace.json", f"debug_verify/{DEBUG_FUNC_TRACE_JSON}")
     return text
 
 
@@ -2059,6 +2927,10 @@ def build_cn_appendix_text(appendix_text: str) -> str:
     text = str(appendix_text or "")
     text = text.replace("final_report.md", CN_REPORT_MD)
     text = text.replace("final_report.json", CN_REPORT_JSON)
+    text = text.replace("debug_verify/debug_evidence.json", f"debug_verify/{DEBUG_EVIDENCE_JSON}")
+    text = text.replace("debug_verify/debug_process.json", f"debug_verify/{DEBUG_PROCESS_JSON}")
+    text = text.replace("debug_verify/debug_poc.json", f"debug_verify/{DEBUG_POC_JSON}")
+    text = text.replace("debug_verify/debug_func_trace.json", f"debug_verify/{DEBUG_FUNC_TRACE_JSON}")
     return text
 
 
@@ -2071,12 +2943,14 @@ def main() -> None:
     project_root = os.path.abspath(args.project)
     out_root = build_output_root(project_root, args.out)
     os.makedirs(out_root, exist_ok=True)
+    archive_paths = ensure_archive_layout(out_root)
 
     findings, sources = load_findings(out_root)
     deduped, duplicates = deduplicate(findings)
     debug_evidence = load_debug_evidence(out_root)
     debug_process = load_debug_process(out_root)
     debug_func_trace = load_debug_func_trace(out_root)
+    route_auth_map = load_route_auth_map(out_root)
     burp_templates = collect_burp_template_files(out_root)
 
     all_case_rows = build_case_rows(
@@ -2087,6 +2961,7 @@ def main() -> None:
         debug_process=debug_process,
         debug_func_trace=debug_func_trace,
         burp_templates=burp_templates,
+        route_auth_map=route_auth_map,
     )
     main_cases = build_main_cases(all_case_rows)
     report_main_cases = [compact_case_for_report(case) for case in main_cases]
@@ -2102,6 +2977,11 @@ def main() -> None:
             ),
             "dynamic_reason": str(case.get("dynamic_reason") or "-"),
             "poc_cmd": str(case.get("poc_cmd") or "-"),
+            "verify_status": str(case.get("verify_status") or verify_status_text(str(case.get("result") or "skipped"))),
+            "auth_requirement_text": str(case.get("auth_requirement_text") or "⚪ 待确认"),
+            "exploit_conclusion": str(case.get("exploit_conclusion") or "-"),
+            "burp_payload_file": str(case.get("burp_payload_file") or "-"),
+            "vuln_code": str(case.get("vuln_code") or "-"),
             "evidence_refs": case.get("evidence_refs") if isinstance(case.get("evidence_refs"), list) else [],
             "burp_template_ref": str(case.get("burp_template_ref") or "-"),
         }
@@ -2123,50 +3003,136 @@ def main() -> None:
         "sources": sources,
         "main_cases": report_main_cases,
         "binding_matrix": binding_matrix,
-        "debug_evidence_path": os.path.join("debug_verify", "debug_evidence.json"),
-        "debug_process_path": os.path.join("debug_verify", "debug_process.json"),
-        "debug_func_trace_path": os.path.join("debug_verify", "debug_func_trace.json"),
+        "debug_evidence_path": os.path.join("debug_verify", DEBUG_EVIDENCE_JSON),
+        "debug_process_path": os.path.join("debug_verify", DEBUG_PROCESS_JSON),
+        "debug_func_trace_path": os.path.join("debug_verify", DEBUG_FUNC_TRACE_JSON),
         "trace_cases_dir": os.path.join("debug_verify", "trace_cases"),
         "burp_templates_dir": os.path.join("route_mapper", "burp_templates"),
         "artifacts": {
-            "final_report_md_path": os.path.join("final_report.md"),
-            "final_report_appendix_md_path": os.path.join("final_report_appendix.md"),
-            "final_report_cn_md_path": CN_REPORT_MD,
-            "final_report_cn_appendix_md_path": CN_REPORT_APPENDIX_MD,
-            "final_report_cn_json_path": CN_REPORT_JSON,
-            "debug_evidence_path": os.path.join("debug_verify", "debug_evidence.json"),
-            "debug_process_path": os.path.join("debug_verify", "debug_process.json"),
-            "debug_func_trace_path": os.path.join("debug_verify", "debug_func_trace.json"),
+            "static_main_md_path": PRIMARY_STATIC_MD,
+            "dynamic_main_md_path": PRIMARY_DYNAMIC_MD,
+            "ai_verify_main_md_path": PRIMARY_AI_VERIFY_MD,
+            "legacy_report_md_path": os.path.join(ARCHIVE_BINDING_DIR, CN_REPORT_MD),
+            "legacy_report_appendix_md_path": os.path.join(ARCHIVE_BINDING_DIR, CN_REPORT_APPENDIX_MD),
+            "legacy_report_json_path": os.path.join(ARCHIVE_BINDING_DIR, CN_REPORT_JSON),
+            "legacy_report_alias_md_path": os.path.join(ARCHIVE_BINDING_DIR, CN_REPORT_ALIAS_MD),
+            "legacy_report_alias_appendix_md_path": os.path.join(ARCHIVE_BINDING_DIR, CN_REPORT_ALIAS_APPENDIX_MD),
+            "legacy_report_alias_json_path": os.path.join(ARCHIVE_BINDING_DIR, CN_REPORT_ALIAS_JSON),
+            "binding_matrix_md_path": os.path.join(ARCHIVE_BINDING_DIR, BINDING_MATRIX_MD),
+            "debug_evidence_path": os.path.join("debug_verify", DEBUG_EVIDENCE_JSON),
+            "debug_process_path": os.path.join("debug_verify", DEBUG_PROCESS_JSON),
+            "debug_func_trace_path": os.path.join("debug_verify", DEBUG_FUNC_TRACE_JSON),
             "trace_cases_dir": os.path.join("debug_verify", "trace_cases"),
             "burp_templates_dir": os.path.join("route_mapper", "burp_templates"),
         },
     }
 
-    report_json_path = os.path.join(out_root, "final_report.json")
-    report_cn_json_path = os.path.join(out_root, CN_REPORT_JSON)
+    report_json_path = os.path.join(archive_paths["binding"], CN_REPORT_JSON)
+    report_alias_json_path = os.path.join(archive_paths["binding"], CN_REPORT_ALIAS_JSON)
     write_json(report_json_path, report)
-    write_json(report_cn_json_path, report)
+    write_json(report_alias_json_path, report)
 
     report_text = render_md(main_cases, all_case_rows, out_root, project_root)
-    report_path = os.path.join(out_root, "final_report.md")
-    report_cn_path = os.path.join(out_root, CN_REPORT_MD)
+    report_path = os.path.join(archive_paths["binding"], CN_REPORT_MD)
+    report_alias_path = os.path.join(archive_paths["binding"], CN_REPORT_ALIAS_MD)
     appendix_text = render_appendix_md(all_case_rows, out_root, project_root)
-    appendix_path = os.path.join(out_root, "final_report_appendix.md")
-    appendix_cn_path = os.path.join(out_root, CN_REPORT_APPENDIX_MD)
+    appendix_path = os.path.join(archive_paths["binding"], CN_REPORT_APPENDIX_MD)
+    appendix_alias_path = os.path.join(archive_paths["binding"], CN_REPORT_ALIAS_APPENDIX_MD)
 
     report_cn_text = build_cn_report_text(report_text)
     appendix_cn_text = build_cn_appendix_text(appendix_text)
 
-    write_text(report_path, report_text)
-    write_text(appendix_path, appendix_text)
-    write_text(report_cn_path, report_cn_text)
-    write_text(appendix_cn_path, appendix_cn_text)
+    write_text(report_path, report_cn_text)
+    write_text(appendix_path, appendix_cn_text)
+    write_text(report_alias_path, report_cn_text)
+    write_text(appendix_alias_path, appendix_cn_text)
 
-    print(f"Report path: {report_path}")
-    print(f"Report appendix path: {appendix_path}")
-    print(f"Report CN path: {report_cn_path}")
-    print(f"Report appendix CN path: {appendix_cn_path}")
-    print(f"Report CN json path: {report_cn_json_path}")
+    static_path = os.path.join(out_root, PRIMARY_STATIC_MD)
+    dynamic_path = os.path.join(out_root, PRIMARY_DYNAMIC_MD)
+    ai_verify_path = os.path.join(out_root, PRIMARY_AI_VERIFY_MD)
+    write_text(static_path, render_static_md(main_cases, all_case_rows, project_root, out_root))
+    write_text(dynamic_path, render_dynamic_md(all_case_rows, project_root, out_root))
+    write_text(ai_verify_path, render_ai_verify_md(main_cases, project_root, out_root))
+
+    binding_matrix_path = os.path.join(archive_paths["binding"], BINDING_MATRIX_MD)
+    write_text(binding_matrix_path, render_binding_matrix_md(main_cases))
+
+    # Archive stage reports for phased handoff usage.
+    stage_candidates = [
+        os.path.join(out_root, "_meta", "phase1_map.md"),
+        os.path.join(out_root, "_meta", "phase2_risk_map.md"),
+        os.path.join(out_root, "_meta", "phase3_trace_log.md"),
+        os.path.join(out_root, "_meta", "phase4_attack_chain.md"),
+        os.path.join(out_root, "_meta", "phase5_report_index.md"),
+        os.path.join(out_root, "审计流水线状态.md"),
+        os.path.join(out_root, "agent_task_manifest.md"),
+        os.path.join(out_root, "phase_gate_0.md"),
+        os.path.join(out_root, "phase_gate_1.md"),
+        os.path.join(out_root, "phase_gate_2.md"),
+        os.path.join(out_root, "phase_gate_3.md"),
+        os.path.join(out_root, "phase_gate_4.md"),
+        os.path.join(out_root, "phase_gate_5.md"),
+        os.path.join(out_root, "phase_gate_6.md"),
+    ]
+    for src in stage_candidates:
+        if not os.path.isfile(src):
+            continue
+        dst = os.path.join(archive_paths["stage"], os.path.basename(src))
+        copy_file_if_exists(src, dst)
+
+    # Keep only three main reports at out root; phase/gate markdown files are archived.
+    root_aux_md_candidates = [
+        os.path.join(out_root, "审计流水线状态.md"),
+        os.path.join(out_root, "agent_task_manifest.md"),
+        os.path.join(out_root, "phase_gate_0.md"),
+        os.path.join(out_root, "phase_gate_1.md"),
+        os.path.join(out_root, "phase_gate_2.md"),
+        os.path.join(out_root, "phase_gate_3.md"),
+        os.path.join(out_root, "phase_gate_4.md"),
+        os.path.join(out_root, "phase_gate_5.md"),
+        os.path.join(out_root, "phase_gate_6.md"),
+    ]
+    for src in root_aux_md_candidates:
+        remove_file_if_exists(src)
+
+    # Archive dynamic evidence files for security-team review.
+    debug_candidates = [
+        os.path.join(out_root, "debug_verify", "动态调试证据.md"),
+        os.path.join(out_root, "debug_verify", DEBUG_EVIDENCE_JSON),
+        os.path.join(out_root, "debug_verify", "动态调试过程.md"),
+        os.path.join(out_root, "debug_verify", DEBUG_PROCESS_JSON),
+        os.path.join(out_root, "debug_verify", "动态调试PoC.md"),
+        os.path.join(out_root, "debug_verify", DEBUG_POC_JSON),
+        os.path.join(out_root, "debug_verify", "函数追踪证据.md"),
+        os.path.join(out_root, "debug_verify", DEBUG_FUNC_TRACE_JSON),
+    ]
+    for src in debug_candidates:
+        if not os.path.exists(src):
+            continue
+        dst = os.path.join(archive_paths["debug"], os.path.basename(src))
+        copy_file_if_exists(src, dst)
+
+    trace_cases_src = os.path.join(out_root, "debug_verify", "trace_cases")
+    trace_cases_dst = os.path.join(archive_paths["debug"], "trace_cases")
+    copy_tree_if_exists(trace_cases_src, trace_cases_dst)
+
+    # Archive Burp templates from both static and dynamic stages.
+    copy_tree_if_exists(
+        os.path.join(out_root, "route_mapper", "burp_templates"),
+        os.path.join(archive_paths["burp"], "route_mapper"),
+    )
+    copy_tree_if_exists(
+        os.path.join(out_root, "debug_verify", "burp_templates"),
+        os.path.join(archive_paths["burp"], "debug_verify"),
+    )
+
+    print(f"静态主报告路径: {static_path}")
+    print(f"动态主报告路径: {dynamic_path}")
+    print(f"AI深验主报告路径: {ai_verify_path}")
+    print(f"归档主报告路径: {report_path}")
+    print(f"归档技术附录路径: {appendix_path}")
+    print(f"归档主报告JSON路径: {report_json_path}")
+    print(f"归档绑定矩阵路径: {binding_matrix_path}")
 
 
 if __name__ == "__main__":

@@ -14,9 +14,9 @@ description: Audit SSRF and XXE risks in PHP and output evidence-based findings.
 - 可选：route_tracer 输出
 
 ## 输出
-- {project}_audit/ssrf_xxe_audit/findings.json
-- {project}_audit/ssrf_xxe_audit/findings.md
-- {project}_audit/ssrf_xxe_audit/{project}_ssrf_xxe_audit_{timestamp}.md
+- {out}/ssrf_xxe_audit/findings.json
+- {out}/ssrf_xxe_audit/findings.md
+- {out}/ssrf_xxe_audit/{project}_ssrf_xxe_audit_{timestamp}.md
 
 ## 工作流
 1. 定位 URL/请求类函数与 XML 解析点。

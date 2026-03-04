@@ -14,9 +14,9 @@ description: Audit PHP command/code execution risks and output evidence-based fi
 - 可选：route_tracer 输出
 
 ## 输出
-- {project}_audit/rce_audit/findings.json
-- {project}_audit/rce_audit/findings.md
-- {project}_audit/rce_audit/{project}_rce_audit_{timestamp}.md
+- {out}/rce_audit/findings.json
+- {out}/rce_audit/findings.md
+- {out}/rce_audit/{project}_rce_audit_{timestamp}.md
 
 ## 工作流
 1. 定位命令执行/代码执行危险函数与调用点。

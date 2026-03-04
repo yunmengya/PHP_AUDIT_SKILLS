@@ -139,13 +139,13 @@ def write_findings(findings: List[Dict], out_root: str) -> None:
     out_dir = os.path.join(out_root, "semgrep_audit")
     os.makedirs(out_dir, exist_ok=True)
     write_json(os.path.join(out_dir, "findings.json"), findings)
-    lines = ["# Semgrep Findings", "", f"Total: {len(findings)}", ""]
+    lines = ["# Semgrep 发现清单", "", f"总数：{len(findings)}", ""]
     for f in findings:
         lines.append(f"## {f['id']} {f['title']}")
-        lines.append(f"- Severity: {f['severity']}")
-        lines.append(f"- Category: {f.get('category')}")
+        lines.append(f"- 风险等级：{f['severity']}")
+        lines.append(f"- 分类：{f.get('category')}")
         sink = f.get("sink") or {}
-        lines.append(f"- Sink: {sink.get('file')}:{sink.get('line')}")
+        lines.append(f"- 危险函数位置：{sink.get('file')}:{sink.get('line')}")
         lines.append("")
     write_text(os.path.join(out_dir, "findings.md"), "\n".join(lines) + "\n")
 
@@ -185,13 +185,13 @@ def write_split_findings(findings: List[Dict], out_root: str) -> None:
         merged = merge_findings(existing, items)
         write_json(out_path, merged)
 
-        md_lines = [f"# {target} Findings", "", f"Total: {len(merged)}", ""]
+        md_lines = [f"# {target} 发现清单", "", f"总数：{len(merged)}", ""]
         for f in merged:
             md_lines.append(f"## {f.get('id')} {f.get('title')}")
-            md_lines.append(f"- Severity: {f.get('severity')}")
-            md_lines.append(f"- Category: {f.get('category')}")
+            md_lines.append(f"- 风险等级：{f.get('severity')}")
+            md_lines.append(f"- 分类：{f.get('category')}")
             sink = f.get("sink") or {}
-            md_lines.append(f"- Sink: {sink.get('file')}:{sink.get('line')}")
+            md_lines.append(f"- 危险函数位置：{sink.get('file')}:{sink.get('line')}")
             md_lines.append("")
         write_text(os.path.join(out_dir, "findings.md"), "\n".join(md_lines) + "\n")
 
@@ -213,7 +213,7 @@ def main() -> None:
     findings = to_findings(results)
     write_findings(findings, out_root)
     write_split_findings(findings, out_root)
-    print(f"Wrote {len(findings)} findings to {out_root}")
+    print(f"已写入 {len(findings)} 条 Semgrep 发现到 {out_root}")
 
 
 if __name__ == "__main__":

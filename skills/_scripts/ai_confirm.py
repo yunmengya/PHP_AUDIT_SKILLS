@@ -625,19 +625,25 @@ def gate_confirm(finding: Dict, trace: Optional[Dict]) -> Tuple[bool, List[str]]
     return len(issues) == 0, issues
 
 
-def load_ai_results(out_root: str) -> List[Dict]:
+def load_ai_results(out_root: str, strict: bool = False) -> List[Dict]:
     path = os.path.join(out_root, "mcp_raw", "ai-confirm-mcp.json")
     if not os.path.exists(path):
-        raise SystemExit("ai-confirm-mcp.json not found. Run AI skill first.")
+        if strict:
+            raise SystemExit("ai-confirm-mcp.json not found. Run AI skill first.")
+        return []
     try:
         data = json.load(open(path, "r", encoding="utf-8"))
     except Exception as exc:
-        raise SystemExit(f"ai-confirm-mcp.json parse error: {exc}")
+        if strict:
+            raise SystemExit(f"ai-confirm-mcp.json parse error: {exc}")
+        return []
     if isinstance(data, dict) and isinstance(data.get("results"), list):
         return data["results"]
     if isinstance(data, list):
         return data
-    raise SystemExit("ai-confirm-mcp.json invalid format: expected list or {results: []}")
+    if strict:
+        raise SystemExit("ai-confirm-mcp.json invalid format: expected list or {results: []}")
+    return []
 
 
 def hash_context(context: Dict) -> str:
@@ -649,6 +655,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--project", required=True, help="PHP project root")
     ap.add_argument("--out", default=None, help="Output root (default {project}_audit)")
+    ap.add_argument("--strict", action="store_true", help="Exit non-zero when AI confirmation is missing/invalid")
     args = ap.parse_args()
 
     project_root = os.path.abspath(args.project)
@@ -680,8 +687,8 @@ def main() -> None:
             write_json(ctx_path, context)
             context_hashes[fid] = hash_context(context)
 
-    # Load AI results (must exist)
-    ai_results = load_ai_results(out_root)
+    # Load AI results (optional by default; strict mode can enforce).
+    ai_results = load_ai_results(out_root, strict=bool(args.strict))
     ai_map = {str(r.get("id")): r for r in ai_results if r.get("id")}
 
     missing: List[str] = []
@@ -779,8 +786,12 @@ def main() -> None:
     write_json(os.path.join(out_root, "ai_confirm.json"), report)
 
     if missing or invalid:
-        raise SystemExit(f"AI confirmation missing/invalid for {len(missing)} missing, {len(invalid)} invalid.")
-    print(f"AI confirmation complete. Findings: {len(all_findings)}")
+        msg = f"AI confirmation missing/invalid for {len(missing)} missing, {len(invalid)} invalid."
+        if args.strict:
+            raise SystemExit(msg)
+        print(f"[WARN] {msg}")
+    else:
+        print(f"AI confirmation complete. Findings: {len(all_findings)}")
 
 
 if __name__ == "__main__":

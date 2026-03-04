@@ -13,9 +13,9 @@ description: Audit CSRF protections in PHP routes and output evidence-based find
 - 可选：route_mapper/routes.json
 
 ## 输出
-- {project}_audit/csrf_audit/findings.json
-- {project}_audit/csrf_audit/findings.md
-- {project}_audit/csrf_audit/{project}_csrf_audit_{timestamp}.md
+- {out}/csrf_audit/findings.json
+- {out}/csrf_audit/findings.md
+- {out}/csrf_audit/{project}_csrf_audit_{timestamp}.md
 
 ## 工作流
 1. 识别会改变状态的接口（POST/PUT/DELETE 等）。

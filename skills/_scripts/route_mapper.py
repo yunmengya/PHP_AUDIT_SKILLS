@@ -289,6 +289,71 @@ def parse_manual_routes(path: str, text: str) -> List[Dict]:
     return routes
 
 
+def _is_http_entry_php(path: str, text: str) -> bool:
+    base = os.path.basename(path).lower()
+    if base in {"index.php", "api.php", "router.php", "route.php"}:
+        return True
+    if re.search(r"\$_(GET|POST|REQUEST|FILES|COOKIE)\b", text):
+        return True
+    if "REQUEST_URI" in text or "REQUEST_METHOD" in text or "php://input" in text:
+        return True
+    return False
+
+
+def discover_direct_php_routes(project_root: str, files: List[str]) -> List[Dict]:
+    routes: List[Dict] = []
+    root = os.path.abspath(project_root)
+    web_roots: List[str] = []
+    for rel in ["public", "www", "web", "htdocs"]:
+        p = os.path.join(root, rel)
+        if os.path.isdir(p):
+            web_roots.append(p)
+    web_roots.append(root)
+
+    seen = set()
+    for path in files:
+        lower = path.lower()
+        if not lower.endswith(".php"):
+            continue
+        try:
+            text = read_text(path)
+        except Exception:
+            continue
+        if not _is_http_entry_php(path, text):
+            continue
+
+        rel_path = None
+        for web_root in web_roots:
+            try:
+                candidate = os.path.relpath(path, web_root)
+            except ValueError:
+                continue
+            if candidate.startswith(".."):
+                continue
+            rel_path = candidate
+            break
+        if rel_path is None:
+            continue
+
+        url_path = "/" + rel_path.replace(os.sep, "/")
+        if not url_path.startswith("/"):
+            url_path = "/" + url_path
+        if (url_path, path) not in seen:
+            seen.add((url_path, path))
+            r = make_route("ANY", url_path, "", "", "generic", path)
+            r["controller_file"] = path
+            routes.append(r)
+
+        if url_path.endswith("/index.php"):
+            alt_path = url_path[: -len("/index.php")] or "/"
+            if (alt_path, path) not in seen:
+                seen.add((alt_path, path))
+                r = make_route("ANY", alt_path, "", "", "generic", path)
+                r["controller_file"] = path
+                routes.append(r)
+    return routes
+
+
 def find_entry_file(project_root: str) -> str:
     candidates = [
         os.path.join(project_root, "public", "index.php"),
@@ -380,9 +445,9 @@ def write_routes(routes: List[Dict], out_root: str) -> None:
     os.makedirs(os.path.join(mapper_root, "burp_templates"), exist_ok=True)
     write_json(os.path.join(mapper_root, "routes.json"), routes)
     # markdown
-    lines = ["# Routes", "", "| Method | Path | Controller | Action | Framework | Middlewares |", "|---|---|---|---|---|---|"]
+    lines = ["# 路由映射", "", "| 方法 | 路径 | 控制器 | 动作 | 框架 | 中间件 |", "|---|---|---|---|---|---|"]
     for r in routes:
-        middlewares = ", ".join(r.get("middlewares") or []) or "none"
+        middlewares = ", ".join(r.get("middlewares") or []) or "无"
         lines.append(f"| {r['method']} | {r['path']} | {r['controller']} | {r['action']} | {r['framework']} | {middlewares} |")
         tpl = build_burp_template(r)
         tpl_name = f"{r['method']}_{sanitize(r['path'])}.txt"
@@ -527,6 +592,7 @@ def main() -> None:
             return out
 
         routes.extend(scan_php_files(php_files, parse_all, threads, progress, "generic_routes"))
+        routes.extend(discover_direct_php_routes(project_root, php_files))
 
     # entry file fallback when still empty
     if not routes:

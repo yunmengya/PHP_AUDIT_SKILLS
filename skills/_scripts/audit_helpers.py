@@ -8,7 +8,7 @@ import time
 import unicodedata
 from typing import Dict, List
 
-from common import build_output_root, write_json, write_text
+from common import backfill_finding_source, build_output_root, write_json, write_text
 
 
 def stable_id(prefix: str, file_path: str, line: int, extra: str = "") -> str:
@@ -122,9 +122,15 @@ def extract_findings_from_traces(
             route = trace.get("route")
             line = s.get("line") or 0
             fid = stable_id(prefix, s.get("file"), line, route.get("path") if route else "")
+            source = trace.get("source")
+            if not source:
+                for candidate in (trace.get("sources") or []):
+                    if isinstance(candidate, dict) and candidate.get("file"):
+                        source = candidate
+                        break
             severity = "high" if trace.get("controllability") == "fully" else "medium"
-            confidence = "high" if trace.get("source") else "low"
-            findings.append({
+            confidence = "high" if source else "low"
+            finding = {
                 "id": fid,
                 "title": title,
                 "severity": severity,
@@ -132,26 +138,27 @@ def extract_findings_from_traces(
                 "combined_severity": severity,
                 "confidence": confidence,
                 "route": route,
-                "source": trace.get("source"),
+                "source": source,
                 "taint": trace.get("taint"),
                 "sink": s,
                 "validation": trace.get("validation"),
                 "controllability": trace.get("controllability", "conditional"),
                 "poc": build_poc_from_route(route or {}),
                 "notes": "Derived from route_tracer.",
-            })
+            }
+            findings.append(backfill_finding_source(finding))
     return findings
 
 
 def write_findings(out_dir: str, title: str, findings: List[Dict]) -> None:
     os.makedirs(out_dir, exist_ok=True)
     write_json(os.path.join(out_dir, "findings.json"), findings)
-    lines = [f"# {title}", "", f"Total: {len(findings)}", ""]
+    lines = [f"# {title}", "", f"总数：{len(findings)}", ""]
     for f in findings:
         sink = f.get("sink") or {}
         lines.append(f"## {f.get('id')} {f.get('title')}")
-        lines.append(f"- Severity: {f.get('severity')}")
-        lines.append(f"- Sink: {sink.get('file')}:{sink.get('line')}")
+        lines.append(f"- 风险等级：{f.get('severity')}")
+        lines.append(f"- 危险点：{sink.get('file')}:{sink.get('line')}")
         lines.append("")
     write_text(os.path.join(out_dir, "findings.md"), "\n".join(lines) + "\n")
 
@@ -348,17 +355,17 @@ def write_module_report(out_dir: str, module_name: str, title: str, findings: Li
         ai_info = f.get("ai_confirm") or {}
         notes_parts: List[str] = []
         if f.get("validation"):
-            notes_parts.append(f"validation={compact_text(f.get('validation'))}")
+            notes_parts.append(f"校验规则={compact_text(f.get('validation'))}")
         if f.get("path_filters"):
-            notes_parts.append(f"path_filters={compact_text(f.get('path_filters'))}")
+            notes_parts.append(f"路径过滤={compact_text(f.get('path_filters'))}")
         if f.get("url_filters"):
-            notes_parts.append(f"url_filters={compact_text(f.get('url_filters'))}")
+            notes_parts.append(f"URL过滤={compact_text(f.get('url_filters'))}")
         if f.get("xml_filters"):
-            notes_parts.append(f"xml_filters={compact_text(f.get('xml_filters'))}")
+            notes_parts.append(f"XML过滤={compact_text(f.get('xml_filters'))}")
         if f.get("dangerous_function"):
-            notes_parts.append(f"dangerous_function={compact_text(f.get('dangerous_function'))}")
+            notes_parts.append(f"危险函数={compact_text(f.get('dangerous_function'))}")
         if f.get("notes"):
-            notes_parts.append(f"notes={compact_text(f.get('notes'))}")
+            notes_parts.append(f"说明={compact_text(f.get('notes'))}")
         evidence_summary = ai_table.get("evidence_summary") if isinstance(ai_table, dict) else None
         debug = f.get("debug_evidence") or {}
         debug_result = debug.get("result") or "-"
@@ -382,7 +389,7 @@ def write_module_report(out_dir: str, module_name: str, title: str, findings: Li
         ])
     lines.append(
         markdown_table(
-            ["ID", "标题", "位置", "独立等级", "组合等级", "置信度", "可利用性", "可控性", "路由/入口", "Sink", "Debug结论", "变化类型", "AI理由", "证据摘要", "备注"],
+            ["编号", "标题", "位置", "独立等级", "组合等级", "置信度", "可利用性", "可控性", "路由/入口", "危险函数", "动态结论", "变化类型", "AI理由", "证据摘要", "备注"],
             detail_rows,
         )
     )
@@ -397,7 +404,7 @@ def write_module_report(out_dir: str, module_name: str, title: str, findings: Li
             compact_text(f.get("taint")),
             compact_text(f.get("validation")),
         ])
-    lines.append(markdown_table(["ID", "Source", "Taint", "Validation"], evidence_rows))
+    lines.append(markdown_table(["编号", "输入来源", "污点传播", "校验逻辑"], evidence_rows))
     lines.append("")
 
     lines.append("## PoC 表")
@@ -408,14 +415,14 @@ def write_module_report(out_dir: str, module_name: str, title: str, findings: Li
         poc_source = ai_table.get("poc_source") or ("template" if poc else "-")
         poc_quality = ai_table.get("poc_quality") or f.get("poc_quality") or "-"
         if poc_source == "template":
-            poc_source = "template(需人工校验)"
+            poc_source = "模板(需人工校验)"
         poc_rows.append([
             str(f.get("id") or "-"),
             poc_source,
             poc_quality,
             compact_text(poc),
         ])
-    lines.append(markdown_table(["ID", "PoC来源", "PoC质量", "PoC"], poc_rows))
+    lines.append(markdown_table(["编号", "PoC来源", "PoC质量", "PoC"], poc_rows))
     lines.append("")
 
     lines.append("## 修复建议")

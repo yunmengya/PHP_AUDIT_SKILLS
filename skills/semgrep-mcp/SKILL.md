@@ -16,8 +16,8 @@ description: Use official Semgrep CLI to scan PHP code with registry rules (e.g.
 - PHP 项目根目录
 
 ## 输出
-- {project}_audit/mcp_raw/semgrep-mcp.json
-- {project}_audit/mcp_parsed/semgrep-mcp.json
+- {out}/mcp_raw/semgrep-mcp.json
+- {out}/mcp_parsed/semgrep-mcp.json
 
 ## 脚本
 - 执行：`scripts/semgrep_mcp.py`

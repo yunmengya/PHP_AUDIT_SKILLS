@@ -1,234 +1,192 @@
 # PHP_AUDIT_SKILLS
 
-PHP 安全审计技能集合，覆盖路由映射、调用链追踪、漏洞模块分析、证据校验与报告汇总。
+面向 PHP 项目的安全审计技能集。  
+默认工作模式为 Docker-Only，支持静态审计、动态调试、AI 深入验证、中文报告交付。
 
-## Overview
+---
 
-- 审计模式：静态证据链为主，动态验证为辅
-- 输出目标：可复核、可追踪、可复现
-- 默认输出目录：`/tmp/{project_name}/{timestamp}`
+## 1. 目标与定位
 
-## Modules
+PHP_AUDIT_SKILLS 的目标：
 
-- `route_mapper`：路由提取与参数建模
-- `route_tracer`：调用链追踪与 Sink 识别
-- `sql_audit`：SQL 注入审计
-- `auth_audit`：鉴权/越权审计
-- `file_audit`：文件相关风险审计
-- `rce_audit`：命令执行/代码执行审计
-- `ssrf_xxe_audit`：SSRF/XXE 审计
-- `xss_ssti_audit`：XSS/SSTI 审计
-- `csrf_audit`：CSRF 审计
-- `var_override_audit`：变量覆盖审计
-- `serialize_audit`：反序列化/Phar/POP 审计
-- `vuln_scanner`：依赖漏洞检测
-- `final_report`：最终报告生成
-- `evidence_check`：证据完整性校验
+- 给出可复核、可追溯、可复现的审计结论
+- 将静态结果与动态证据强绑定，避免“只重复静态”
+- 输出网安人员可读、研发可执行的中文报告
 
-## Structure
+---
 
-```text
-skills/
-├── docker/
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── run_audit.sh
-│   └── run_debug.sh
-├── _scripts/
-│   ├── audit_cli.py
-│   ├── run_samples.py
-│   └── *_audit.py
-├── _samples/
-├── php-*-audit/
-├── semgrep-mcp/
-├── composer-audit-mcp/
-└── report-writer-mcp/
-```
+## 2. 核心能力（已包含新增小功能）
 
-## Requirements
+- 路由发现、参数建模、调用链追踪与污点传播
+- 多漏洞模块并行分析（SQL/RCE/File/SSRF/XXE/XSS/SSTI/CSRF/反序列化/变量覆盖/鉴权）
+- 动态调试验证（切片 + Docker 实际请求 + 逐轮过程记录）
+- AI 深入验证（聚焦目标状态，AI-only 绕过循环）
+- 阶段门禁（phase_0~7）+ 同一 Verifier Agent 持续验收
+- 证据校验阻断分级：硬阻断（BLOCK）与质量预警（WARN）
+- `skip_reason` 分类（`precheck_skip/runtime_skip/timeout/auth_required`）
 
-- Docker
-- Docker Compose
-- Git
-- Python 3
+---
 
-## Quick Start
+## 3. 审计流程（默认全链路）
 
-### 1. Clone and enter
+1. 阶段0：预检与编排  
+2. 阶段1：信息收集（路由/鉴权/依赖）  
+3. 阶段2：调用链追踪  
+4. 阶段3：交叉分析与风险收敛  
+5. 阶段4：静态漏洞分析（按 sink 类型）  
+6. 阶段5：动态验证与漏洞确认  
+7. 阶段6：AI 深入审计（报告驱动 + 源码定位 + Docker 严格验证）  
+8. 阶段7：报告汇总与证据校验  
 
-```bash
-git clone https://github.com/<org>/<repo>.git
-cd <repo>/skills
-```
+---
 
-### 2. Run full audit
+## 4. 动态与 AI 深验策略
 
-```bash
-./docker/run_audit.sh <target-project-path>
-```
+### 4.1 动态阶段（阶段5）
 
-示例：
+- 框架项目：先健康检查，通过后再做动态验证
+- 无框架项目：先抽取 PHP 切片，再执行动态调试
+- 默认记录完整证据：过程、结果、函数追踪、PoC、Burp 模板
+- `skipped` 必须带 `skip_reason`，用于区分预检跳过与运行时跳过
 
-```bash
-./docker/run_audit.sh ../demo_php_app
-```
+### 4.2 AI 深审阶段（阶段6）
 
-### 3. Run with custom output
+- 默认目标状态：`conditional`（可配置）
+- 默认模式：AI-only 绕过（不走字典）
+- 默认目标：尽量将可疑 case 从 `conditional` 推进到 `confirmed`
+- 深审必须在 Docker 内真实执行并落证据
 
-```bash
-./docker/run_audit.sh <target-project-path> <output-path>
-```
+---
 
-### 4. Run selected modules
+## 5. 输出契约（中文优先）
 
-```bash
-./docker/run_audit.sh <target-project-path> \
-  --skip-mcp \
-  --no-cache \
-  --modules route_mapper,route_tracer,sql_audit,final_report,evidence_check
-```
+默认输出目录格式：
 
-### 5. Run debug verification
+`{output_base_dir}/{project_name}/{timestamp}`
 
-```bash
-./docker/run_debug.sh <target-project-path>
-```
+其中 `timestamp` 格式：`YYYYmmdd_HHMMSS`。
 
-## Common Options
+外层仅保留三份主报告（中文）：
 
-`run_audit.sh`:
+1. `最终静态审计结果.md`
+2. `动态debug审计报告.md`
+3. `AI深入验证最终报告.md`
 
-- `--modules <m1,m2,...>`
-- `--skip-mcp`
-- `--no-cache`
-- `--config <path>`
+其余产物归档：
 
-`run_debug.sh`:
+- `归档/阶段报告/`
+- `归档/调试证据/`
+- `归档/Burp模板/`
+- `归档/质量门禁/`
+- `归档/结论绑定/`
 
-- `--ai-realtime` / `--disable-ai-realtime`
-- `--ai-model <model>`
-- `--ai-rounds <n>`
-- `--ai-candidates-per-round <n>`
-- `--ai-timeout <sec>`
-- `--trace-verbose`
+---
 
-## Output Artifacts
+## 6. 门禁与阻断规则（重点）
 
-典型输出：
+### 6.1 阶段验收
 
-- `{out}/route_mapper/`
-- `{out}/route_tracer/`
-- `{out}/sql_audit/`、`{out}/auth_audit/` 等模块目录
-- `{out}/_meta/`（Phase 1~5）
-- `{out}/debug_verify/debug_evidence.json`
-- `{out}/final_report.json`
-- `{out}/evidence_check.json`
+- 必须按阶段0~7顺序执行
+- 每阶段结束后必须运行同一 `agent-verifier` 验收
+- 阶段验收文件必须存在：`phase_0_verifier.md` ~ `phase_7_verifier.md`
 
-## Regression
+### 6.2 阻断分级
 
-运行样例回归：
+- 默认：质量类噪声（例如跳过比例预警）记为 WARN，不直接阻断交付
+- 严格模式：可将对应规则提升为 BLOCK
+- Phase 7 的硬阻断聚焦：
+  - Docker 真实性未满足
+  - 高危覆盖/深审目标覆盖不满足
+  - 证据缺失或不可追溯
 
-```bash
-python3 _scripts/run_samples.py
-```
+### 6.3 跳过率口径
 
-该脚本会调用 `./docker/run_audit.sh` 并校验样例输出。
+- 跳过率默认按“可执行范围”统计，而非全量 case
+- 仅 `runtime_skip` 计入跳过率质量指标
+- `precheck_skip/auth_required/timeout` 不计入运行时跳过率
 
-## Commit Convention
+---
 
-建议采用 Conventional Commits：
+## 7. 报告风格约定
+
+主报告要求：
+
+- 全中文表达
+- 人话优先，避免机器 JSON 直出
+- 每条漏洞给出明确修复动作与复测标准
+
+AI 深验报告要求：
+
+- 漏洞“项目/结论”两列表
+- “动态调试过程（逐轮）”表
+- Burp 复现模板（`http` 代码块）
+- 结论对照（静态 / 动态 / AI）使用中文状态
+- 验证过程默认只展开 `已确认 / 有条件成立`，其余状态做汇总
+
+中文状态枚举：
+
+- 已确认
+- 有条件成立
+- 已排除
+- 已跳过
+
+---
+
+## 8. Claude 脱敏提示词模板（推荐）
+
+> 以下模板已去除本地路径、账号目录等敏感信息，可直接放入公开文档。
 
 ```text
-<type>(<scope>): <summary>
+使用 agent team 模式执行 PHP_AUDIT_SKILLS 审计。
+
+【固定输入】
+- 项目路径：{PROJECT_PATH}
+- SKILLS 路径：{SKILLS_PATH}
+- 输出根目录：{OUTPUT_BASE_DIR}
+- 子任务 team 成员模型：全部 {MODEL_NAME}（主控同模型）
+
+【必须遵守】
+1) 先读取 {SKILLS_PATH}/SKILL.md，并先输出将执行的硬约束清单（5-10条），再开始执行。
+2) 必须通过 {SKILLS_PATH}/docker/run_audit.sh 执行，不允许绕过 Docker，不允许手工拼装静态流程代替。
+3) 输出目录必须是：{OUTPUT_BASE_DIR}/{project_name}/{timestamp}，timestamp 格式 YYYYmmdd_HHMMSS。
+4) 必须按阶段0~7顺序执行；每个阶段结束后必须运行同一个质检 agent（agent-verifier）验收。
+5) 每阶段验收文件必须存在且为 PASS：
+   归档/质量门禁/步骤门禁/phase_0_verifier.md ... phase_7_verifier.md
+6) 动态阶段与AI深入阶段必须证明在 Docker 中真实执行（不是文字说明）：
+   - debug_verify/动态运行元信息.json
+   - ai_deep_audit/ai_deep_audit_summary.json
+7) 若任一阶段或验收 BLOCK：立即停止，输出失败阶段、失败原因、对应 verifier 报告绝对路径、可复跑命令。
+8) 不允许只输出静态总结报告后结束。
+
+【完成时输出】
+- 先输出阶段验收汇总（phase_0~7 PASS/BLOCK）
+- 再输出三份主报告绝对路径：
+  1. 最终静态审计结果.md
+  2. 动态debug审计报告.md
+  3. AI深入验证最终报告.md
+- 最后一行必须是 AI深入验证最终报告.md 的绝对路径
+如果没有按上述硬约束执行，直接判定本次任务失败，不要输出“已完成”。
 ```
 
-示例：
+### 8.1 占位符说明（脱敏）
 
-```text
-feat(sql_audit): add sink controllability evidence in markdown report
-fix(route_tracer): correct taint propagation across nested calls
-docs(readme): add skills-level github documentation
-```
+- `{PROJECT_PATH}`：待审计项目路径
+- `{SKILLS_PATH}`：本技能目录路径
+- `{OUTPUT_BASE_DIR}`：输出根目录（建议临时目录）
+- `{MODEL_NAME}`：Team 全员模型名（如 `glm-5`）
 
-## Agent Team Prompt
+---
 
-```text
-你是技能：PHP_AUDIT_SKILLS 的执行编排器。
-目标：对指定 PHP 项目执行完整安全审计流程，必须使用多 agent team 模式，覆盖“路由发现 -> 污点追踪 -> 各漏洞模块分 agent -> 动态 debug 验证（含过程记录）-> 报告汇总”。
+## 9. 常见问题（Claude 场景）
 
-【输入参数】
-- project_path: 待审计项目绝对路径（必填）
-- output_base_dir: 用户指定输出根目录（必填；例如 /tmp）
-- run_mode: full（默认）
-- threads: 默认 1
+- AI 实时补全失败：流程允许降级继续，但会保留证据状态
+- 动态验证偏弱：优先确认目标可请求、路由可达、认证条件满足
+- 报告太技术化：主文保持人话，技术细节放归档附录
+- 结果“像静态重复”：检查动态绑定、逐轮调试、AI 深审是否实际执行
 
-【硬性约束】
-1. 必须使用 agent team 模式，且至少包含以下角色：
-- Coordinator（总控）
-- Route Agent（路由发现）
-- Taint Agent（污点追踪/调用链）
-- Vuln Agents（漏洞模块并行：SQL/Auth/File/RCE/SSRF_XXE/XSS_SSTI/CSRF/VarOverride/Serialize）
-- Debug Agent（动态验证与过程记录）
-- Report Agent（报告汇总与验收）
+---
 
-2. 必须通过 Docker 入口执行，不允许宿主机直接跑核心 Python 入口：
-- /Users/dream/vscode_code/php_skills/skills/docker/run_audit.sh
-- /Users/dream/vscode_code/php_skills/skills/docker/run_debug.sh
+## 10. 版本说明
 
-3. 输出目录必须为：
-- {output_base_dir}/{project_name}/{timestamp}
-- timestamp 格式：YYYYmmdd_HHMMSS
-
-4. 运行完成后，必须打印全部报告文件“绝对路径”，并且“总报告路径放在最后一行”。
-
-【执行流程】
-1. 计算输出目录：
-- project_name = basename(project_path)
-- timestamp = 当前时间（YYYYmmdd_HHMMSS）
-- out_dir = output_base_dir/project_name/timestamp
-
-2. 在仓库目录执行：
-- 工作目录：/Users/dream/vscode_code/php_skills
-
-3. 执行完整审计（静态 + 动态 + 汇总）：
-/Users/dream/vscode_code/php_skills/skills/docker/run_audit.sh \
-  "{project_path}" "{out_dir}" \
-  --skip-mcp \
-  --no-cache \
-  --threads {threads} \
-  --no-progress \
-  --modules route_mapper,route_tracer,sql_audit,auth_audit,file_audit,rce_audit,ssrf_xxe_audit,xss_ssti_audit,csrf_audit,var_override_audit,serialize_audit,severity_enrich,debug_verify,report_refresh,phase_attack_chain,phase_report_index,final_report,evidence_check
-
-4. Agent 分工要求：
-- Route Agent: 校验 route_mapper/route_tracer 产物存在性与条目数
-- Taint Agent: 读取 trace/sinks，确认高危路径是否可达
-- Vuln Agents: 分别汇总各模块 findings（数量、严重度、入口、位置）
-- Debug Agent: 汇总 debug_evidence/debug_process/debug_poc/debug_func_trace，并标注 confirmed/conditional/rejected/skipped
-- Report Agent: 汇总主报告+附录+中文报告，输出最终路径清单
-
-5. 严格验收（全部满足）：
-- 命令退出码为 0
-- 以下文件存在：
-  - {out_dir}/final_report.md
-  - {out_dir}/final_report_appendix.md
-  - {out_dir}/final_report.json
-  - {out_dir}/总报告.md
-  - {out_dir}/总报告_技术附录.md
-  - {out_dir}/总报告.json
-  - {out_dir}/debug_verify/debug_evidence.json
-  - {out_dir}/debug_verify/debug_process.json
-  - {out_dir}/debug_verify/debug_poc.json
-  - {out_dir}/debug_verify/debug_func_trace.json
-- 输出必须包含所有报告绝对路径，且最后一行是总报告（总报告.md）的绝对路径
-
-【输出格式】
-按以下顺序输出：
-1. 执行摘要（成功/失败、总耗时、模块覆盖）
-2. 动态验证摘要（confirmed/conditional/rejected/skipped 计数）
-3. 报告路径清单（绝对路径，一行一个）
-4. 最后一行仅输出：总报告.md 的绝对路径
-
-【失败处理】
-- 若任一步骤失败，不要中断整体输出。
-- 必须给出：失败阶段、失败命令、stderr 关键行、已生成文件清单、下一步修复建议。
-```
+该 README 面向 Claude 编排执行场景，不强调手工命令。  
+如需 CLI 手工运行说明，可另维护 `README.cli.md`。

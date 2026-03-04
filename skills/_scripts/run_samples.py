@@ -230,12 +230,22 @@ def check_expectations(project_root: str, out_root: str, expect: dict, modules: 
             ok = count <= num
         if not ok:
             raise SystemExit(f"{project_root}: expected {module} {rule}, got {count}")
-    final_report = os.path.join(out_root, "final_report.json")
-    if not os.path.exists(final_report):
-        raise SystemExit(f"{project_root}: final_report.json missing")
-    evidence = os.path.join(out_root, "evidence_check.json")
-    if not os.path.exists(evidence):
-        raise SystemExit(f"{project_root}: evidence_check.json missing")
+    final_report_candidates = [
+        os.path.join(out_root, "总报告.json"),
+        os.path.join(out_root, "最终报告.json"),
+        os.path.join(out_root, "归档", "结论绑定", "总报告.json"),
+        os.path.join(out_root, "归档", "结论绑定", "最终报告.json"),
+    ]
+    if not any(os.path.exists(p) for p in final_report_candidates):
+        raise SystemExit(f"{project_root}: 总报告.json missing")
+    evidence_candidates = [
+        os.path.join(out_root, "证据校验.json"),
+        os.path.join(out_root, "evidence_check.json"),
+        os.path.join(out_root, "归档", "质量门禁", "证据校验.json"),
+        os.path.join(out_root, "归档", "质量门禁", "evidence_check.json"),
+    ]
+    if not any(os.path.exists(p) for p in evidence_candidates):
+        raise SystemExit(f"{project_root}: 证据校验.json missing")
 
     # extra checks when modules executed
     if "sql_audit" in modules and not has_sql_report(out_root):

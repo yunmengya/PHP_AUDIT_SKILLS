@@ -12,10 +12,10 @@ description: Use Composer audit to scan PHP dependencies for known vulnerabiliti
 - PHP 项目根目录（必须包含 composer.lock）
 
 ## 输出
-- {project}_audit/mcp_raw/composer-audit-mcp.json
-- {project}_audit/mcp_parsed/composer-audit-mcp.json
-- {project}_audit/vuln_report/composer_audit.json
-- {project}_audit/vuln_report/composer_audit.md
+- {out}/mcp_raw/composer-audit-mcp.json
+- {out}/mcp_parsed/composer-audit-mcp.json
+- {out}/vuln_report/composer_audit.json
+- {out}/vuln_report/composer_audit.md
 
 ## 脚本
 - 执行：`scripts/composer_audit_mcp.py`

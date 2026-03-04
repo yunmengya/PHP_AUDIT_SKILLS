@@ -55,13 +55,13 @@ def refresh_auth(out_root: str) -> None:
         "",
         f"生成时间：{ts}",
         "",
-        "| Method | Path | Controller | Action | Auth Keywords | Ownership Check | Middlewares |",
+        "| 方法 | 路径 | 控制器 | 动作 | 鉴权关键词 | 归属校验 | 中间件 |",
         "|---|---|---|---|---|---|---|",
     ]
     for f in findings:
         route = f.get("route") or {}
         m_lines.append(
-            f"| {route.get('method','')} | {route.get('path','')} | {route.get('controller','')} | {route.get('action','')} | - | - | - |"
+            f"| {route.get('method','')} | {route.get('path','')} | {route.get('controller','')} | {route.get('action','')} | 无 | 否 | 无 |"
         )
     write_text(os.path.join(auth_dir, mapping_name), "\n".join(m_lines) + "\n")
 
@@ -91,15 +91,15 @@ def refresh_auth(out_root: str) -> None:
         r_lines.append("")
     write_text(os.path.join(auth_dir, report_name), "\n".join(r_lines) + "\n")
 
-    # README
+    # 说明文件
     readme_name = f"{project}_auth_README_{ts}.md"
     rd_lines = [
         f"# {project} - 鉴权审计说明",
         "",
         "本目录包含三份对外交付文件：",
-        f"- {report_name}：主报告（漏洞分析与风险摘要）",
-        f"- {mapping_name}：路由→鉴权机制映射表",
-        f"- {readme_name}：本说明文件",
+        "- 主报告：漏洞分析与风险摘要",
+        "- 映射表：路由到鉴权机制映射",
+        "- 说明文件：交付结构说明",
         "",
         "说明：",
         "- 主报告不重复完整路由清单",
@@ -133,7 +133,7 @@ def refresh_vuln_report(out_root: str) -> None:
         for pkg, items in advisories.items():
             for item in items or []:
                 fid = f"VULN-{seq:03d}"
-                title = item.get("title") or "Dependency Advisory"
+                title = item.get("title") or "依赖安全公告"
                 severity = _severity_from_advisory(item)
                 cvss = item.get("cvss") or item.get("cvss_score") or item.get("cvssScore")
                 findings.append({
@@ -150,7 +150,7 @@ def refresh_vuln_report(out_root: str) -> None:
                     "validation": [],
                     "controllability": "conditional",
                     "poc": {"notes": "依赖漏洞，需结合组件使用场景确认"},
-                    "notes": item.get("link") or item.get("cve") or "Dependency advisory",
+                    "notes": item.get("link") or item.get("cve") or "依赖安全公告",
                     "cvss_score": cvss,
                 })
                 seq += 1
@@ -162,12 +162,17 @@ def refresh_vuln_report(out_root: str) -> None:
 
 
 def load_debug_map(out_root: str) -> Dict[str, Dict]:
-    path = os.path.join(out_root, "debug_verify", "debug_evidence.json")
-    if not os.path.exists(path):
-        return {}
-    try:
-        data = json.load(open(path, "r", encoding="utf-8"))
-    except Exception:
+    candidates = [os.path.join(out_root, "debug_verify", "动态调试证据.json")]
+    data = None
+    for path in candidates:
+        if not os.path.exists(path):
+            continue
+        try:
+            data = json.load(open(path, "r", encoding="utf-8"))
+            break
+        except Exception:
+            continue
+    if data is None:
         return {}
     mapping = {}
     if isinstance(data, list):
@@ -205,7 +210,7 @@ def main() -> None:
     refresh_generic(out_root, "serialize_audit", "反序列化审计报告")
     refresh_vuln_report(out_root)
 
-    print("Reports refreshed")
+    print("报告刷新完成")
 
 
 if __name__ == "__main__":

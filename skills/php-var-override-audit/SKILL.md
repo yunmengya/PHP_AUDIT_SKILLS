@@ -13,9 +13,9 @@ description: Audit variable override risks in PHP and output evidence-based find
 - 可选：route_mapper/routes.json
 
 ## 输出
-- {project}_audit/var_override_audit/findings.json
-- {project}_audit/var_override_audit/findings.md
-- {project}_audit/var_override_audit/{project}_var_override_audit_{timestamp}.md
+- {out}/var_override_audit/findings.json
+- {out}/var_override_audit/findings.md
+- {out}/var_override_audit/{project}_var_override_audit_{timestamp}.md
 
 ## 工作流
 1. 定位变量覆盖高风险写法与动态赋值场景。

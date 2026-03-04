@@ -12,8 +12,8 @@ description: Scan PHP dependencies via composer.lock and output vulnerability re
 - 项目根目录（包含 composer.lock）
 
 ## 输出
-- {project}_audit/vuln_report/composer_audit.json
-- {project}_audit/vuln_report/composer_audit.md
+- {out}/vuln_report/composer_audit.json
+- {out}/vuln_report/composer_audit.md
 
 ## 工作流
 1. 检查 composer.lock 是否存在并可读取。

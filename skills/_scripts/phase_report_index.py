@@ -8,7 +8,7 @@ from typing import Dict, List
 from common import build_output_root, write_text
 
 PHASE_TEMPLATES = {
-    "phase1_map.md": """# Phase 1 信息收集与攻击面识别
+    "phase1_map.md": """# 阶段1 信息收集与攻击面识别
 ## 技术栈画像
 | 项目 | 取值 | 证据/位置 |
 |---|---|---|
@@ -37,7 +37,7 @@ PHASE_TEMPLATES = {
 |---|---|
 |  |  |
 """,
-    "phase2_risk_map.md": """# Phase 2 并行扫描与风险地图
+    "phase2_risk_map.md": """# 阶段2 并行扫描与风险地图
 ## Agent 切分
 | Agent | 方向 | 搜索关键词 | 说明 |
 |---|---|---|---|
@@ -48,13 +48,13 @@ PHASE_TEMPLATES = {
 |---|---|---|---|
 |  |  |  |  |
 """,
-    "phase3_trace_log.md": """# Phase 3 关键路径手工审计
+    "phase3_trace_log.md": """# 阶段3 关键路径手工审计
 ## 证据链追踪
-| Source | Propagation | Sink | 可控性 | 结论 |
+| 输入源 | 传播路径 | 危险函数 | 可控性 | 结论 |
 |---|---|---|---|---|
 |  |  |  |  |  |
 """,
-    "phase4_attack_chain.md": """# Phase 4 漏洞验证与攻击链构建
+    "phase4_attack_chain.md": """# 阶段4 漏洞验证与攻击链构建
 ## 验证四步
 | 步骤 | 结论 | 证据 |
 |---|---|---|
@@ -138,7 +138,7 @@ def find_report_files(out_root: str) -> List[str]:
 
 def render_index(out_root: str, modules: Dict[str, List[Dict]]) -> str:
     lines = [
-        "# Phase 5 报告输出与终止决策",
+        "# 阶段5 报告输出与终止决策",
         f"生成时间：{time.strftime('%Y%m%d_%H%M%S')}",
         "",
         "## 报告清单",
@@ -153,9 +153,9 @@ def render_index(out_root: str, modules: Dict[str, List[Dict]]) -> str:
         indep = stats["independent"]
         comb = stats["combined"]
         ctrl = stats["controllability"]
-        indep_txt = f"H:{indep['high']} M:{indep['medium']} L:{indep['low']}"
-        comb_txt = f"H:{comb['high']} M:{comb['medium']} L:{comb['low']}"
-        ctrl_txt = f"F:{ctrl['fully']} C:{ctrl['conditional']} N:{ctrl['none']}"
+        indep_txt = f"高危:{indep['high']} 中危:{indep['medium']} 低危:{indep['low']}"
+        comb_txt = f"高危:{comb['high']} 中危:{comb['medium']} 低危:{comb['low']}"
+        ctrl_txt = f"完全可控:{ctrl['fully']} 条件可控:{ctrl['conditional']} 不可控:{ctrl['none']}"
         lines.append(f"| {module} | {len(items)} | {indep_txt} | {comb_txt} | {ctrl_txt} |")
 
     lines += [
@@ -178,16 +178,16 @@ def render_index(out_root: str, modules: Dict[str, List[Dict]]) -> str:
     comb = total_stats["combined"]
     ctrl = total_stats["controllability"]
     lines += [
-        f"- 独立等级：H={indep['high']} M={indep['medium']} L={indep['low']} info={indep['info']}",
-        f"- 组合等级：H={comb['high']} M={comb['medium']} L={comb['low']} info={comb['info']}",
-        f"- 可控性：fully={ctrl['fully']} conditional={ctrl['conditional']} none={ctrl['none']}",
+        f"- 独立等级：高危={indep['high']} 中危={indep['medium']} 低危={indep['low']} 提示={indep['info']}",
+        f"- 组合等级：高危={comb['high']} 中危={comb['medium']} 低危={comb['low']} 提示={comb['info']}",
+        f"- 可控性：完全可控={ctrl['fully']} 条件可控={ctrl['conditional']} 不可控={ctrl['none']}",
         "",
         "## 终止判断",
         "| 问题 | 答案 | 证据/备注 |",
         "|---|---|---|",
-        "| Q1: 有没有计划搜索但没搜到的区域？ |  |  |",
-        "| Q2: 发现的入口点是否都追踪到了 Sink？ |  |  |",
-        "| Q3: 高风险发现之间是否可能存在跨模块关联？ |  |  |",
+        "| 问题1：有没有计划搜索但没搜到的区域？ |  |  |",
+        "| 问题2：发现的入口点是否都追踪到了危险函数？ |  |  |",
+        "| 问题3：高风险发现之间是否可能存在跨模块关联？ |  |  |",
         "",
         "## 结论",
         "| 是否结束 | 下一轮补充方向 |",
@@ -209,7 +209,7 @@ def main() -> None:
     modules = load_findings(out_root)
     content = render_index(out_root, modules)
     write_text(os.path.join(out_root, "_meta", "phase5_report_index.md"), content)
-    print(f"Wrote phase5 report index for {len(modules)} modules")
+    print(f"已写入阶段5报告索引，共 {len(modules)} 个模块")
 
 
 if __name__ == "__main__":

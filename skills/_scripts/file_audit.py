@@ -13,7 +13,7 @@ from audit_helpers import (
     write_module_report,
     write_findings,
 )
-from common import detect_path_filters, read_text
+from common import backfill_findings_source, detect_path_filters, read_text
 
 
 def _window(lines: List[str], line_no: int, radius: int = 6):
@@ -57,13 +57,14 @@ def main() -> None:
     traces = load_traces(out_root)
     new_findings = extract_findings_from_traces(traces, ["file", "include"], "Possible File Operation Risk", "FILE")
     new_findings = enrich_findings(new_findings)
+    new_findings = backfill_findings_source(new_findings)
     new_findings = apply_rule_audit_quick_filter(new_findings, "file_audit")
 
     out_dir = os.path.join(out_root, "file_audit")
     existing = load_findings(os.path.join(out_dir, "findings.json"))
     merged = merge_findings(existing, new_findings)
 
-    write_findings(out_dir, "File Audit Findings", merged)
+    write_findings(out_dir, "文件风险发现", merged)
     write_module_report(out_dir, "file_audit", "文件类漏洞审计报告", merged)
     print(f"Wrote {len(merged)} findings to {out_dir}")
 

@@ -14,9 +14,9 @@ description: Perform PHP SQL injection audit using evidence chains and output st
 - 必选：route_tracer 输出（必须包含 controllability 字段）
 
 ## 输出
-- {project}_audit/sql_audit/findings.json
-- {project}_audit/sql_audit/findings.md
-- {project}_audit/sql_audit/{project}_sql_audit_{timestamp}.md
+- {out}/sql_audit/findings.json
+- {out}/sql_audit/findings.md
+- {out}/sql_audit/{project}_sql_audit_{timestamp}.md
 
 ## 工作流
 1. 读取路由与 trace（若有），聚焦入口与数据流。

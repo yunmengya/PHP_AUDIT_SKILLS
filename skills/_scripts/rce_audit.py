@@ -49,7 +49,7 @@ def main() -> None:
     existing = load_findings(os.path.join(out_dir, "findings.json"))
     merged = merge_findings(existing, new_findings)
 
-    write_findings(out_dir, "RCE Audit Findings", merged)
+    write_findings(out_dir, "命令执行风险发现", merged)
     write_module_report(out_dir, "rce_audit", "RCE 漏洞审计报告", merged)
     print(f"Wrote {len(merged)} findings to {out_dir}")
 

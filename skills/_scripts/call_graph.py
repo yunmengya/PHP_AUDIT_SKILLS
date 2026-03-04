@@ -564,8 +564,8 @@ def write_outputs(graph: Dict, out_root: str) -> None:
         freq[callee] = freq.get(callee, 0) + 1
     top = sorted(freq.items(), key=lambda x: x[1], reverse=True)[:10]
 
-    lines = ["# Call Graph Summary", "", f"Nodes: {node_count}", f"Edges: {edge_count}", f"Unresolved: {len(unresolved)}", ""]
-    lines.append("## Top Callees")
+    lines = ["# 调用图摘要", "", f"节点数：{node_count}", f"边数：{edge_count}", f"未解析边：{len(unresolved)}", ""]
+    lines.append("## 最常被调用函数")
     for name, count in top:
         lines.append(f"- {name}: {count}")
     write_text(os.path.join(route_root, "call_graph.md"), "\n".join(lines) + "\n")
@@ -586,7 +586,7 @@ def main() -> None:
 
     graph = build_call_graph(project_root, out_root, threads=args.threads, progress=args.progress)
     write_outputs(graph, out_root)
-    print(f"Wrote call graph to {out_root}")
+    print(f"已写入调用图到 {out_root}")
 
 
 if __name__ == "__main__":

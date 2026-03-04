@@ -20,6 +20,7 @@ RULES_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "php-audit-common", "references", "debug_change_rules.yml")
 )
 WORDLIST_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wordlists"))
+TARGET_URL = "http://target"  # Default target URL, can be overridden by --target-url
 CURL_EXEC_TIMEOUT_SEC = 15
 HTTP_SERVER_START_TIMEOUT_SEC = 5
 
@@ -37,6 +38,48 @@ CATEGORY_RULES = {
     "csrf_audit": "input_limit",
     "auth_audit": "auth_logic",
     "vuln_report": "dependency",
+}
+
+FRAMEWORK_PROFILE_JSON = "framework_profile.json"
+FRAMEWORK_BOOT_TIMEOUT_SEC = 8
+FRAMEWORK_HEALTHCHECK_TIMEOUT_SEC = 5
+
+FRAMEWORK_PACKAGE_MAP = {
+    "laravel/framework": "laravel",
+    "symfony/framework-bundle": "symfony",
+    "topthink/framework": "thinkphp",
+    "yiisoft/yii2": "yii",
+    "codeigniter4/framework": "codeigniter",
+    "codeigniter/framework": "codeigniter",
+    "slim/slim": "slim",
+    "cakephp/cakephp": "cakephp",
+    "hyperf/framework": "hyperf",
+    "laravel/lumen-framework": "lumen",
+}
+
+FRAMEWORK_PRIORITY = [
+    "laravel/framework",
+    "laravel/lumen-framework",
+    "symfony/framework-bundle",
+    "topthink/framework",
+    "yiisoft/yii2",
+    "codeigniter4/framework",
+    "codeigniter/framework",
+    "slim/slim",
+    "cakephp/cakephp",
+    "hyperf/framework",
+]
+
+FRAMEWORK_DOCROOT_HINTS = {
+    "laravel": ["public", "."],
+    "lumen": ["public", "."],
+    "symfony": ["public", "."],
+    "thinkphp": ["public", "."],
+    "yii": ["web", "public", "."],
+    "codeigniter": ["public", "."],
+    "slim": ["public", "."],
+    "cakephp": ["webroot", "public", "."],
+    "hyperf": ["public", "."],
 }
 
 
@@ -68,6 +111,165 @@ def tail_text(text: str, max_chars: int = 2000, max_lines: int = 20) -> str:
     if len(tail) > max_chars:
         tail = tail[-max_chars:]
     return tail
+
+
+def load_json_dict(path: str) -> Dict[str, Any]:
+    if not path or not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        return {}
+    return {}
+
+
+def collect_lock_versions(lock_data: Dict[str, Any]) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    if not isinstance(lock_data, dict):
+        return out
+    for key in ("packages", "packages-dev"):
+        rows = lock_data.get(key)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            name = str(row.get("name") or "").strip().lower()
+            version = str(row.get("version") or "").strip()
+            if name and version and name not in out:
+                out[name] = version
+    return out
+
+
+def collect_require_versions(composer_data: Dict[str, Any]) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    if not isinstance(composer_data, dict):
+        return out
+    for key in ("require", "require-dev"):
+        rows = composer_data.get(key)
+        if not isinstance(rows, dict):
+            continue
+        for pkg, ver in rows.items():
+            name = str(pkg or "").strip().lower()
+            if not name:
+                continue
+            out[name] = str(ver or "").strip()
+    return out
+
+
+def detect_framework_by_files(project_root: str) -> Tuple[str, str]:
+    markers = [
+        ("laravel", [os.path.join(project_root, "artisan"), os.path.join(project_root, "bootstrap", "app.php")]),
+        ("symfony", [os.path.join(project_root, "bin", "console"), os.path.join(project_root, "config", "bundles.php")]),
+        ("thinkphp", [os.path.join(project_root, "think"), os.path.join(project_root, "app")]),
+        ("yii", [os.path.join(project_root, "yii"), os.path.join(project_root, "config")]),
+        ("codeigniter", [os.path.join(project_root, "system"), os.path.join(project_root, "application")]),
+        ("slim", [os.path.join(project_root, "public", "index.php"), os.path.join(project_root, "vendor", "autoload.php")]),
+        ("cakephp", [os.path.join(project_root, "bin", "cake"), os.path.join(project_root, "config")]),
+        ("hyperf", [os.path.join(project_root, "bin", "hyperf.php"), os.path.join(project_root, "config", "autoload")]),
+    ]
+    for framework_name, paths in markers:
+        if all(os.path.exists(p) for p in paths):
+            return framework_name, "filesystem"
+    return "", "none"
+
+
+def resolve_framework_docroot(project_root: str, framework_name: str) -> Tuple[str, str]:
+    hints = FRAMEWORK_DOCROOT_HINTS.get(framework_name, ["public", "web", "webroot", "."])
+    for rel in hints:
+        abs_dir = project_root if rel == "." else os.path.join(project_root, rel)
+        if os.path.isdir(abs_dir) and os.path.isfile(os.path.join(abs_dir, "index.php")):
+            return rel, abs_dir
+    for rel in ("public", "web", "webroot", "."):
+        abs_dir = project_root if rel == "." else os.path.join(project_root, rel)
+        if os.path.isdir(abs_dir) and os.path.isfile(os.path.join(abs_dir, "index.php")):
+            return rel, abs_dir
+    return "", ""
+
+
+def detect_framework_profile(project_root: str) -> Dict[str, Any]:
+    composer_path = os.path.join(project_root, "composer.json")
+    lock_path = os.path.join(project_root, "composer.lock")
+    composer_data = load_json_dict(composer_path)
+    lock_data = load_json_dict(lock_path)
+    lock_versions = collect_lock_versions(lock_data)
+    require_versions = collect_require_versions(composer_data)
+
+    framework_pkg = ""
+    framework_name = ""
+    framework_version = ""
+    detected_from = "none"
+
+    for pkg in FRAMEWORK_PRIORITY:
+        if pkg in lock_versions:
+            framework_pkg = pkg
+            framework_name = FRAMEWORK_PACKAGE_MAP.get(pkg, "")
+            framework_version = lock_versions.get(pkg, "")
+            detected_from = "composer.lock"
+            break
+        if pkg in require_versions:
+            framework_pkg = pkg
+            framework_name = FRAMEWORK_PACKAGE_MAP.get(pkg, "")
+            framework_version = require_versions.get(pkg, "")
+            detected_from = "composer.json"
+            break
+
+    if not framework_name:
+        framework_name, detected_from = detect_framework_by_files(project_root)
+
+    doc_root_rel = ""
+    doc_root_abs = ""
+    if framework_name:
+        doc_root_rel, doc_root_abs = resolve_framework_docroot(project_root, framework_name)
+
+    mode = "framework" if framework_name else "snippet"
+    doc_root_exists = bool(doc_root_abs and os.path.isdir(doc_root_abs))
+    index_exists = bool(doc_root_abs and os.path.isfile(os.path.join(doc_root_abs, "index.php")))
+    boot_supported = bool(mode == "framework" and doc_root_exists and index_exists and framework_name != "hyperf")
+
+    return {
+        "mode": mode,
+        "framework_name": framework_name or "",
+        "framework_package": framework_pkg or "",
+        "framework_version": framework_version or "",
+        "detected_from": detected_from,
+        "composer_json_exists": bool(os.path.exists(composer_path)),
+        "composer_lock_exists": bool(os.path.exists(lock_path)),
+        "doc_root": doc_root_rel,
+        "doc_root_abs": doc_root_abs,
+        "doc_root_exists": doc_root_exists,
+        "index_exists": index_exists,
+        "boot_supported": boot_supported,
+        "boot_strategy": "php_builtin_server" if framework_name else "slice_http_server",
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+
+
+def load_framework_profile(profile_path: str, project_root: str) -> Dict[str, Any]:
+    if profile_path:
+        data = load_json_dict(profile_path)
+        if isinstance(data, dict) and data:
+            out = dict(data)
+            out.setdefault("project_root", project_root)
+            return out
+    profile = detect_framework_profile(project_root)
+    profile["project_root"] = project_root
+    return profile
+
+
+def write_framework_profile(profile: Dict[str, Any], debug_dir: str, out_root: str) -> str:
+    profile = dict(profile or {})
+    profile.setdefault("generated_at", time.strftime("%Y-%m-%dT%H:%M:%S"))
+    debug_path = os.path.join(debug_dir, FRAMEWORK_PROFILE_JSON)
+    meta_dir = os.path.join(out_root, "_meta")
+    os.makedirs(meta_dir, exist_ok=True)
+    meta_path = os.path.join(meta_dir, FRAMEWORK_PROFILE_JSON)
+    write_json(debug_path, profile)
+    write_json(meta_path, profile)
+    return debug_path
 
 
 def load_change_rules(path: str) -> Dict[str, List[str]]:
@@ -263,6 +465,130 @@ require '{slice_q}';
 """
 
 
+def build_framework_router_php(doc_root: str) -> str:
+    doc_q = php_quote(doc_root)
+    return f"""<?php
+$docRoot = '{doc_q}';
+$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+$path = realpath($docRoot . $uri);
+
+if ($uri && $uri !== '/' && $path && strpos($path, $docRoot) === 0 && is_file($path)) {{
+    return false;
+}}
+
+$indexFile = $docRoot . DIRECTORY_SEPARATOR . 'index.php';
+if (!is_file($indexFile)) {{
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "framework_index_missing";
+    exit(0);
+}}
+
+require $indexFile;
+"""
+
+
+def start_framework_http_server(profile: Dict[str, Any], out_root: str) -> Tuple[Optional[Dict[str, Any]], str]:
+    if str(profile.get("mode") or "") != "framework":
+        return None, "not_framework_mode"
+
+    if not bool(profile.get("boot_supported")):
+        return None, "framework_boot_not_supported"
+
+    php = shutil.which("php")
+    curl = shutil.which("curl")
+    if not php:
+        return None, "php_not_found"
+    if not curl:
+        return None, "curl_not_found"
+
+    doc_root = str(profile.get("doc_root_abs") or "")
+    if not doc_root or not os.path.isdir(doc_root):
+        return None, "framework_doc_root_missing"
+    if not os.path.isfile(os.path.join(doc_root, "index.php")):
+        return None, "framework_index_missing"
+
+    runtime_root = os.path.join(out_root, "debug_verify", "http_runtime")
+    os.makedirs(runtime_root, exist_ok=True)
+    work_dir = tempfile.mkdtemp(prefix="framework_", dir=runtime_root)
+
+    router_path = os.path.join(work_dir, "router.php")
+    write_text(router_path, build_framework_router_php(doc_root))
+
+    port = pick_free_port()
+    proc = subprocess.Popen(
+        [php, "-S", f"127.0.0.1:{port}", "-t", doc_root, router_path],
+        cwd=work_dir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if not wait_tcp_ready("127.0.0.1", port, FRAMEWORK_BOOT_TIMEOUT_SEC, proc):
+        try:
+            proc.terminate()
+            proc.wait(timeout=1)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        return None, "framework_http_server_start_failed"
+
+    base_url = f"http://127.0.0.1:{port}"
+    try:
+        check = subprocess.run(
+            [curl, "-sS", "-i", "--max-time", str(FRAMEWORK_HEALTHCHECK_TIMEOUT_SEC), f"{base_url}/"],
+            capture_output=True,
+            text=True,
+            timeout=FRAMEWORK_HEALTHCHECK_TIMEOUT_SEC + 1,
+        )
+    except Exception:
+        try:
+            proc.terminate()
+            proc.wait(timeout=1)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        return None, "framework_healthcheck_exec_failed"
+
+    if check.returncode != 0:
+        try:
+            proc.terminate()
+            proc.wait(timeout=1)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        return None, "framework_healthcheck_failed"
+
+    status = extract_http_status(check.stdout or "")
+    if status is None or status >= 500:
+        try:
+            proc.terminate()
+            proc.wait(timeout=1)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        return None, "framework_healthcheck_bad_status"
+
+    return {
+        "mode": "framework_http",
+        "host": "127.0.0.1",
+        "port": port,
+        "base_url": base_url,
+        "process": proc,
+        "work_dir": work_dir,
+        "router_path": router_path,
+        "framework_name": str(profile.get("framework_name") or ""),
+        "framework_version": str(profile.get("framework_version") or ""),
+    }, ""
+
+
 def start_case_http_server(case: Dict[str, Any], out_root: str) -> Tuple[Optional[Dict[str, Any]], str]:
     slice_path = str(case.get("debug_script") or "")
     if not slice_path or not os.path.exists(slice_path):
@@ -404,6 +730,7 @@ def render_md(rows: List[Dict[str, Any]]) -> str:
                 str(row.get("case_id") or "-"),
                 str(row.get("vuln_type") or "-"),
                 result_label,
+                str(row.get("skip_reason") or "-"),
                 change_label,
                 str(row.get("attempt_count") or 0),
                 str(row.get("payload_source") or "-"),
@@ -415,9 +742,9 @@ def render_md(rows: List[Dict[str, Any]]) -> str:
         )
 
     return (
-        "# Debug 验证证据\n\n"
+        "# 动态调试验证证据\n\n"
         + markdown_table(
-            ["编号", "漏洞类型", "判定", "变化", "尝试数", "Payload来源", "请求来源", "Payload", "PoC", "备注"],
+            ["编号", "漏洞类型", "判定", "跳过分类", "变化", "尝试数", "Payload来源", "请求来源", "Payload", "PoC", "备注"],
             table_rows,
         )
         + "\n"
@@ -447,6 +774,7 @@ def render_process_md(rows: List[Dict[str, Any]]) -> str:
                 str(row.get("ai_attempt_count") or 0),
                 str(row.get("ai_realtime_status") or "-"),
                 str(row.get("matched_attempt_index") or "-"),
+                str(row.get("skip_reason") or "-"),
                 compact_cell(row.get("trace_case_file") or "-", max_len=120),
                 compact_cell(row.get("error_reason") or "-"),
                 compact_cell(dynamic_text, max_len=120),
@@ -460,7 +788,7 @@ def render_process_md(rows: List[Dict[str, Any]]) -> str:
         )
 
     return (
-        "# Debug 过程记录\n\n"
+        "# 动态调试过程记录\n\n"
         + markdown_table(
             [
                 "编号",
@@ -476,6 +804,7 @@ def render_process_md(rows: List[Dict[str, Any]]) -> str:
                 "AI尝试",
                 "AI状态",
                 "命中序号",
+                "跳过分类",
                 "Trace文件",
                 "错误",
                 "动态原因",
@@ -573,36 +902,36 @@ def render_func_trace_md(rows: List[Dict[str, Any]]) -> str:
         for diff in diffs[:12]:
             if not isinstance(diff, dict):
                 continue
-            marker = "CHANGED" if diff.get("changed") else "SAME"
+            marker = "有变化" if diff.get("changed") else "无变化"
             step_lines.append(
                 f"{diff.get('step')}. [{marker}] {diff.get('op')} | {diff.get('expr')}\n"
                 f"   before: {compact_cell(diff.get('before') or '', max_len=120)}\n"
                 f"   after : {compact_cell(diff.get('after') or '', max_len=120)}"
             )
         if not step_lines:
-            step_lines.append("no transform steps")
+            step_lines.append("无变换步骤")
 
         detail_blocks.append(
             "\n".join(
                 [
                     f"## {case_id}",
-                    f"- Result: {row.get('result') or '-'}",
-                    f"- Sink Probe Hit: {bool(row.get('sink_probe_hit'))}",
-                    f"- Taint Reached Sink: {bool(row.get('taint_var_reached_sink'))}",
-                    f"- Trace File: {row.get('trace_case_file') or '-'}",
+                    f"- 结果: {row.get('result') or '-'}",
+                    f"- Sink探针命中: {bool(row.get('sink_probe_hit'))}",
+                    f"- 污点到达Sink: {bool(row.get('taint_var_reached_sink'))}",
+                    f"- 追踪文件: {row.get('trace_case_file') or '-'}",
                     "",
-                    "Sink Keyframe:",
-                    f"- Before: {compact_cell(sink_frame.get('before') or '', max_len=180)}",
-                    f"- After: {compact_cell(sink_frame.get('after') or '', max_len=180)}",
-                    f"- Input: {compact_cell(sink_frame.get('input') or '', max_len=120)}",
+                    "Sink关键帧:",
+                    f"- 变更前: {compact_cell(sink_frame.get('before') or '', max_len=180)}",
+                    f"- 变更后: {compact_cell(sink_frame.get('after') or '', max_len=180)}",
+                    f"- 输入: {compact_cell(sink_frame.get('input') or '', max_len=120)}",
                     "",
-                    "Transform Diffs:",
+                    "变换差异:",
                     *step_lines,
                 ]
             )
         )
     return (
-        "# Debug 函数追踪\n\n"
+        "# 动态调试函数追踪\n\n"
         + markdown_table(
             ["编号", "结果", "执行模式", "Sink命中", "Taint达Sink", "变换步数", "Sink前", "Sink后", "变换摘要", "调用栈摘要"],
             table_rows,
@@ -630,7 +959,7 @@ def render_poc_md(rows: List[Dict[str, Any]]) -> str:
         )
 
     return (
-        "# Debug PoC 命令\n\n"
+        "# 动态调试 PoC 命令\n\n"
         + markdown_table(
             ["编号", "漏洞类型", "方法", "路径", "Payload来源", "请求来源", "结果", "PoC命令"],
             table_rows,
@@ -639,19 +968,93 @@ def render_poc_md(rows: List[Dict[str, Any]]) -> str:
     )
 
 
+DEBUG_JSON_NAMES = {
+    "evidence": "动态调试证据.json",
+    "process": "动态调试过程.json",
+    "poc": "动态调试PoC.json",
+    "func_trace": "函数追踪证据.json",
+}
+
+DEBUG_MD_NAMES = {
+    "evidence": "动态调试证据.md",
+    "process": "动态调试过程.md",
+    "poc": "动态调试PoC.md",
+    "func_trace": "函数追踪证据.md",
+}
+
+DEBUG_RUNTIME_JSON = "动态运行元信息.json"
+DEBUG_RUNTIME_MD = "动态运行元信息.md"
+
+
+def write_debug_outputs(
+    debug_dir: str,
+    evidence_rows: List[Dict[str, Any]],
+    process_rows: List[Dict[str, Any]],
+    poc_rows: List[Dict[str, Any]],
+    func_trace_rows: List[Dict[str, Any]],
+) -> None:
+    json_payloads = {
+        DEBUG_JSON_NAMES["evidence"]: evidence_rows,
+        DEBUG_JSON_NAMES["process"]: process_rows,
+        DEBUG_JSON_NAMES["poc"]: poc_rows,
+        DEBUG_JSON_NAMES["func_trace"]: func_trace_rows,
+    }
+    md_payloads = {
+        DEBUG_MD_NAMES["evidence"]: render_md(evidence_rows),
+        DEBUG_MD_NAMES["process"]: render_process_md(process_rows),
+        DEBUG_MD_NAMES["poc"]: render_poc_md(poc_rows),
+        DEBUG_MD_NAMES["func_trace"]: render_func_trace_md(func_trace_rows),
+    }
+
+    for name, payload in json_payloads.items():
+        write_json(os.path.join(debug_dir, name), payload)
+
+    for name, payload in md_payloads.items():
+        write_text(os.path.join(debug_dir, name), payload)
+
+
 def write_empty_outputs(debug_dir: str) -> None:
     evidence_rows: List[Dict[str, Any]] = []
     process_rows: List[Dict[str, Any]] = []
     poc_rows: List[Dict[str, Any]] = []
     func_trace_rows: List[Dict[str, Any]] = []
-    write_json(os.path.join(debug_dir, "debug_evidence.json"), evidence_rows)
-    write_text(os.path.join(debug_dir, "debug_evidence.md"), render_md(evidence_rows))
-    write_json(os.path.join(debug_dir, "debug_process.json"), process_rows)
-    write_text(os.path.join(debug_dir, "debug_process.md"), render_process_md(process_rows))
-    write_json(os.path.join(debug_dir, "debug_poc.json"), poc_rows)
-    write_text(os.path.join(debug_dir, "debug_poc.md"), render_poc_md(poc_rows))
-    write_json(os.path.join(debug_dir, "debug_func_trace.json"), func_trace_rows)
-    write_text(os.path.join(debug_dir, "debug_func_trace.md"), render_func_trace_md(func_trace_rows))
+    write_debug_outputs(debug_dir, evidence_rows, process_rows, poc_rows, func_trace_rows)
+
+
+def summarize_result_counts(rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    stats = {"total": 0, "confirmed": 0, "conditional": 0, "rejected": 0, "skipped": 0}
+    for row in rows:
+        result = str(row.get("result") or "").strip().lower()
+        if result not in {"confirmed", "conditional", "rejected", "skipped"}:
+            continue
+        stats["total"] += 1
+        stats[result] += 1
+    return stats
+
+
+def render_runtime_meta_md(meta: Dict[str, Any]) -> str:
+    stats = meta.get("result_stats") if isinstance(meta.get("result_stats"), dict) else {}
+    lines = [
+        "# 动态运行元信息",
+        "",
+        f"- 本次运行ID：`{meta.get('run_id') or '-'}`",
+        f"- Docker执行：`{'是' if meta.get('executed_in_container') else '否'}`",
+        f"- 生成时间：{meta.get('generated_at') or '-'}",
+        f"- 用例总数：{meta.get('case_count') or 0}",
+        f"- 框架模式：`{meta.get('framework_mode') or '-'}`",
+        f"- 框架启动状态：`{meta.get('framework_boot_status') or '-'}`",
+        "",
+        "## 结果统计",
+        "| 指标 | 数值 |",
+        "|---|---|",
+        f"| 总数 | {stats.get('total', 0)} |",
+        f"| 已确认 | {stats.get('confirmed', 0)} |",
+        f"| 有条件成立 | {stats.get('conditional', 0)} |",
+        f"| 已排除 | {stats.get('rejected', 0)} |",
+        f"| 已跳过 | {stats.get('skipped', 0)} |",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def normalize_bucket(value: str) -> str:
@@ -826,10 +1229,103 @@ def compact_map_for_context(input_map: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def build_ai_request_context(cases: List[Dict[str, Any]], debug_dir: str) -> str:
+def read_slice_code_for_context(case: Dict[str, Any], max_chars: int = 5000) -> str:
+    path = str(case.get("debug_script") or "").strip()
+    if not path:
+        return ""
+    if not os.path.exists(path):
+        return ""
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            text = f.read()
+    except Exception:
+        return ""
+    if len(text) > max_chars:
+        return text[:max_chars]
+    return text
+
+
+def ai_seed_payloads_for_case(case: Dict[str, Any], max_payloads: int = 8) -> List[str]:
+    sink_type = str(case.get("sink_type") or case.get("vuln_type") or "").lower()
+    base = "test"
+    payloads: List[str] = []
+    if "sql" in sink_type:
+        base = "' OR 1=1 -- -"
+        payloads = [
+            base,
+            urllib.parse.quote(base, safe=""),
+            "1'/**/OR/**/'1'='1",
+            "1%27%20OR%201=1--%20-",
+        ]
+    elif "rce" in sink_type:
+        base = ";id;"
+        payloads = [
+            base,
+            urllib.parse.quote(base, safe=""),
+            "%3Bid%3B",
+            "|id",
+        ]
+    elif "file" in sink_type:
+        base = "../../../../etc/passwd"
+        payloads = [
+            base,
+            urllib.parse.quote(base, safe=""),
+            "..%2f..%2f..%2f..%2fetc%2fpasswd",
+            "..//..//..//..//etc/passwd",
+        ]
+    elif "ssrf" in sink_type:
+        base = "http://127.0.0.1:80/"
+        payloads = [
+            base,
+            "http://localhost/",
+            "http://2130706433/",
+            urllib.parse.quote(base, safe=":/"),
+        ]
+    elif "xxe" in sink_type:
+        base = "<!DOCTYPE r [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]><r>&xxe;</r>"
+        payloads = [
+            base,
+            urllib.parse.quote(base, safe=""),
+            "<?xml version='1.0'?><!DOCTYPE a [<!ENTITY b SYSTEM 'file:///etc/hosts'>]><a>&b;</a>",
+        ]
+    elif "xss" in sink_type or "ssti" in sink_type:
+        base = "<svg/onload=alert(1)>"
+        payloads = [
+            base,
+            urllib.parse.quote(base, safe=""),
+            "%3Cscript%3Ealert(1)%3C%2Fscript%3E",
+            "{{7*7}}",
+        ]
+    elif "deserialize" in sink_type:
+        base = 'O:8:"Exploit":0:{}'
+        payloads = [
+            base,
+            urllib.parse.quote(base, safe=""),
+            "a:1:{i:0;O:8:\"Exploit\":0:{}}",
+        ]
+    else:
+        payloads = [base, urllib.parse.quote(base, safe="")]
+    uniq: List[str] = []
+    seen = set()
+    for p in payloads:
+        key = str(p)
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(key)
+    return uniq[: max_payloads if max_payloads > 0 else 1]
+
+
+def build_ai_request_context(cases: List[Dict[str, Any]], debug_dir: str, ai_only_bypass: bool = False) -> str:
     rows: List[Dict[str, Any]] = []
     for case in cases:
-        payloads, payload_source = dictionary_payloads_for_case(case, max_payloads=8)
+        if ai_only_bypass:
+            payloads = ai_seed_payloads_for_case(case, max_payloads=8)
+            payload_source = "ai_seed"
+        else:
+            payloads, payload_source = dictionary_payloads_for_case(case, max_payloads=8)
+        slice_file = str(case.get("debug_script") or "")
+        slice_code = read_slice_code_for_context(case)
         rows.append(
             {
                 "case_id": case.get("case_id"),
@@ -844,6 +1340,8 @@ def build_ai_request_context(cases: List[Dict[str, Any]], debug_dir: str) -> str
                 "request_candidates": (case.get("request_candidates") or [])[:10],
                 "payload_source": payload_source,
                 "payload_hints": payloads,
+                "slice_file": slice_file,
+                "slice_code": slice_code,
             }
         )
 
@@ -852,7 +1350,7 @@ def build_ai_request_context(cases: List[Dict[str, Any]], debug_dir: str) -> str
         "meta": {
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "case_count": len(rows),
-            "strategy": "dictionary_first_then_ai",
+            "strategy": "ai_only_iterative_bypass" if ai_only_bypass else "dictionary_first_then_ai",
         },
     }
     path = os.path.join(debug_dir, "ai_request_context.json")
@@ -1037,7 +1535,7 @@ def build_poc_command(method: str, path: str, input_map: Dict[str, Any], content
     if path_norm.startswith("http://") or path_norm.startswith("https://"):
         url = path_norm
     else:
-        url = f"http://target{path_norm}"
+        url = f"{TARGET_URL}{path_norm}"
 
     params = input_map.get("GET") if isinstance(input_map.get("GET"), dict) else {}
     query = urllib.parse.urlencode(params, doseq=True)
@@ -1151,13 +1649,14 @@ def run_curl_request(
     input_map: Dict[str, Any],
     content_type: str,
 ) -> Tuple[Dict[str, Any], str, Dict[str, Any]]:
+    runtime_mode = str(server.get("mode") or "curl_http") if isinstance(server, dict) else "curl_http"
     meta: Dict[str, Any] = {
         "return_code": None,
         "duration_ms": 0,
         "stdout_tail": "",
         "stderr_tail": "",
         "http_status": None,
-        "execution_mode": "curl_http",
+        "execution_mode": runtime_mode,
         "curl_cmd": "",
         "request_preview": "",
         "response_header_preview": "",
@@ -1214,6 +1713,32 @@ def run_curl_request(
     if err:
         data, err = parse_debug_output(proc.stdout or "")
     if err:
+        if runtime_mode == "framework_http":
+            fallback_body = tail_text(response_body or proc.stdout or "", max_chars=800, max_lines=20)
+            fallback_input = ""
+            post_bucket = input_map.get("POST") if isinstance(input_map.get("POST"), dict) else {}
+            body_bucket = input_map.get("BODY") if isinstance(input_map.get("BODY"), dict) else {}
+            if isinstance(post_bucket, dict) and post_bucket:
+                fallback_input = str(next(iter(post_bucket.values())))
+            elif isinstance(body_bucket, dict) and body_bucket:
+                fallback_input = str(next(iter(body_bucket.values())))
+            elif isinstance(input_map.get("GET"), dict) and input_map.get("GET"):
+                fallback_input = str(next(iter(input_map.get("GET").values())))
+
+            fallback_output = {
+                "status": "done",
+                "input": fallback_input,
+                "final_value": fallback_body,
+                "transform_chain": [],
+                "transform_steps": [],
+                "call_stack": [],
+                "var_snapshot": {},
+                "sink_probe_hit": False,
+                "taint_var_reached_sink": False,
+                "change_type": "weak_change" if fallback_body else "unknown",
+                "framework_fallback_no_json": True,
+            }
+            return fallback_output, "", meta
         return {}, err, meta
     return data, "", meta
 
@@ -1238,7 +1763,7 @@ def fallback_poc_from_case(case: Dict[str, Any]) -> Tuple[str, str, str, str]:
     path = normalize_path(route_path)
     cmd = build_poc_command(method, path, input_map)
     if not cmd:
-        cmd = "curl -i -sS -X GET 'http://target/'"
+        cmd = f"curl -i -sS -X GET '{TARGET_URL}/'"
     return cmd, "route_input_map", method, path
 
 
@@ -1256,7 +1781,7 @@ def execute_attempt(
     input_map, normalized_candidate = build_attempt_input(case, candidate, payload)
     input_val = str(case.get("input") or "")
 
-    if isinstance(server, dict) and server.get("mode") == "curl_http":
+    if isinstance(server, dict) and server.get("mode") in {"curl_http", "framework_http"} and server.get("base_url"):
         output, err, proc_meta = run_curl_request(
             server,
             str(normalized_candidate.get("method") or case.get("route_method") or "GET"),
@@ -1274,7 +1799,7 @@ def execute_attempt(
                 "stdout_tail": "",
                 "stderr_tail": "",
                 "http_status": None,
-                "execution_mode": "curl_http",
+                "execution_mode": str(server.get("mode") or "curl_http") if isinstance(server, dict) else "slice_cli",
                 "curl_cmd": "",
                 "request_preview": "",
                 "response_header_preview": "",
@@ -1289,11 +1814,15 @@ def execute_attempt(
     sink_probe_hit = bool(output.get("sink_probe_hit")) if isinstance(output, dict) else False
     taint_var_reached_sink = bool(output.get("taint_var_reached_sink")) if isinstance(output, dict) else False
     change_type = output.get("change_type") if isinstance(output, dict) else ""
+    framework_fallback_no_json = bool(output.get("framework_fallback_no_json")) if isinstance(output, dict) else False
 
+    notes = base_notes
     if isinstance(output, dict) and output.get("input") not in (None, ""):
         input_val = str(output.get("input"))
 
-    notes = base_notes
+    if framework_fallback_no_json:
+        notes = (notes + "; " if notes else "") + "framework_fallback:no_json_output"
+
     if err or status != "done" or output.get("final_value") == "__TODO__":
         notes = (notes + "; " if notes else "") + f"debug_skip:{err or 'pending'}"
         change_type = "unknown"
@@ -1340,7 +1869,7 @@ def execute_attempt(
         "stdout_tail": proc_meta.get("stdout_tail") or "",
         "stderr_tail": proc_meta.get("stderr_tail") or "",
         "http_status": proc_meta.get("http_status"),
-        "execution_mode": proc_meta.get("execution_mode") or ("curl_http" if isinstance(server, dict) else "slice_cli"),
+        "execution_mode": proc_meta.get("execution_mode") or (str(server.get("mode") or "curl_http") if isinstance(server, dict) else "slice_cli"),
         "curl_cmd": proc_meta.get("curl_cmd") or "",
         "request_preview": proc_meta.get("request_preview") or "",
         "response_header_preview": proc_meta.get("response_header_preview") or "",
@@ -1499,6 +2028,84 @@ def choose_best_attempt(attempts: List[Dict[str, Any]], sink_type: str) -> Tuple
     return attempts[best_idx], best_idx
 
 
+def is_auth_required_signal(selected: Dict[str, Any]) -> bool:
+    status = selected.get("http_status")
+    if isinstance(status, int) and status in {401, 403}:
+        return True
+    reasons = selected.get("dynamic_reasons")
+    if isinstance(reasons, list):
+        for reason in reasons:
+            text = str(reason or "").lower()
+            if any(k in text for k in ("auth", "login", "forbidden", "unauthorized", "permission")):
+                return True
+    combined = "\n".join(
+        [
+            str(selected.get("response_header_preview") or ""),
+            str(selected.get("response_body_preview") or ""),
+            str(selected.get("stderr_tail") or ""),
+            str(selected.get("stdout_tail") or ""),
+            str(selected.get("notes") or ""),
+        ]
+    ).lower()
+    auth_keywords = [
+        "unauthorized",
+        "forbidden",
+        "login required",
+        "authentication",
+        "auth required",
+        "permission denied",
+        "access denied",
+        "请登录",
+        "未登录",
+        "无权限",
+        "权限不足",
+    ]
+    return any(k in combined for k in auth_keywords)
+
+
+def classify_skip_reason(
+    selected: Dict[str, Any],
+    attempt_count: int,
+    framework_profile: Optional[Dict[str, Any]] = None,
+) -> str:
+    result = str(selected.get("result") or "").strip().lower()
+    if result != "skipped":
+        return ""
+
+    error_reason = str(selected.get("error_reason") or "").strip().lower()
+    process_status = str(selected.get("process_status") or "").strip().lower()
+    profile = framework_profile if isinstance(framework_profile, dict) else {}
+    boot_status = str(profile.get("boot_status") or "").strip().lower()
+
+    if error_reason == "curl_timeout" or "timeout" in error_reason:
+        return "timeout"
+    if is_auth_required_signal(selected):
+        return "auth_required"
+
+    precheck_errors = {
+        "no_attempts",
+        "script_missing",
+        "php_not_found",
+        "curl_missing",
+        "http_server_unavailable",
+        "framework_boot_not_supported",
+        "framework_doc_root_missing",
+        "framework_index_missing",
+        "framework_http_server_start_failed",
+        "framework_healthcheck_exec_failed",
+        "framework_healthcheck_failed",
+        "framework_healthcheck_bad_status",
+    }
+    if error_reason in precheck_errors:
+        return "precheck_skip"
+    if attempt_count <= 0 and process_status in {"error", "skipped"}:
+        return "precheck_skip"
+    if boot_status == "failed" and process_status in {"error", "skipped"}:
+        return "precheck_skip"
+
+    return "runtime_skip"
+
+
 def build_case_report_rows(
     case: Dict[str, Any],
     selected: Dict[str, Any],
@@ -1508,7 +2115,10 @@ def build_case_report_rows(
     ai_count: int,
     ai_status: str,
     stop_reason: str,
+    until_confirmed: bool,
     trace_case_file: str = "",
+    framework_profile: Optional[Dict[str, Any]] = None,
+    runtime_mode: str = "",
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     candidate = selected.get("request_candidate") or {}
     method = str(candidate.get("method") or case.get("route_method") or "GET")
@@ -1519,6 +2129,21 @@ def build_case_report_rows(
     poc_source = str(selected.get("request_source") or "rules")
     if not poc_cmd:
         poc_cmd, poc_source, method, path = fallback_poc_from_case(case)
+    selected_result = str(selected.get("result") or "skipped")
+    confirmation_target = "confirmed" if until_confirmed else "confirmed_or_conditional"
+    if until_confirmed:
+        confirmation_met = selected_result == "confirmed"
+    else:
+        confirmation_met = selected_result in {"confirmed", "conditional"}
+
+    profile = framework_profile if isinstance(framework_profile, dict) else {}
+    framework_mode = str(profile.get("mode") or "snippet")
+    framework_name = str(profile.get("framework_name") or "")
+    framework_version = str(profile.get("framework_version") or "")
+    framework_boot_status = str(profile.get("boot_status") or "")
+    framework_boot_error = str(profile.get("boot_error") or "")
+    runtime_mode_value = runtime_mode or str(profile.get("runtime_mode") or framework_mode or "snippet")
+    skip_reason = classify_skip_reason(selected, attempt_count, framework_profile=profile)
 
     evidence_row = {
         "case_id": case.get("case_id"),
@@ -1535,12 +2160,17 @@ def build_case_report_rows(
         "source_path": case.get("source_path") or "-",
         "route_method": method,
         "route_path": path,
+        "confirmation_target": confirmation_target,
+        "confirmation_met": confirmation_met,
         "poc_cmd": poc_cmd,
         "poc_source": poc_source,
         "payload_used": selected.get("payload_used") or "",
         "payload_source": selected.get("payload_source") or "",
         "request_source": selected.get("request_source") or case.get("planning_source") or "rules",
         "attempt_count": attempt_count,
+        "dictionary_attempt_count": dictionary_count,
+        "ai_attempt_count": ai_count,
+        "ai_realtime_status": ai_status,
         "stop_reason": stop_reason,
         "planning_source": case.get("planning_source") or "rules",
         "planning_score": case.get("planning_score") or 0,
@@ -1557,6 +2187,13 @@ def build_case_report_rows(
         "response_header_preview": selected.get("response_header_preview") or "",
         "response_body_preview": selected.get("response_body_preview") or "",
         "trace_case_file": trace_case_file,
+        "framework_mode": framework_mode,
+        "framework_name": framework_name,
+        "framework_version": framework_version,
+        "framework_boot_status": framework_boot_status,
+        "framework_boot_error": framework_boot_error,
+        "runtime_mode": runtime_mode_value,
+        "skip_reason": skip_reason,
     }
 
     process_row = {
@@ -1581,8 +2218,17 @@ def build_case_report_rows(
         "dictionary_attempt_count": dictionary_count,
         "ai_attempt_count": ai_count,
         "ai_realtime_status": ai_status,
+        "confirmation_target": confirmation_target,
+        "confirmation_met": confirmation_met,
         "matched_attempt_index": matched_index,
         "trace_case_file": trace_case_file,
+        "framework_mode": framework_mode,
+        "framework_name": framework_name,
+        "framework_version": framework_version,
+        "framework_boot_status": framework_boot_status,
+        "framework_boot_error": framework_boot_error,
+        "runtime_mode": runtime_mode_value,
+        "skip_reason": skip_reason,
     }
 
     poc_row = {
@@ -1592,6 +2238,8 @@ def build_case_report_rows(
         "entry": case.get("entry"),
         "route_method": method,
         "route_path": path,
+        "confirmation_target": confirmation_target,
+        "confirmation_met": confirmation_met,
         "poc_source": poc_source,
         "poc_cmd": poc_cmd,
         "payload_used": selected.get("payload_used") or "",
@@ -1602,6 +2250,12 @@ def build_case_report_rows(
         "sink_probe_hit": bool(selected.get("sink_probe_hit")),
         "taint_var_reached_sink": bool(selected.get("taint_var_reached_sink")),
         "trace_case_file": trace_case_file,
+        "framework_mode": framework_mode,
+        "framework_name": framework_name,
+        "framework_version": framework_version,
+        "framework_boot_status": framework_boot_status,
+        "framework_boot_error": framework_boot_error,
+        "runtime_mode": runtime_mode_value,
     }
 
     var_snapshot = selected.get("var_snapshot") if isinstance(selected.get("var_snapshot"), dict) else {}
@@ -1628,6 +2282,12 @@ def build_case_report_rows(
         "transform_diffs": build_transform_diffs(selected.get("transform_steps")),
         "dynamic_reasons": selected.get("dynamic_reasons") if isinstance(selected.get("dynamic_reasons"), list) else [],
         "trace_case_file": trace_case_file,
+        "framework_mode": framework_mode,
+        "framework_name": framework_name,
+        "framework_version": framework_version,
+        "framework_boot_status": framework_boot_status,
+        "framework_boot_error": framework_boot_error,
+        "runtime_mode": runtime_mode_value,
     }
 
     # Required traceability back to evidence row.
@@ -1714,6 +2374,36 @@ def write_trace_case_file(
     return path
 
 
+def build_ai_fallback_candidates(
+    case: Dict[str, Any],
+    request_candidates: List[Dict[str, Any]],
+    ai_budget: int,
+) -> List[Dict[str, Any]]:
+    limit = ai_budget if ai_budget > 0 else 8
+    seed_payloads = ai_seed_payloads_for_case(case, max_payloads=max(1, limit))
+    reqs = request_candidates if request_candidates else [normalize_request_candidate(case, {})]
+    fallback: List[Dict[str, Any]] = []
+    if not reqs:
+        return fallback
+    for idx, payload in enumerate(seed_payloads):
+        req = reqs[idx % len(reqs)]
+        fallback.append(
+            {
+                "method": req.get("method"),
+                "path": req.get("path"),
+                "bucket": req.get("bucket"),
+                "param": req.get("param"),
+                "content_type": req.get("content_type"),
+                "payload": payload,
+                "reason": "ai_seed_bypass",
+                "confidence": 0.35,
+            }
+        )
+        if len(fallback) >= limit:
+            break
+    return fallback
+
+
 def execute_case(
     case: Dict[str, Any],
     rules: Dict[str, List[str]],
@@ -1721,16 +2411,27 @@ def execute_case(
     ai_realtime_enabled: bool,
     ai_budget: int,
     ai_runtime_status: str,
+    ai_force_all: bool,
+    until_confirmed: bool,
+    ai_only_bypass: bool,
     project_root: str,
     out_root: str,
     trace_verbose: bool = False,
     trace_case_dir: str = "",
+    framework_profile: Optional[Dict[str, Any]] = None,
+    runtime_mode: str = "snippet",
+    shared_server: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     case_id = str(case.get("case_id") or "")
     module = str(case.get("module") or "")
     category = CATEGORY_RULES.get(module, "input_limit")
 
     notes = str(case.get("notes") or "")
+    profile = framework_profile if isinstance(framework_profile, dict) else {}
+    if str(profile.get("framework_name") or "").strip():
+        notes = (notes + "; " if notes else "") + (
+            f"framework:{profile.get('framework_name')}@{profile.get('framework_version') or 'unknown'}"
+        )
     try:
         auto_note = generate_slice_for_case(case, project_root, out_root)
     except Exception as exc:
@@ -1738,18 +2439,35 @@ def execute_case(
     if auto_note:
         notes = (notes + "; " if notes else "") + auto_note
 
-    server, server_err = start_case_http_server(case, out_root)
-    if server_err:
-        notes = (notes + "; " if notes else "") + f"server_error:{server_err}"
+    server = shared_server if isinstance(shared_server, dict) else None
+    server_err = ""
+    server_owned = False
+    if not isinstance(server, dict):
+        server_owned = True
+        server, server_err = start_case_http_server(case, out_root)
+        if server_err:
+            notes = (notes + "; " if notes else "") + f"server_error:{server_err}"
+    else:
+        notes = (notes + "; " if notes else "") + f"runtime_mode:{runtime_mode or 'framework'}"
 
     request_candidates = request_candidates_for_case(case)
-    dictionary_payloads, dictionary_payload_source = dictionary_payloads_for_case(case)
+    if ai_only_bypass:
+        dictionary_payloads = []
+        dictionary_payload_source = "ai_only_bypass"
+    else:
+        dictionary_payloads, dictionary_payload_source = dictionary_payloads_for_case(case)
 
     attempts: List[Dict[str, Any]] = []
     baseline_attempt: Optional[Dict[str, Any]] = None
     dictionary_count = 0
     ai_count = 0
     stop_reason = "exhausted"
+    dictionary_selected: Optional[Dict[str, Any]] = None
+    dictionary_selected_idx = 0
+    target_results = {"confirmed"} if until_confirmed else {"confirmed", "conditional"}
+    effective_ai_budget = ai_budget
+    if ai_only_bypass and effective_ai_budget <= 0:
+        effective_ai_budget = 8
 
     def finalize(
         selected_attempt: Dict[str, Any],
@@ -1784,56 +2502,76 @@ def execute_case(
             ai_count,
             ai_status_value,
             stop_reason_value,
+            until_confirmed=until_confirmed,
             trace_case_file=trace_file,
+            framework_profile=profile,
+            runtime_mode=runtime_mode,
         )
 
     try:
-        # 1) Dictionary first: payload outer loop, request candidate inner loop.
-        for payload in dictionary_payloads:
-            for req in request_candidates:
-                dictionary_count += 1
-                attempt = execute_attempt(
-                    case,
-                    category,
-                    req,
-                    payload,
-                    dictionary_payload_source,
-                    str(case.get("planning_source") or "rules"),
-                    rules,
-                    notes,
-                    server,
-                )
-                attempt = apply_runtime_refinement(case, attempt, baseline_attempt)
-                attempts.append(attempt)
-                if baseline_attempt is None:
-                    baseline_attempt = attempt
-                if attempt.get("result") in {"confirmed", "conditional"}:
-                    stop_reason = f"dictionary_{attempt.get('result')}"
-                    selected = attempt
-                    matched_idx = len(attempts)
-                    ai_status = "disabled" if not ai_realtime_enabled else "not_needed"
-                    return finalize(selected, matched_idx, ai_status, stop_reason)
+        # 1) Dictionary first (default mode only): payload outer loop, request candidate inner loop.
+        if not ai_only_bypass:
+            dictionary_hit = False
+            for payload in dictionary_payloads:
+                for req in request_candidates:
+                    dictionary_count += 1
+                    attempt = execute_attempt(
+                        case,
+                        category,
+                        req,
+                        payload,
+                        dictionary_payload_source,
+                        str(case.get("planning_source") or "rules"),
+                        rules,
+                        notes,
+                        server,
+                    )
+                    attempt = apply_runtime_refinement(case, attempt, baseline_attempt)
+                    attempts.append(attempt)
+                    if baseline_attempt is None:
+                        baseline_attempt = attempt
+                    if attempt.get("result") in target_results:
+                        if not ai_force_all:
+                            stop_reason = f"dictionary_{attempt.get('result')}"
+                            selected = attempt
+                            matched_idx = len(attempts)
+                            ai_status = "disabled" if not ai_realtime_enabled else "not_needed"
+                            return finalize(selected, matched_idx, ai_status, stop_reason)
+                        dictionary_selected = attempt
+                        dictionary_selected_idx = len(attempts)
+                        dictionary_hit = True
+                        break
+                if dictionary_hit:
+                    break
 
-        # 2) AI supplement after dictionary exhaustion.
+        # 2) AI loop.
         ai_status = "disabled"
         if ai_realtime_enabled:
-            if ai_runtime_status == "failed":
+            if ai_runtime_status == "failed" and not ai_only_bypass:
                 ai_status = "failed"
             else:
-                ai_status = "ok"
+                ai_status = "ok" if ai_runtime_status != "failed" else "failed_seed"
                 ai_candidates = ai_suggestions_map.get(case_id) or []
+                if ai_only_bypass and not ai_candidates:
+                    ai_candidates = build_ai_fallback_candidates(case, request_candidates, effective_ai_budget)
+                    if ai_status == "ok":
+                        ai_status = "seed_only"
                 dedupe = set()
-                capped = ai_candidates[: max(ai_budget, 0)]
+                capped = ai_candidates[: max(effective_ai_budget, 0)]
 
                 for raw in capped:
-                    if ai_count >= ai_budget:
+                    if ai_count >= effective_ai_budget:
                         break
 
                     req = normalize_request_candidate(case, raw if isinstance(raw, dict) else {})
                     payload = str(raw.get("payload") or "").strip() if isinstance(raw, dict) else ""
                     if not payload:
                         # Keep flow resilient when AI omitted payload.
-                        payload = dictionary_payloads[0] if dictionary_payloads else "payload"
+                        if ai_only_bypass:
+                            seed_payloads = ai_seed_payloads_for_case(case, max_payloads=max(1, effective_ai_budget or 1))
+                            payload = seed_payloads[0] if seed_payloads else "payload"
+                        else:
+                            payload = dictionary_payloads[0] if dictionary_payloads else "payload"
 
                     dedupe_key = (
                         req.get("method"),
@@ -1864,7 +2602,7 @@ def execute_case(
                     if baseline_attempt is None:
                         baseline_attempt = attempt
 
-                    if attempt.get("result") in {"confirmed", "conditional"}:
+                    if attempt.get("result") in target_results:
                         stop_reason = f"ai_{attempt.get('result')}"
                         selected = attempt
                         matched_idx = len(attempts)
@@ -1872,6 +2610,18 @@ def execute_case(
 
                 if ai_count == 0:
                     ai_status = "no_candidates"
+
+        if dictionary_selected is not None:
+            matched_result = str(dictionary_selected.get("result") or "confirmed")
+            if not ai_realtime_enabled:
+                stop_reason = f"dictionary_{matched_result}_ai_disabled"
+            elif ai_status == "failed":
+                stop_reason = f"dictionary_{matched_result}_ai_failed"
+            elif ai_status == "no_candidates":
+                stop_reason = f"dictionary_{matched_result}_ai_no_candidates"
+            else:
+                stop_reason = f"dictionary_{matched_result}_ai_exhausted"
+            return finalize(dictionary_selected, dictionary_selected_idx, ai_status, stop_reason)
 
         # 3) No hit: choose strongest evidence candidate.
         selected, selected_idx = choose_best_attempt(attempts, str(case.get("sink_type") or case.get("vuln_type") or ""))
@@ -1898,7 +2648,7 @@ def execute_case(
                 "stdout_tail": "",
                 "stderr_tail": "",
                 "http_status": None,
-                "execution_mode": "curl_http" if isinstance(server, dict) else "slice_cli",
+                "execution_mode": str(server.get("mode") or "curl_http") if isinstance(server, dict) else "slice_cli",
                 "curl_cmd": "",
                 "request_preview": "",
                 "response_header_preview": "",
@@ -1913,12 +2663,28 @@ def execute_case(
             }
             selected_idx = 0
 
-        stop_reason = "exhausted_no_match"
+        if ai_only_bypass:
+            if ai_count == 0:
+                if ai_status == "no_candidates":
+                    stop_reason = "ai_no_candidates"
+                elif ai_status == "disabled":
+                    stop_reason = "ai_disabled"
+                else:
+                    stop_reason = "ai_no_attempt"
+            elif until_confirmed and str(selected.get("result") or "") != "confirmed":
+                stop_reason = "ai_target_confirmed_not_reached"
+            else:
+                stop_reason = "ai_exhausted_no_match"
+        elif until_confirmed and str(selected.get("result") or "") != "confirmed":
+            stop_reason = "target_confirmed_not_reached"
+        else:
+            stop_reason = "exhausted_no_match"
         matched_index = (selected_idx + 1) if selected_idx is not None else 1
 
         return finalize(selected, matched_index, ai_status, stop_reason)
     finally:
-        stop_case_http_server(server)
+        if server_owned:
+            stop_case_http_server(server)
 
 
 def main() -> None:
@@ -1938,17 +2704,40 @@ def main() -> None:
     parser.add_argument("--ai-rounds", type=int, default=2, help="AI rounds")
     parser.add_argument("--ai-candidates-per-round", type=int, default=5, help="AI candidates per round")
     parser.add_argument("--ai-timeout", type=int, default=30, help="AI timeout seconds")
+    parser.add_argument("--ai-force-all", action="store_true", help="Force AI pass for every case even when dictionary already matches")
+    parser.add_argument("--until-confirmed", dest="until_confirmed", action="store_true", help="Keep trying until result becomes confirmed (within budget)")
+    parser.add_argument("--allow-conditional-stop", dest="until_confirmed", action="store_false", help="Allow conditional as early stop target")
+    parser.add_argument("--ai-only-bypass", action="store_true", help="Use AI iterative bypass only (skip dictionary loop)")
+    parser.set_defaults(until_confirmed=False)
     parser.add_argument("--trace-verbose", action="store_true", help="Write per-case verbose trace json")
+    parser.add_argument("--target-url", default="http://target", help="Target URL for dynamic verification (default: http://target)")
+    parser.add_argument("--framework-profile", default="", help="Optional framework profile json generated by audit_cli")
 
     args = parser.parse_args()
+    global TARGET_URL
+    TARGET_URL = args.target_url.rstrip("/")
 
     project_root = os.path.abspath(args.project)
     out_root = build_output_root(project_root, args.out)
     os.makedirs(out_root, exist_ok=True)
+    run_id = str(os.environ.get("AUDIT_RUN_ID") or "").strip()
+    if not run_id:
+        run_id = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+    run_started_at = time.strftime("%Y-%m-%dT%H:%M:%S")
 
     debug_dir = os.path.join(out_root, "debug_verify")
     os.makedirs(debug_dir, exist_ok=True)
     trace_case_dir = os.path.join(debug_dir, "trace_cases")
+
+    framework_profile = load_framework_profile(str(args.framework_profile or "").strip(), project_root)
+    framework_profile.setdefault("project_root", project_root)
+    if str(framework_profile.get("mode") or "") == "framework":
+        framework_profile.setdefault("boot_status", "pending")
+        framework_profile.setdefault("runtime_mode", "framework_pending")
+    else:
+        framework_profile["boot_status"] = "not_required"
+        framework_profile["runtime_mode"] = "snippet"
+    write_framework_profile(framework_profile, debug_dir, out_root)
 
     if args.cases:
         cases_path = os.path.abspath(args.cases)
@@ -1957,8 +2746,19 @@ def main() -> None:
 
     if not os.path.exists(cases_path):
         write_empty_outputs(debug_dir)
-        context_path = build_ai_request_context([], debug_dir)
-        print(f"No debug cases found. Context: {context_path}")
+        empty_meta = {
+            "run_id": run_id,
+            "generated_at": run_started_at,
+            "executed_in_container": bool(running_in_container()),
+            "case_count": 0,
+            "framework_mode": str(framework_profile.get("runtime_mode") or framework_profile.get("mode") or "-"),
+            "framework_boot_status": str(framework_profile.get("boot_status") or "-"),
+            "result_stats": summarize_result_counts([]),
+        }
+        write_json(os.path.join(debug_dir, DEBUG_RUNTIME_JSON), empty_meta)
+        write_text(os.path.join(debug_dir, DEBUG_RUNTIME_MD), render_runtime_meta_md(empty_meta))
+        context_path = build_ai_request_context([], debug_dir, ai_only_bypass=bool(args.ai_only_bypass))
+        print(f"No debug cases found. Context: {context_path}; framework_profile: {os.path.join(debug_dir, FRAMEWORK_PROFILE_JSON)}")
         return
 
     with open(cases_path, "r", encoding="utf-8") as f:
@@ -1966,13 +2766,30 @@ def main() -> None:
 
     if not isinstance(cases, list) or not cases:
         write_empty_outputs(debug_dir)
-        context_path = build_ai_request_context([], debug_dir)
-        print(f"No debug cases found. Context: {context_path}")
+        empty_meta = {
+            "run_id": run_id,
+            "generated_at": run_started_at,
+            "executed_in_container": bool(running_in_container()),
+            "case_count": 0,
+            "framework_mode": str(framework_profile.get("runtime_mode") or framework_profile.get("mode") or "-"),
+            "framework_boot_status": str(framework_profile.get("boot_status") or "-"),
+            "result_stats": summarize_result_counts([]),
+        }
+        write_json(os.path.join(debug_dir, DEBUG_RUNTIME_JSON), empty_meta)
+        write_text(os.path.join(debug_dir, DEBUG_RUNTIME_MD), render_runtime_meta_md(empty_meta))
+        context_path = build_ai_request_context([], debug_dir, ai_only_bypass=bool(args.ai_only_bypass))
+        print(f"No debug cases found. Context: {context_path}; framework_profile: {os.path.join(debug_dir, FRAMEWORK_PROFILE_JSON)}")
         return
 
-    context_path = build_ai_request_context(cases, debug_dir)
+    for case in cases:
+        try:
+            _ = generate_slice_for_case(case, project_root, out_root)
+        except Exception:
+            continue
+
+    context_path = build_ai_request_context(cases, debug_dir, ai_only_bypass=bool(args.ai_only_bypass))
     if args.prepare_ai_context_only:
-        print(f"ai_request_context.json written: {context_path}")
+        print(f"ai_request_context.json written: {context_path}; framework_profile: {os.path.join(debug_dir, FRAMEWORK_PROFILE_JSON)}")
         return
 
     rules = load_change_rules(RULES_PATH)
@@ -1980,42 +2797,76 @@ def main() -> None:
     ai_suggestions_map = load_ai_suggestions(args.ai_suggestions)
     ai_runtime_status = str(args.ai_runtime_status or "").strip().lower()
 
+    shared_server: Optional[Dict[str, Any]] = None
+    framework_runtime_mode = "snippet"
+    if str(framework_profile.get("mode") or "") == "framework":
+        shared_server, boot_err = start_framework_http_server(framework_profile, out_root)
+        if isinstance(shared_server, dict):
+            framework_profile["boot_status"] = "ok"
+            framework_profile["boot_error"] = ""
+            framework_profile["runtime_mode"] = "framework_http"
+            framework_profile["runtime_base_url"] = str(shared_server.get("base_url") or "")
+            framework_runtime_mode = "framework_http"
+        else:
+            framework_profile["boot_status"] = "failed"
+            framework_profile["boot_error"] = str(boot_err or "framework_boot_failed")
+            framework_profile["runtime_mode"] = "snippet_fallback"
+            framework_runtime_mode = "snippet_fallback"
+    write_framework_profile(framework_profile, debug_dir, out_root)
+
     evidence_rows: List[Dict[str, Any]] = []
     process_rows: List[Dict[str, Any]] = []
     poc_rows: List[Dict[str, Any]] = []
     func_trace_rows: List[Dict[str, Any]] = []
 
-    for case in cases:
-        evidence_row, process_row, poc_row, func_trace_row = execute_case(
-            case,
-            rules,
-            ai_suggestions_map=ai_suggestions_map,
-            ai_realtime_enabled=bool(args.ai_realtime),
-            ai_budget=ai_budget,
-            ai_runtime_status=ai_runtime_status,
-            project_root=project_root,
-            out_root=out_root,
-            trace_verbose=bool(args.trace_verbose),
-            trace_case_dir=trace_case_dir,
-        )
-        evidence_rows.append(evidence_row)
-        process_rows.append(process_row)
-        poc_rows.append(poc_row)
-        func_trace_rows.append(func_trace_row)
+    try:
+        for case in cases:
+            evidence_row, process_row, poc_row, func_trace_row = execute_case(
+                case,
+                rules,
+                ai_suggestions_map=ai_suggestions_map,
+                ai_realtime_enabled=bool(args.ai_realtime),
+                ai_budget=ai_budget,
+                ai_runtime_status=ai_runtime_status,
+                ai_force_all=bool(args.ai_force_all),
+                until_confirmed=bool(args.until_confirmed),
+                ai_only_bypass=bool(args.ai_only_bypass),
+                project_root=project_root,
+                out_root=out_root,
+                trace_verbose=bool(args.trace_verbose),
+                trace_case_dir=trace_case_dir,
+                framework_profile=framework_profile,
+                runtime_mode=framework_runtime_mode,
+                shared_server=shared_server,
+            )
+            evidence_rows.append(evidence_row)
+            process_rows.append(process_row)
+            poc_rows.append(poc_row)
+            func_trace_rows.append(func_trace_row)
+    finally:
+        stop_case_http_server(shared_server)
 
-    write_json(os.path.join(debug_dir, "debug_evidence.json"), evidence_rows)
-    write_text(os.path.join(debug_dir, "debug_evidence.md"), render_md(evidence_rows))
-    write_json(os.path.join(debug_dir, "debug_process.json"), process_rows)
-    write_text(os.path.join(debug_dir, "debug_process.md"), render_process_md(process_rows))
-    write_json(os.path.join(debug_dir, "debug_poc.json"), poc_rows)
-    write_text(os.path.join(debug_dir, "debug_poc.md"), render_poc_md(poc_rows))
-    write_json(os.path.join(debug_dir, "debug_func_trace.json"), func_trace_rows)
-    write_text(os.path.join(debug_dir, "debug_func_trace.md"), render_func_trace_md(func_trace_rows))
+    write_debug_outputs(debug_dir, evidence_rows, process_rows, poc_rows, func_trace_rows)
+    runtime_meta = {
+        "run_id": run_id,
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "executed_in_container": bool(running_in_container()),
+        "case_count": len(cases),
+        "framework_mode": framework_runtime_mode,
+        "framework_boot_status": str(framework_profile.get("boot_status") or "-"),
+        "ai_only_bypass": bool(args.ai_only_bypass),
+        "ai_realtime": bool(args.ai_realtime),
+        "ai_runtime_status": ai_runtime_status or ("disabled" if not args.ai_realtime else "unknown"),
+        "until_confirmed": bool(args.until_confirmed),
+        "result_stats": summarize_result_counts(evidence_rows),
+    }
+    write_json(os.path.join(debug_dir, DEBUG_RUNTIME_JSON), runtime_meta)
+    write_text(os.path.join(debug_dir, DEBUG_RUNTIME_MD), render_runtime_meta_md(runtime_meta))
 
-    print(f"debug_evidence.json written: {os.path.join(debug_dir, 'debug_evidence.json')}")
-    print(f"debug_process.json written: {os.path.join(debug_dir, 'debug_process.json')}")
-    print(f"debug_poc.json written: {os.path.join(debug_dir, 'debug_poc.json')}")
-    print(f"debug_func_trace.json written: {os.path.join(debug_dir, 'debug_func_trace.json')}")
+    print(f"动态调试证据.json written: {os.path.join(debug_dir, DEBUG_JSON_NAMES['evidence'])}")
+    print(f"动态调试过程.json written: {os.path.join(debug_dir, DEBUG_JSON_NAMES['process'])}")
+    print(f"动态调试PoC.json written: {os.path.join(debug_dir, DEBUG_JSON_NAMES['poc'])}")
+    print(f"函数追踪证据.json written: {os.path.join(debug_dir, DEBUG_JSON_NAMES['func_trace'])}")
 
 
 if __name__ == "__main__":

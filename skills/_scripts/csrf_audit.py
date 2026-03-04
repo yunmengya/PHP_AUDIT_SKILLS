@@ -83,7 +83,7 @@ def scan_csrf(project_root: str, out_root: str):
         fid = stable_id("CSRF", controller_file, m.start(), r.get("path") or "")
         findings.append({
             "id": fid,
-            "title": "Possible CSRF Missing Protection",
+            "title": "可能缺少 CSRF 防护",
             "severity": "medium",
             "independent_severity": "medium",
             "combined_severity": "medium",
@@ -100,7 +100,7 @@ def scan_csrf(project_root: str, out_root: str):
             "validation": [],
             "controllability": "conditional",
             "poc": {"method": method, "path": r.get("path"), "notes": "仅模板，不执行"},
-            "notes": "No CSRF guard keywords found in handler.",
+            "notes": "处理函数内未发现 CSRF 防护关键词。",
         })
     return findings
 
@@ -117,9 +117,9 @@ def main() -> None:
 
     findings = scan_csrf(project_root, out_root)
     findings = apply_rule_audit_quick_filter(findings, "csrf_audit")
-    write_findings(out_dir, "CSRF Audit Findings", findings)
+    write_findings(out_dir, "CSRF 风险发现", findings)
     write_module_report(out_dir, "csrf_audit", "CSRF 漏洞审计报告", findings)
-    print(f"Wrote {len(findings)} findings to {out_dir}")
+    print(f"已写入 {len(findings)} 条 CSRF 发现到 {out_dir}")
 
 
 if __name__ == "__main__":

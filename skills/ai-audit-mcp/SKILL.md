@@ -1,3 +1,8 @@
+---
+name: ai-audit-mcp
+description: Run AI-first audit on generated contexts and output normalized exploitability findings.
+---
+
 # ai-audit-mcp
 
 目标：基于 `ai_audit` 生成的上下文进行 **全 AI 审计**，输出 AI 发现列表。
@@ -11,7 +16,7 @@
 ```bash
 python3 /Users/dream/vscode_code/php_skills/skills/ai-audit-mcp/scripts/ai_audit_mcp.py --project {project} --out {out} --workers 4
 ```
-依赖：本机 `claude` CLI（默认模型 `sonnet`，可通过 `AI_AUDIT_MODEL` 指定）
+依赖：本机 `claude` CLI（默认模型 `sonnet`，可通过 `AI_AUDIT_MODEL` 指定；执行参数包含 `--dangerously-skip-permissions`）
 
 每个 `context.json` 已包含：
 - 路由与 trace

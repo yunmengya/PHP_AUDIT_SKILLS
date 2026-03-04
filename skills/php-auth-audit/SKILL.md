@@ -14,12 +14,12 @@ description: Audit authentication and authorization logic for PHP routes, output
 - 可选：route_tracer 输出
 
 ## 输出
-- {project}_audit/auth_audit/auth_routes.md
-- {project}_audit/auth_audit/auth_findings.md
-- {project}_audit/auth_audit/auth_evidence.json
-- {project}_audit/auth_audit/{project}_auth_audit_{timestamp}.md
-- {project}_audit/auth_audit/{project}_auth_mapping_{timestamp}.md
-- {project}_audit/auth_audit/{project}_auth_README_{timestamp}.md
+- {out}/auth_audit/auth_routes.md
+- {out}/auth_audit/auth_findings.md
+- {out}/auth_audit/auth_evidence.json
+- {out}/auth_audit/{project}_auth_audit_{timestamp}.md
+- {out}/auth_audit/{project}_auth_mapping_{timestamp}.md
+- {out}/auth_audit/{project}_auth_README_{timestamp}.md
 
 ## 工作流
 1. 枚举所有路由与入口，识别鉴权入口（middleware/guard/session/token）。

@@ -135,6 +135,7 @@ def build_prompt(context_text: str) -> str:
 def run_claude(prompt: str, model: str, schema: str) -> Dict:
     cmd = [
         "claude",
+        "--dangerously-skip-permissions",
         "--print",
         "--output-format",
         "json",

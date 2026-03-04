@@ -5,7 +5,7 @@ import re
 import sys
 import threading
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 SQL_SINK_PATTERNS = [
     {"type": "sql", "regex": re.compile(r"\b(mysql_query|mysqli_query|pg_query|sqlite_query)\b", re.I)},
@@ -31,13 +31,19 @@ INCLUDE_SINK_PATTERNS = [
 ]
 
 SSRF_SINK_PATTERNS = [
-    {"type": "ssrf", "regex": re.compile(r"\b(curl_init|curl_setopt|curl_exec)\b", re.I)},
+    {"type": "ssrf", "regex": re.compile(r"\b(curl_init|curl_setopt|curl_setopt_array|curl_exec)\b", re.I)},
+    {"type": "ssrf", "regex": re.compile(r"\bCURLOPT_URL\b", re.I)},
     {"type": "ssrf", "regex": re.compile(r"\b(file_get_contents|fopen|fsockopen|stream_socket_client|get_headers)\b", re.I)},
+    {"type": "ssrf", "regex": re.compile(r"\bHttp::\s*(get|post|put|delete|patch|head|send)\s*\(", re.I)},
+    {"type": "ssrf", "regex": re.compile(r"\bRequests::\s*(get|post|request)\s*\(", re.I)},
+    {"type": "ssrf", "regex": re.compile(r"->\s*(request|get|post|put|delete|patch|head|send)\s*\(", re.I)},
 ]
 
 XXE_SINK_PATTERNS = [
     {"type": "xxe", "regex": re.compile(r"\b(simplexml_load_string|simplexml_load_file|xml_parse|xml_parse_into_struct)\b", re.I)},
-    {"type": "xxe", "regex": re.compile(r"DOMDocument->\s*load(XML)?\s*\(", re.I)},
+    {"type": "xxe", "regex": re.compile(r"->\s*loadXML\s*\(", re.I)},
+    {"type": "xxe", "regex": re.compile(r"\bnew\s+SimpleXMLElement\s*\(", re.I)},
+    {"type": "xxe", "regex": re.compile(r"\bXMLReader::XML\s*\(", re.I)},
 ]
 
 XSS_SINK_PATTERNS = [
@@ -246,6 +252,59 @@ REQUEST_KEYWORDS = [
 ]
 
 SKIP_DIRS = {".git", "vendor", "node_modules", "storage", "runtime", "cache"}
+MAX_SCAN_FILE_BYTES = 2 * 1024 * 1024
+
+CODE_FILE_EXTENSIONS = {
+    ".php",
+    ".phtml",
+    ".inc",
+    ".module",
+    ".phar",
+    ".ctp",
+    ".tpl",
+    ".twig",
+    ".latte",
+    ".blade.php",
+    ".html",
+    ".htm",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".py",
+    ".rb",
+    ".go",
+    ".java",
+    ".kt",
+    ".scala",
+    ".cs",
+    ".c",
+    ".cc",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".rs",
+    ".swift",
+    ".m",
+    ".mm",
+    ".sql",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".xml",
+    ".sh",
+    ".bash",
+    ".zsh",
+}
+
+PHP_HINT_EXTENSIONS = {
+    ".php",
+    ".phtml",
+    ".inc",
+    ".module",
+    ".phar",
+    ".ctp",
+}
 
 
 def read_text(path: str) -> str:
@@ -263,19 +322,76 @@ def write_text(path: str, text: str) -> None:
         f.write(text)
 
 
-def walk_php_files(root: str) -> List[str]:
+def _is_binary_file(path: str) -> bool:
+    try:
+        with open(path, "rb") as f:
+            chunk = f.read(4096)
+    except Exception:
+        return True
+    if not chunk:
+        return False
+    return b"\x00" in chunk
+
+
+def _looks_like_code_file(path: str) -> bool:
+    lower_path = path.lower()
+    if lower_path.endswith(".blade.php"):
+        return True
+    _, ext = os.path.splitext(lower_path)
+    if ext in CODE_FILE_EXTENSIONS:
+        return True
+    # Some entry scripts have no extension; include only if they contain PHP tag.
+    if "." not in os.path.basename(lower_path):
+        try:
+            text = read_text(path)
+        except Exception:
+            return False
+        return "<?php" in text.lower()
+    return False
+
+
+def _looks_like_php_file(path: str) -> bool:
+    lower_path = path.lower()
+    if lower_path.endswith(".blade.php"):
+        return True
+    _, ext = os.path.splitext(lower_path)
+    if ext in PHP_HINT_EXTENSIONS:
+        return True
+    try:
+        text = read_text(path)
+    except Exception:
+        return False
+    return "<?php" in text.lower()
+
+
+def walk_code_files(root: str) -> List[str]:
     results = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for name in filenames:
-            if name.lower().endswith(".php"):
-                results.append(os.path.join(dirpath, name))
-    return results
+            path = os.path.join(dirpath, name)
+            try:
+                if os.path.getsize(path) > MAX_SCAN_FILE_BYTES:
+                    continue
+            except OSError:
+                continue
+            if _is_binary_file(path):
+                continue
+            if _looks_like_code_file(path):
+                results.append(path)
+    return sorted(set(results))
+
+
+def walk_php_files(root: str) -> List[str]:
+    # Backward compatible function name; now scans code files with noise control.
+    return walk_code_files(root)
 
 
 def find_class_files(root: str) -> Dict[str, List[str]]:
     index: Dict[str, List[str]] = {}
     for path in walk_php_files(root):
+        if not _looks_like_php_file(path):
+            continue
         try:
             text = read_text(path)
         except Exception:
@@ -356,12 +472,154 @@ def detect_sources_in_lines(lines: List[str], file_path: str, start_line: int) -
                 param = m.group(2)
             else:
                 kind = "REQUEST"
-                idx = m.lastindex or 1
-                param = m.group(idx)
+                group_idx = m.lastindex or 1
+                param = m.group(group_idx)
             sources.append({"file": file_path, "line": idx, "param": param, "kind": kind})
         if "php://input" in line:
             sources.append({"file": file_path, "line": idx, "param": "raw", "kind": "BODY"})
     return sources
+
+
+def _extract_source_from_code(code: str) -> Tuple[str, str]:
+    text = str(code or "")
+    for pattern in SOURCE_PATTERNS:
+        m = pattern.search(text)
+        if not m:
+            continue
+        if pattern.pattern.startswith(r"\$_"):
+            return str(m.group(2) or "input"), str(m.group(1) or "REQUEST").upper()
+        group_idx = m.lastindex or 1
+        return str(m.group(group_idx) or "input"), "REQUEST"
+    if "php://input" in text:
+        return "raw", "BODY"
+    return "input", "REQUEST"
+
+
+def _source_from_source_path(source_path: Any) -> Optional[Dict[str, Any]]:
+    raw = str(source_path or "").strip()
+    if not raw:
+        return None
+    file_part = raw
+    line_no = 0
+    if ":" in raw:
+        head, tail = raw.rsplit(":", 1)
+        if tail.isdigit():
+            file_part = head
+            line_no = int(tail)
+    if not file_part:
+        return None
+    return {
+        "file": file_part,
+        "line": line_no if line_no > 0 else 1,
+        "param": "input",
+        "kind": "REQUEST",
+        "inferred": True,
+    }
+
+
+def infer_source_from_finding(finding: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if not isinstance(finding, dict):
+        return None
+    source = finding.get("source")
+    if isinstance(source, dict) and source.get("file"):
+        return source
+    if isinstance(source, str) and source.strip():
+        return {
+            "file": "",
+            "line": 1,
+            "param": source.strip(),
+            "kind": "REQUEST",
+            "inferred": True,
+        }
+
+    source_path_hint = _source_from_source_path(finding.get("source_path"))
+    if source_path_hint:
+        return source_path_hint
+
+    taint = finding.get("taint")
+    if isinstance(taint, list):
+        for node in taint:
+            if not isinstance(node, dict):
+                continue
+            file_path = str(node.get("file") or "").strip()
+            if not file_path:
+                continue
+            line_no = int(node.get("line") or 1)
+            param, kind = _extract_source_from_code(str(node.get("code") or ""))
+            return {
+                "file": file_path,
+                "line": line_no if line_no > 0 else 1,
+                "param": param,
+                "kind": kind,
+                "inferred": True,
+            }
+
+    trace_chain = finding.get("trace_chain")
+    if isinstance(trace_chain, list):
+        for node in trace_chain:
+            if not isinstance(node, dict):
+                continue
+            file_path = str(node.get("file") or "").strip()
+            if not file_path:
+                continue
+            line_no = int(node.get("line") or 1)
+            param, kind = _extract_source_from_code(str(node.get("code") or ""))
+            return {
+                "file": file_path,
+                "line": line_no if line_no > 0 else 1,
+                "param": param,
+                "kind": kind,
+                "inferred": True,
+            }
+
+    sink = finding.get("sink")
+    if isinstance(sink, dict) and sink.get("file"):
+        file_path = str(sink.get("file") or "")
+        sink_line = int(sink.get("line") or 1)
+        param, kind = _extract_source_from_code(str(sink.get("code") or ""))
+        return {
+            "file": file_path,
+            "line": sink_line if sink_line > 1 else 1,
+            "param": param,
+            "kind": kind,
+            "inferred": True,
+        }
+
+    route = finding.get("route")
+    if isinstance(route, dict):
+        params = route.get("params")
+        if isinstance(params, list) and params:
+            first = params[0] if isinstance(params[0], dict) else {}
+            pname = str(first.get("name") or "id")
+            return {
+                "file": "",
+                "line": 1,
+                "param": pname,
+                "kind": str(first.get("source") or "path").upper(),
+                "inferred": True,
+            }
+
+    return None
+
+
+def backfill_finding_source(finding: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(finding, dict):
+        return finding
+    existing = finding.get("source")
+    if isinstance(existing, dict) and existing.get("file"):
+        return finding
+    inferred = infer_source_from_finding(finding)
+    if inferred:
+        finding["source"] = inferred
+    return finding
+
+
+def backfill_findings_source(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not isinstance(findings, list):
+        return findings
+    for row in findings:
+        backfill_finding_source(row)
+    return findings
 
 
 def detect_validations(lines: List[str], start_line: int) -> List[Dict]:
@@ -376,17 +634,22 @@ def detect_validations(lines: List[str], start_line: int) -> List[Dict]:
 
 def detect_sinks(lines: List[str], start_line: int, file_path: str) -> List[Dict]:
     sinks = []
+    seen = set()
     for idx, line in enumerate(lines, start=start_line):
         for rule in SINK_PATTERNS:
             if rule["regex"].search(line):
+                code = line.strip()
+                dedupe_key = (rule["type"], idx, code)
+                if dedupe_key in seen:
+                    continue
+                seen.add(dedupe_key)
                 sinks.append({
                     "type": rule["type"],
                     "file": file_path,
                     "line": idx,
                     "function": rule["regex"].pattern,
-                    "code": line.strip(),
+                    "code": code,
                 })
-                break
     return sinks
 
 
@@ -474,6 +737,8 @@ class Progress:
 def find_pop_candidates(project_root: str) -> List[Dict]:
     candidates: List[Dict] = []
     for path in walk_php_files(project_root):
+        if not _looks_like_php_file(path):
+            continue
         try:
             text = read_text(path)
         except Exception:

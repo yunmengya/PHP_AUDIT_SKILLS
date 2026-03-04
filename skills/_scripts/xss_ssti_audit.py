@@ -12,6 +12,7 @@ from audit_helpers import (
     write_module_report,
     write_findings,
 )
+from common import backfill_findings_source
 
 
 def main() -> None:
@@ -25,13 +26,14 @@ def main() -> None:
 
     traces = load_traces(out_root)
     new_findings = extract_findings_from_traces(traces, ["xss", "ssti"], "Possible XSS/SSTI", "XSS")
+    new_findings = backfill_findings_source(new_findings)
     new_findings = apply_rule_audit_quick_filter(new_findings, "xss_ssti_audit")
 
     out_dir = os.path.join(out_root, "xss_ssti_audit")
     existing = load_findings(os.path.join(out_dir, "findings.json"))
     merged = merge_findings(existing, new_findings)
 
-    write_findings(out_dir, "XSS/SSTI Audit Findings", merged)
+    write_findings(out_dir, "XSS/SSTI 风险发现", merged)
     write_module_report(out_dir, "xss_ssti_audit", "XSS/SSTI 漏洞审计报告", merged)
     print(f"Wrote {len(merged)} findings to {out_dir}")
 

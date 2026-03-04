@@ -83,7 +83,7 @@ def findings_from_traces(traces: List[Dict]) -> List[Dict]:
                 continue
             findings.append({
                 "id": f"SQLI-{seq:03d}",
-                "title": "Possible SQL Injection",
+                "title": "可能存在 SQL 注入",
                 "severity": severity,
                 "independent_severity": severity,
                 "combined_severity": severity,
@@ -95,7 +95,7 @@ def findings_from_traces(traces: List[Dict]) -> List[Dict]:
                 "validation": validation,
                 "controllability": controllability,
                 "poc": poc,
-                "notes": "Derived from route_tracer output.",
+                "notes": "基于 route_tracer 追踪结果生成。",
             })
             seq += 1
     return findings
@@ -112,7 +112,7 @@ def fallback_findings(project_root: str) -> List[Dict]:
                     continue
                 findings.append({
                     "id": f"SQLI-{seq:03d}",
-                    "title": "Possible SQL Injection",
+                    "title": "可能存在 SQL 注入",
                     "severity": "medium",
                     "independent_severity": "medium",
                     "combined_severity": "medium",
@@ -124,7 +124,7 @@ def fallback_findings(project_root: str) -> List[Dict]:
                     "validation": [],
                     "controllability": "conditional",
                     "poc": None,
-                    "notes": "Fallback scan without route_tracer evidence.",
+                    "notes": "基于兜底扫描结果，未使用 route_tracer 证据。",
                 })
                 seq += 1
     return findings
@@ -229,7 +229,7 @@ def render_sql_report(findings: List[Dict], out_root: str, ts: str) -> str:
         ])
     lines.append(
         markdown_table(
-            ["ID", "标题", "位置", "独立等级", "组合等级", "置信度", "可利用性", "可控性", "路由/入口", "Sink", "Debug结论", "变化类型", "AI理由", "证据摘要", "备注"],
+            ["编号", "标题", "位置", "独立等级", "组合等级", "置信度", "可利用性", "可控性", "路由/入口", "危险函数", "动态结论", "变化类型", "AI理由", "证据摘要", "备注"],
             detail_rows,
         )
     )
@@ -244,7 +244,7 @@ def render_sql_report(findings: List[Dict], out_root: str, ts: str) -> str:
             compact_text(f.get("taint")),
             compact_text(f.get("validation")),
         ])
-    lines.append(markdown_table(["ID", "Source", "Taint", "Validation"], evidence_rows))
+    lines.append(markdown_table(["编号", "输入来源", "污点传播", "校验逻辑"], evidence_rows))
     lines.append("")
 
     lines.append("## PoC 表")
@@ -254,9 +254,9 @@ def render_sql_report(findings: List[Dict], out_root: str, ts: str) -> str:
         poc = ai_table.get("poc") or f.get("poc")
         poc_source = ai_table.get("poc_source") or ("template" if poc else "-")
         if poc_source == "template":
-            poc_source = "template(需人工校验)"
+            poc_source = "模板(需人工校验)"
         poc_rows.append([compact_text(f.get("id") or "-"), compact_text(poc_source), compact_text(poc)])
-    lines.append(markdown_table(["ID", "PoC来源", "PoC"], poc_rows))
+    lines.append(markdown_table(["编号", "PoC来源", "PoC"], poc_rows))
     lines.append("")
 
     lines.append("## 修复建议")
@@ -294,19 +294,19 @@ def write_findings(findings: List[Dict], out_root: str) -> None:
     out_dir = os.path.join(out_root, "sql_audit")
     os.makedirs(out_dir, exist_ok=True)
     write_json(os.path.join(out_dir, "findings.json"), findings)
-    lines = ["# SQL Audit Findings", "", f"Total: {len(findings)}", ""]
+    lines = ["# SQL 注入发现", "", f"总数：{len(findings)}", ""]
     for f in findings:
         route = f.get("route") or {}
         lines.append(f"## {f['id']} {f['title']}")
-        lines.append(f"- Severity: {f['severity']}")
-        lines.append(f"- Independent: {f.get('independent_severity') or f.get('severity')}")
-        lines.append(f"- Combined: {f.get('combined_severity') or f.get('severity')}")
-        lines.append(f"- Confidence: {f['confidence']}")
+        lines.append(f"- 风险等级：{f['severity']}")
+        lines.append(f"- 独立评级：{f.get('independent_severity') or f.get('severity')}")
+        lines.append(f"- 综合评级：{f.get('combined_severity') or f.get('severity')}")
+        lines.append(f"- 置信度：{f['confidence']}")
         if route:
-            lines.append(f"- Route: {route.get('method')} {route.get('path')}")
+            lines.append(f"- 路由：{route.get('method')} {route.get('path')}")
         sink = f.get("sink") or {}
         if sink:
-            lines.append(f"- Sink: {sink.get('file')}:{sink.get('line')}")
+            lines.append(f"- 危险点：{sink.get('file')}:{sink.get('line')}")
         lines.append("")
     write_text(os.path.join(out_dir, "findings.md"), "\n".join(lines) + "\n")
 

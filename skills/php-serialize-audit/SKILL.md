@@ -14,9 +14,9 @@ description: Audit PHP deserialization and Phar/POP chain risks, output evidence
 - 可选：route_tracer 输出
 
 ## 输出
-- {project}_audit/serialize_audit/findings.json
-- {project}_audit/serialize_audit/findings.md
-- {project}_audit/serialize_audit/{project}_serialize_audit_{timestamp}.md
+- {out}/serialize_audit/findings.json
+- {out}/serialize_audit/findings.md
+- {out}/serialize_audit/{project}_serialize_audit_{timestamp}.md
 
 ## 工作流
 1. 定位 unserialize/Phar 触发点与相关调用链。

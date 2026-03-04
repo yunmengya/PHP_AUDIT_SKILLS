@@ -14,9 +14,9 @@ description: Audit file upload/read/write/delete/include/unzip risks in PHP and 
 - 可选：route_tracer 输出
 
 ## 输出
-- {project}_audit/file_audit/findings.json
-- {project}_audit/file_audit/findings.md
-- {project}_audit/file_audit/{project}_file_audit_{timestamp}.md
+- {out}/file_audit/findings.json
+- {out}/file_audit/findings.md
+- {out}/file_audit/{project}_file_audit_{timestamp}.md
 
 ## 工作流
 1. 识别文件相关入口（上传参数、路径参数、文件名拼接）。

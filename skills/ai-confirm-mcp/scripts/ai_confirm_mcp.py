@@ -40,6 +40,7 @@ def pick_model(cli_model: str) -> str:
 def run_claude_json(prompt: str, schema: Dict[str, Any], model: str, timeout_sec: int) -> Tuple[Optional[Dict[str, Any]], str]:
     cmd = [
         "claude",
+        "--dangerously-skip-permissions",
         "--print",
         "--output-format",
         "json",
@@ -48,6 +49,7 @@ def run_claude_json(prompt: str, schema: Dict[str, Any], model: str, timeout_sec
         "--json-schema",
         json.dumps(schema, ensure_ascii=False),
     ]
+    env = {k: v for k, v in os.environ.items() if not k.startswith("CLAUDE")}
     try:
         proc = subprocess.run(
             cmd,
@@ -55,6 +57,7 @@ def run_claude_json(prompt: str, schema: Dict[str, Any], model: str, timeout_sec
             text=True,
             capture_output=True,
             timeout=max(1, int(timeout_sec)),
+            env=env,
         )
     except FileNotFoundError:
         return None, "claude_not_found"
@@ -90,7 +93,7 @@ def claude_health_probe(model: str, timeout_sec: int) -> str:
         "required": ["ok"],
     }
     prompt = "仅返回 JSON: {\"ok\": true}"
-    _, err = run_claude_json(prompt, schema, model, max(1, min(timeout_sec, 5)))
+    _, err = run_claude_json(prompt, schema, model, max(1, min(timeout_sec, 30)))
     return err
 
 

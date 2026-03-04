@@ -17,6 +17,10 @@ AI options:
   --ai-rounds <n>                       AI rounds (default: 2)
   --ai-candidates-per-round <n>         AI candidates per round (default: 5)
   --ai-timeout <sec>                    AI timeout in seconds (default: 30)
+  --ai-force-all                        Force AI attempts for every case (default)
+  --disable-ai-force-all                Disable force-AI mode
+  --until-confirmed                     Keep trying until confirmed
+  --allow-conditional-stop              Allow conditional as stop target
   --trace-verbose                       Write per-case trace JSON under debug_verify/trace_cases
 
 Default out:
@@ -166,12 +170,17 @@ else
 fi
 ensure_writable_dir "${OUT_HOST}"
 ensure_docker_daemon
+if [[ -z "${AUDIT_RUN_ID:-}" ]]; then
+  AUDIT_RUN_ID="$(date +%Y%m%d_%H%M%S)_$$"
+fi
 
 AI_REALTIME=1
 AI_MODEL=""
 AI_ROUNDS=2
 AI_CANDIDATES_PER_ROUND=5
 AI_TIMEOUT=30
+AI_FORCE_ALL=1
+UNTIL_CONFIRMED=0
 
 MOUNTS=(
   -v "${PROJECT_HOST}:/work/project:ro"
@@ -251,6 +260,22 @@ while [[ $# -gt 0 ]]; do
       AI_TIMEOUT="${token#--ai-timeout=}"
       shift
       ;;
+    --ai-force-all)
+      AI_FORCE_ALL=1
+      shift
+      ;;
+    --disable-ai-force-all)
+      AI_FORCE_ALL=0
+      shift
+      ;;
+    --until-confirmed)
+      UNTIL_CONFIRMED=1
+      shift
+      ;;
+    --allow-conditional-stop)
+      UNTIL_CONFIRMED=0
+      shift
+      ;;
 
     --cases)
       if [[ $# -lt 2 ]]; then
@@ -272,6 +297,20 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
 
+    --target-url)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --target-url requires a value" >&2
+        exit 1
+      fi
+      RUNNER_ARGS+=( --target-url "$2" )
+      shift 2
+      ;;
+    --target-url=*)
+      target_url_value="${token#--target-url=}"
+      RUNNER_ARGS+=( "--target-url=${target_url_value}" )
+      shift
+      ;;
+
     *)
       RUNNER_ARGS+=( "${token}" )
       shift
@@ -283,6 +322,7 @@ run_debug_runner() {
   local -a extra=("$@")
   local -a cmd=(
     docker compose -f "${COMPOSE_FILE}" run --rm
+    -e "AUDIT_RUN_ID=${AUDIT_RUN_ID}"
     "${MOUNTS[@]}"
     debug
     python3 /app/skills/_scripts/debug_runner.py
@@ -305,6 +345,7 @@ fi
 
 echo "[INFO] Project: ${PROJECT_HOST}" >&2
 echo "[INFO] Output: ${OUT_HOST}" >&2
+echo "[INFO] Run ID: ${AUDIT_RUN_ID}" >&2
 
 if [[ "${AI_REALTIME}" -eq 1 ]]; then
   echo "[INFO] Preparing AI debug context in container..."
@@ -352,6 +393,14 @@ if [[ "${AI_REALTIME}" -eq 1 ]]; then
     --ai-timeout "${AI_TIMEOUT}"
     --ai-runtime-status "${AI_STATUS}"
   )
+  if [[ ${AI_FORCE_ALL} -eq 1 ]]; then
+    FINAL_ARGS+=( --ai-force-all )
+  fi
+  if [[ ${UNTIL_CONFIRMED} -eq 1 ]]; then
+    FINAL_ARGS+=( --until-confirmed )
+  else
+    FINAL_ARGS+=( --allow-conditional-stop )
+  fi
 
   if [[ -f "${SUGGESTIONS_HOST}" ]]; then
     FINAL_ARGS+=( --ai-suggestions /work/out/mcp_raw/ai-confirm-mcp-debug.json )
@@ -361,22 +410,25 @@ if [[ "${AI_REALTIME}" -eq 1 ]]; then
   run_debug_runner "${FINAL_ARGS[@]}"
 else
   echo "[INFO] Running debug verification (AI realtime disabled)..."
-  if [[ ${#RUNNER_ARGS[@]} -gt 0 ]]; then
-    run_debug_runner \
-      "${RUNNER_ARGS[@]}" \
-      --disable-ai-realtime \
-      --ai-model "${AI_MODEL}" \
-      --ai-rounds "${AI_ROUNDS}" \
-      --ai-candidates-per-round "${AI_CANDIDATES_PER_ROUND}" \
-      --ai-timeout "${AI_TIMEOUT}" \
-      --ai-runtime-status "disabled"
+  DISABLED_ARGS=(
+    --disable-ai-realtime
+    --ai-model "${AI_MODEL}"
+    --ai-rounds "${AI_ROUNDS}"
+    --ai-candidates-per-round "${AI_CANDIDATES_PER_ROUND}"
+    --ai-timeout "${AI_TIMEOUT}"
+    --ai-runtime-status "disabled"
+  )
+  if [[ ${AI_FORCE_ALL} -eq 1 ]]; then
+    DISABLED_ARGS+=( --ai-force-all )
+  fi
+  if [[ ${UNTIL_CONFIRMED} -eq 1 ]]; then
+    DISABLED_ARGS+=( --until-confirmed )
   else
-    run_debug_runner \
-      --disable-ai-realtime \
-      --ai-model "${AI_MODEL}" \
-      --ai-rounds "${AI_ROUNDS}" \
-      --ai-candidates-per-round "${AI_CANDIDATES_PER_ROUND}" \
-      --ai-timeout "${AI_TIMEOUT}" \
-      --ai-runtime-status "disabled"
+    DISABLED_ARGS+=( --allow-conditional-stop )
+  fi
+  if [[ ${#RUNNER_ARGS[@]} -gt 0 ]]; then
+    run_debug_runner "${RUNNER_ARGS[@]}" "${DISABLED_ARGS[@]}"
+  else
+    run_debug_runner "${DISABLED_ARGS[@]}"
   fi
 fi

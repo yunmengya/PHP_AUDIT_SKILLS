@@ -1,6 +1,6 @@
 ---
 name: php-route-mapper
-description: Extract PHP routes, parameter shapes, and Burp request templates. Outputs to {project}_audit/route_mapper/.
+description: Extract PHP routes, parameter shapes, and Burp request templates. Outputs to {out}/route_mapper/.
 ---
 
 # php-route-mapper
@@ -12,9 +12,9 @@ description: Extract PHP routes, parameter shapes, and Burp request templates. O
 - 项目根目录
 
 ## 输出
-- {project}_audit/route_mapper/routes.json
-- {project}_audit/route_mapper/routes.md
-- {project}_audit/route_mapper/burp_templates/
+- {out}/route_mapper/routes.json
+- {out}/route_mapper/routes.md
+- {out}/route_mapper/burp_templates/
 
 ## 工作流
 1. 判断框架类型与路由来源（参考 ../_shared/FRAMEWORK_ROUTING.md）。
