@@ -1,4 +1,4 @@
-# PHP Audit Skills
+# PHP_AUDIT_SKILLS
 
 专注于 PHP 代码审计的 Claude Skills 集合，提供从环境构建、静态分析、动态追踪到漏洞验证、PoC 与修复建议生成的全链路自动化审计能力。
 
@@ -65,11 +65,11 @@
 ## 目录结构
 
 ```text
-php-audit-skills/
+PHP_AUDIT_SKILLS/
 ├── README.md
 ├── SKILL.md
 ├── assets/
-│   └── php-audit-pipeline.png
+│   └── PHP_AUDIT_SKILLS-pipeline.png
 ├── phases/
 │   ├── phase1-env.md
 │   ├── phase2-recon.md
@@ -127,7 +127,7 @@ docker compose version
 
 ## 演示效果
 
-![PHP Audit Pipeline 运行演示](assets/php-audit-pipeline.png)
+![PHP_AUDIT_SKILLS Pipeline 运行演示](assets/PHP_AUDIT_SKILLS-pipeline.png)
 
 ## 全链路详细流程（文字版）
 
@@ -138,9 +138,9 @@ docker compose version
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                        php-audit-pipeline 全链路流程                            │
+│                        PHP_AUDIT_SKILLS 全链路流程                              │
 │                                                                                 │
-│  输入: /php-audit <目标路径>                                                     │
+│  输入: /PHP_AUDIT_SKILLS <目标路径>                                              │
 │  前置: Docker/Compose 检查 → 目标路径验证 → 创建 WORK_DIR                        │
 │        → 断点续审检测 → 增量审计判断                                              │
 └─────────────────────────────────────────────────────────────────────────────────┘
