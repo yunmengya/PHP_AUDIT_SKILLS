@@ -132,7 +132,7 @@ docker compose version
 ## 全链路详细流程（文字版）
 
 <details>
-<summary>点击展开完整执行流程（来自 1.md）</summary>
+<summary>点击展开完整执行流程（来自 全链路详细流程.md）</summary>
 
 该部分为完整执行编排与验收规范，和上文阶段摘要互补。
 
