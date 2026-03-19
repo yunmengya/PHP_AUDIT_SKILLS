@@ -1,9 +1,0 @@
-rules:
-  - id: csharp-dynamic-execution-multiple
-    pattern-either:
-      - pattern: $SCRIPT.EvaluateAsync<$TYPE>
-      - pattern: $ASSEMBLY.Load("...")
-    message: Dynamic execution.
-    severity: ERROR
-    languages:
-      - csharp

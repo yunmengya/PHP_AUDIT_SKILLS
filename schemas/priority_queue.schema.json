@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Priority Queue",
+  "description": "优先级队列：P0-P3/Sink/来源数量/定级理由",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "priority", "route_id", "route_url", "sink_function", "sink_file", "sink_line", "auth_level", "reason", "source_count", "sources"],
+    "properties": {
+      "id": { "type": "string", "pattern": "^sink_\\d+$" },
+      "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+      "route_id": { "type": "string" },
+      "route_url": { "type": "string" },
+      "sink_function": { "type": "string" },
+      "sink_file": { "type": "string" },
+      "sink_line": { "type": "integer", "minimum": 1 },
+      "auth_level": { "type": "string", "enum": ["anonymous", "authenticated", "admin"] },
+      "reason": { "type": "string" },
+      "source_count": { "type": "integer", "minimum": 1 },
+      "sources": { "type": "array", "items": { "type": "string" } }
+    }
+  }
+}

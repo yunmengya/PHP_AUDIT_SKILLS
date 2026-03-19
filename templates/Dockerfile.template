@@ -1,0 +1,72 @@
+# PHP 代码审计 - Dockerfile 模板
+# 变量说明:
+#   {{PHP_VERSION}}     - PHP 版本号 (7.2/7.3/7.4/8.0/8.1/8.2/8.3)
+#   {{EXTENSIONS}}      - 需要安装的 PHP 扩展列表
+#   {{EXTRA_PACKAGES}}  - 额外的系统包
+
+FROM php:{{PHP_VERSION}}-fpm
+
+# 系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    zip \
+    unzip \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    libxml2-dev \
+    libzip-dev \
+    libonig-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libpq-dev \
+    libsqlite3-dev \
+    libicu-dev \
+    {{EXTRA_PACKAGES}} \
+    && rm -rf /var/lib/apt/lists/*
+
+# PHP 核心扩展
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg 2>/dev/null \
+    || docker-php-ext-configure gd --with-freetype-dir=/usr --with-jpeg-dir=/usr 2>/dev/null \
+    || true
+
+RUN docker-php-ext-install -j$(nproc) \
+    pdo \
+    pdo_mysql \
+    pdo_pgsql \
+    pdo_sqlite \
+    mysqli \
+    mbstring \
+    xml \
+    zip \
+    gd \
+    curl \
+    intl \
+    opcache \
+    bcmath \
+    {{EXTENSIONS}} \
+    || true
+
+# PECL 扩展 - Xdebug
+RUN pecl install xdebug && docker-php-ext-enable xdebug || true
+
+# PECL 扩展 - Redis（可选）
+RUN pecl install redis && docker-php-ext-enable redis || true
+
+# Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Xdebug 配置
+COPY xdebug.ini /usr/local/etc/php/conf.d/99-xdebug.ini
+
+# 工作目录
+WORKDIR /var/www/html
+
+# 创建 Xdebug trace 输出目录
+RUN mkdir -p /tmp/xdebug_traces && chmod 777 /tmp/xdebug_traces
+
+# 权限修复
+RUN chown -R www-data:www-data /var/www/html || true
+
+EXPOSE 9000

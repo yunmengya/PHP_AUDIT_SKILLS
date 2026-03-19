@@ -1,9 +1,25 @@
+# Dependencies
+vendor/
+node_modules/
+
+# OS files
 .DS_Store
-__pycache__/
-*.pyc
+Thumbs.db
 
-# Local Python venvs
-.venv/
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# Sample audit outputs (regeneratable)
-_samples/*_audit/
+# Docker runtime
+docker-compose.override.yml
+
+# Audit runtime outputs (generated per-run)
+/tmp/
+
+# Claude Code worktrees
+.claude/worktrees/
+
+# Local-only Claude settings
+.claude/settings.local.json

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Route Map",
+  "description": "路由表：URL/方法/控制器/参数/中间件/鉴权",
+  "type": "object",
+  "required": ["routes"],
+  "properties": {
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "url", "method", "controller", "file", "line", "params", "param_sources", "middleware", "auth_level", "route_type"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^route_\\d+$" },
+          "url": { "type": "string" },
+          "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "ANY"] },
+          "controller": { "type": "string" },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "params": { "type": "array", "items": { "type": "string" } },
+          "param_sources": { "type": "array", "items": { "type": "string" } },
+          "middleware": { "type": "array", "items": { "type": "string" } },
+          "auth_level": { "type": "string", "enum": ["anonymous", "authenticated", "admin"] },
+          "route_type": { "type": "string", "enum": ["A", "B", "C"] }
+        }
+      }
+    }
+  }
+}

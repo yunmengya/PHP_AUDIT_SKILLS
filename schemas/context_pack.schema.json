@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Context Pack",
+  "description": "上下文包：调用链各层代码/过滤函数/数据流",
+  "type": "object",
+  "required": ["sink_id", "sink_function", "priority", "trace_depth", "layers", "data_flow_summary", "filters_in_path", "global_filters"],
+  "properties": {
+    "sink_id": { "type": "string" },
+    "sink_function": { "type": "string" },
+    "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+    "trace_depth": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layer", "role", "file", "function", "lines", "code"],
+        "properties": {
+          "layer": { "type": "integer", "minimum": 0 },
+          "role": { "type": "string", "enum": ["SINK", "CALLER", "ROUTE"] },
+          "file": { "type": "string" },
+          "function": { "type": "string" },
+          "lines": { "type": "string" },
+          "code": { "type": "string" },
+          "analysis_notes": {
+            "type": "object",
+            "properties": {
+              "source": { "type": ["string", "null"] },
+              "sink_arg": { "type": ["string", "null"] },
+              "filters": { "type": "array", "items": { "type": "string" } },
+              "bypass_hint": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "data_flow_summary": { "type": "string" },
+    "filters_in_path": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["function", "effective", "reason"],
+        "properties": {
+          "function": { "type": "string" },
+          "effective": { "type": "boolean" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "global_filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "file", "code", "affects"],
+        "properties": {
+          "type": { "type": "string", "enum": ["middleware", "waf", "function"] },
+          "file": { "type": "string" },
+          "code": { "type": "string" },
+          "affects": { "type": "string" }
+        }
+      }
+    }
+  }
+}

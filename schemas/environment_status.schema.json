@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Environment Status",
+  "description": "环境状态：框架/版本/路由分类/修复记录",
+  "type": "object",
+  "required": ["mode", "framework", "framework_version", "php_version", "db_type", "startup_rounds", "fixes_applied", "web_accessible", "routes_accessible", "routes_error", "routes_inaccessible", "xdebug_working", "db_tables_total", "db_tables_from_migration", "db_tables_from_inference", "disabled_features", "encrypted_files"],
+  "properties": {
+    "mode": { "type": "string", "enum": ["full", "partial"] },
+    "framework": { "type": "string", "enum": ["Laravel", "ThinkPHP", "Yii2", "Symfony", "CakePHP", "CodeIgniter", "Native"] },
+    "framework_version": { "type": "string" },
+    "php_version": { "type": "string" },
+    "db_type": { "type": "string", "enum": ["mysql", "pgsql", "sqlite"] },
+    "startup_rounds": { "type": "integer", "minimum": 1 },
+    "fixes_applied": { "type": "array", "items": { "type": "string" } },
+    "web_accessible": { "type": "boolean" },
+    "routes_accessible": { "type": "integer", "minimum": 0 },
+    "routes_error": { "type": "integer", "minimum": 0 },
+    "routes_inaccessible": { "type": "integer", "minimum": 0 },
+    "routes_error_details": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["route", "error", "reason", "impact"],
+        "properties": {
+          "route": { "type": "string" },
+          "error": { "type": "string" },
+          "reason": { "type": "string" },
+          "impact": { "type": "string" }
+        }
+      }
+    },
+    "xdebug_working": { "type": "boolean" },
+    "db_tables_total": { "type": "integer", "minimum": 0 },
+    "db_tables_from_migration": { "type": "integer", "minimum": 0 },
+    "db_tables_from_inference": { "type": "integer", "minimum": 0 },
+    "disabled_features": { "type": "array", "items": { "type": "string" } },
+    "encrypted_files": { "type": "array", "items": { "type": "string" } }
+  }
+}

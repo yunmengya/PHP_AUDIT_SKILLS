@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Auth Matrix",
+  "description": "权限矩阵：路由+鉴权等级+机制+绕过注记",
+  "type": "object",
+  "required": ["matrix"],
+  "properties": {
+    "matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["route_id", "url", "auth_level", "auth_mechanism"],
+        "properties": {
+          "route_id": { "type": "string" },
+          "url": { "type": "string" },
+          "auth_level": { "type": "string", "enum": ["anonymous", "authenticated", "admin"] },
+          "auth_mechanism": { "type": "string" },
+          "bypass_notes": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}
