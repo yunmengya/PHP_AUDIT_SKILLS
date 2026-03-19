@@ -1,0 +1,162 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#e94560', 'secondaryColor': '#0f3460', 'tertiaryColor': '#533483', 'background': '#0a0a1a', 'mainBkg': '#1a1a2e', 'nodeBorder': '#e94560', 'clusterBkg': '#16213e80', 'clusterBorder': '#e94560', 'titleColor': '#eee', 'edgeLabelBackground': '#1a1a2e'}}}%%
+
+flowchart TB
+    subgraph INPUT["🎯 输入"]
+        A["php-audit /path/to/project"]
+    end
+
+    subgraph PRE["⚙️ 前置检查"]
+        B1["Docker/Compose 检查"]
+        B2["目标路径验证 (.php)"]
+        B3["创建 WORK_DIR"]
+        B4{"断点续审?"}
+        B5{"增量审计?<br/>Git diff < 10 files"}
+    end
+
+    subgraph PHASE1["阶段 1: 环境智能识别与构建"]
+        direction TB
+        subgraph P1_PAR["并行"]
+            C1["🔍 env-detective<br/>框架指纹/PHP版本/DB类型"]
+            C2["🗄️ schema-reconstructor<br/>表结构重建"]
+        end
+        C3["🐳 docker-builder<br/>Docker 环境构建<br/>+ env_selfheal 自愈"]
+        C4["✅ QC-0 环境验证"]
+        C5{"QC-0 结果"}
+    end
+
+    subgraph PHASE2["阶段 2: 静态资产侦察"]
+        direction TB
+        subgraph P2_PAR["并行"]
+            D1["🔧 tool-runner<br/>Psalm + Progpilot + sink_finder"]
+            D2["🗺️ route-mapper<br/>路由表解析"]
+            D3["🔐 auth-auditor<br/>鉴权机制分析"]
+            D4["📦 dep-scanner<br/>第三方组件 CVE"]
+        end
+        D5["📋 context-extractor<br/>Sink 上下文抽取"]
+        D6["⚖️ risk-classifier<br/>优先级定级 P0-P3"]
+        D7["✅ QC-1 侦察完整性"]
+        D8["📝 动态创建 Phase-4/5 任务<br/>按 sink_type 映射专家"]
+    end
+
+    subgraph PHASE3["阶段 3: 鉴权模拟与动态追踪"]
+        direction TB
+        E1["🎭 auth-simulator<br/>模拟登录获取凭证"]
+        E2["📡 trace-dispatcher<br/>Xdebug 动态追踪<br/>并行 spawn trace-worker"]
+        E3["✅ QC-2 调用链验证"]
+    end
+
+    subgraph PHASE4["阶段 4: 深度对抗审计"]
+        direction TB
+        subgraph P4_ANALYZE["Step 1: 并行静态分析（不碰容器）"]
+            F_RCE["💀 rce-auditor"]
+            F_SQLI["💉 sqli-auditor"]
+            F_XSS["🎨 xss-ssti-auditor"]
+            F_LFI["📁 lfi-auditor"]
+            F_SSRF["🌐 ssrf-auditor"]
+            F_XXE["📄 xxe-auditor"]
+            F_DESER["🔓 deserial-auditor"]
+            F_FILE["📝 filewrite-auditor"]
+            F_AUTH["🛡️ authz-auditor"]
+            F_CFG["⚙️ config-auditor"]
+            F_INFO["ℹ️ infoleak-auditor"]
+            F_NOSQL["🍃 nosql-auditor"]
+            F_RACE["⏱️ race-auditor"]
+            F_CRYPTO["🔑 crypto-auditor"]
+            F_WP["📰 wordpress-auditor"]
+            F_BIZ["💰 bizlogic-auditor"]
+        end
+        subgraph P4_ATTACK["Step 2: 串行攻击（独占容器）"]
+            F_ATK["逐个专家执行攻击<br/>8 轮迭代 × payload 变形<br/>+ Docker 快照回滚"]
+        end
+        F_PIVOT["🔄 Pivot When Stuck<br/>SQLi→二阶SQLi | XSS→SSTI<br/>LFI→filter chain | RCE→反序列化<br/>SSRF→DNS Rebinding"]
+        F_QC3["✅ QC-3 物理取证验证"]
+    end
+
+    subgraph PHASE45["阶段 4.5: 后渗透智能分析"]
+        direction TB
+        subgraph P45_PAR1["并行"]
+            G1["🕸️ attack-graph-builder<br/>攻击图谱构建"]
+            G2["🔗 correlation-engine<br/>跨审计员关联分析<br/>+ 二阶漏洞追踪"]
+        end
+        subgraph P45_PAR2["并行"]
+            G3["🩹 remediation-generator<br/>修复 Patch 生成"]
+            G4["🧪 poc-generator<br/>PoC 脚本生成"]
+        end
+    end
+
+    subgraph PHASE5["阶段 5: 清理与报告"]
+        direction TB
+        subgraph P5_PAR["并行"]
+            H1["🧹 env-cleaner<br/>停 Xdebug/还原/清理"]
+            H2["📊 report-writer<br/>审计报告生成"]
+            H3["📋 sarif-exporter<br/>SARIF 2.1.0 格式"]
+        end
+        H4["✅ QC-Final 报告验证"]
+    end
+
+    subgraph REPORT["📄 报告结构"]
+        direction TB
+        R1["封面信息 + 漏洞摘要表"]
+        R2["每个漏洞章节:<br/>基本信息表 + <b>AI 验证状态</b><br/>攻击链 + 数据流"]
+        R3["<b>Burp 复现包</b><br/>Repeater 原始请求<br/>Intruder §注入点§ 模板"]
+        R4["物理证据 + 迭代记录"]
+        R5["<b>联合攻击利用链</b><br/>跨漏洞组合 + 危害升级评估"]
+        R6["附录 A-G<br/>组件CVE/不可测/覆盖率/经验沉淀"]
+    end
+
+    subgraph OUTPUT["📦 输出产物"]
+        O1["audit_report.md"]
+        O2["audit_report.sarif.json"]
+        O3["exploits/*.json"]
+        O4["attack_graph.json"]
+        O5["correlation_report.json"]
+        O6["patches/*.patch"]
+        O7["poc/*.py + run_all.sh"]
+        O8["checkpoint.json"]
+    end
+
+    %% 连接
+    A --> B1 & B2
+    B1 & B2 --> B3 --> B4
+    B4 -->|续审| B3
+    B4 -->|全新| B5
+    B5 --> PHASE1
+
+    C1 & C2 --> C3 --> C4 --> C5
+    C5 -->|"通过 → MODE=full"| PHASE2
+    C5 -->|"失败 → MODE=static-only"| PHASE2
+
+    D1 & D2 & D3 & D4 --> D5 --> D6 --> D7 --> D8
+
+    D8 --> PHASE3
+    E1 --> E2 --> E3
+
+    PHASE3 -->|"MODE=static-only → 跳过"| PHASE4
+    E3 --> PHASE4
+
+    P4_ANALYZE --> P4_ATTACK
+    P4_ATTACK --> F_PIVOT
+    F_PIVOT --> F_QC3
+
+    F_QC3 --> PHASE45
+    G1 & G2 --> G3 & G4
+
+    PHASE45 --> PHASE5
+    H1 & H2 & H3 --> H4
+
+    H2 --> REPORT
+    R1 --> R2 --> R3 --> R4 --> R5 --> R6
+
+    H4 --> OUTPUT
+
+    %% 样式
+    classDef phase fill:#1a1a2e,stroke:#e94560,stroke-width:2px,color:#eee
+    classDef qc fill:#0f3460,stroke:#00d2ff,stroke-width:2px,color:#eee
+    classDef parallel fill:#533483,stroke:#e94560,stroke-width:1px,color:#eee
+    classDef gate fill:#2d1b69,stroke:#ffd700,stroke-width:2px,color:#ffd700
+    classDef report fill:#1b4332,stroke:#52b788,stroke-width:2px,color:#eee
+    classDef output fill:#3d0c11,stroke:#e94560,stroke-width:1px,color:#eee
+    classDef highlight fill:#e94560,stroke:#fff,stroke-width:2px,color:#fff
+
+    class C4,D7,E3,F_QC3,H4 qc
+    class R3,R5 highlight

