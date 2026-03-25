@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Correlation Report",
+  "description": "跨审计员关联分析报告，由 correlation-engine 输出",
+  "type": "object",
+  "required": ["generated_at", "total_findings", "false_positives_removed", "chains", "summary"],
+  "properties": {
+    "generated_at": { "type": "string", "format": "date-time" },
+    "total_findings": { "type": "integer" },
+    "false_positives_removed": { "type": "integer" },
+    "chains": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["chain_id", "vulns", "combined_impact", "confidence"],
+        "properties": {
+          "chain_id": { "type": "string" },
+          "vulns": { "type": "array", "items": { "type": "string" } },
+          "combined_impact": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "second_order_vulns": { "type": "array", "items": { "type": "object" } },
+    "summary": { "type": "string" },
+    "graph_correlations": {
+      "type": "object",
+      "description": "关系型记忆图消费结果（规则类别 4.5 输出）",
+      "properties": {
+        "data_flow_chains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_node": { "type": "string" },
+              "target_node": { "type": "string" },
+              "relation": { "type": "string" },
+              "source_status": { "type": "string" },
+              "target_status": { "type": "string" },
+              "escalated_severity": { "type": "string" }
+            }
+          },
+          "description": "基于 data_flows_to 边发现的数据流攻击链"
+        },
+        "reassessment_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": { "type": "string" },
+              "sink_id": { "type": "string" },
+              "reason": { "type": "string" },
+              "enabled_by": { "type": "string" }
+            }
+          },
+          "description": "因前置条件已满足而需重新评估的 Sink"
+        },
+        "escalations_from_graph": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_node": { "type": "string" },
+              "target_node": { "type": "string" },
+              "original_severities": { "type": "array", "items": { "type": "string" } },
+              "combined_severity": { "type": "string" }
+            }
+          },
+          "description": "基于 escalates_to 边的组合严重度升级"
+        },
+        "high_value_targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["data_object", "vuln_count"],
+            "properties": {
+              "data_object": { "type": "string" },
+              "vuln_count": { "type": "integer", "minimum": 3 },
+              "vuln_types": { "type": "array", "items": { "type": "string" } },
+              "max_severity": { "type": "string" },
+              "recommendation": { "type": "string" }
+            }
+          },
+          "description": "同一数据对象关联 ≥3 个漏洞的高价值目标"
+        },
+        "historical_pattern_matches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pattern": { "type": "string" },
+              "matched_from_project": { "type": "string" },
+              "suggestion": { "type": "string" }
+            }
+          },
+          "description": "跨项目历史模式匹配"
+        }
+      }
+    }
+  }
+}

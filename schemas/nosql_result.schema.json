@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NoSQL Result",
+  "description": "NoSQL 注入测试结果，由 nosql_auditor 专家 Agent 输出",
+  "type": "object",
+  "required": ["sink_id", "route_url", "specialist", "db_type", "rounds_executed", "results", "final_verdict", "confidence"],
+  "properties": {
+    "sink_id": {
+      "type": "string",
+      "pattern": "^sink_\\d+$",
+      "description": "关联 priority_queue 的 id"
+    },
+    "route_url": {
+      "type": "string",
+      "description": "路由路径"
+    },
+    "specialist": {
+      "type": "string",
+      "const": "nosql_auditor",
+      "description": "执行攻击的专家 Agent 名"
+    },
+    "db_type": {
+      "type": "string",
+      "enum": ["mongodb", "redis", "elasticsearch", "memcached"],
+      "description": "NoSQL 数据库类型"
+    },
+    "rounds_executed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["round", "strategy", "payload", "injection_point", "request", "response_status", "response_body_snippet", "query_semantic_change", "result"],
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "strategy": {
+            "type": "string",
+            "enum": ["operator_injection", "where_js", "regex_dos", "aggregation", "json_pollution", "redis_crlf", "orm_bypass"],
+            "description": "攻击策略"
+          },
+          "payload": {
+            "type": "string",
+            "description": "实际发送的 Payload"
+          },
+          "injection_point": {
+            "type": "string",
+            "description": "注入点描述"
+          },
+          "request": {
+            "type": "string",
+            "description": "完整 HTTP 请求"
+          },
+          "response_status": {
+            "type": "integer",
+            "description": "HTTP 响应状态码"
+          },
+          "response_body_snippet": {
+            "type": "string",
+            "description": "响应体前 500 字符"
+          },
+          "query_semantic_change": {
+            "type": "boolean",
+            "description": "查询语义是否被改变"
+          },
+          "evidence_detail": {
+            "type": ["string", "null"],
+            "description": "证据详情"
+          },
+          "result": {
+            "type": "string",
+            "enum": ["confirmed", "suspected", "failed"]
+          }
+        }
+      }
+    },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["confirmed", "suspected", "potential", "not_vulnerable"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    }
+  }
+}

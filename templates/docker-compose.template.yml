@@ -1,0 +1,202 @@
+# PHP 代码审计 - Docker Compose 模板
+# 变量说明:
+#   {{PROJECT_NAME}}  - 项目名称
+#   {{PHP_VERSION}}   - PHP 版本号
+#   {{DB_TYPE}}       - 数据库类型 (mysql/pgsql/sqlite)
+#   {{DB_VERSION}}    - 数据库版本
+#   {{NGINX_CONF}}    - Nginx 配置文件名 (laravel.conf/thinkphp.conf/yii2.conf/generic.conf)
+#   {{ENABLE_REDIS}}  - 是否启用 Redis (true/false)
+#   {{PHP_MEMORY_LIMIT}}  - PHP 容器内存限制 (默认 1g)
+#   {{PHP_CPU_LIMIT}}     - PHP 容器 CPU 限制 (默认 2.0)
+#   {{DB_MEMORY_LIMIT}}   - 数据库容器内存限制 (默认 1g)
+#   {{OOB_PORT}}          - OOB 回调监听端口 (默认 9001)
+#   {{WORK_DIR}}          - 审计工作目录绝对路径 (OOB 日志输出位置)
+
+version: '3.8'
+
+services:
+  # PHP-FPM 应用容器
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: {{PROJECT_NAME}}_php
+    volumes:
+      - ./src:/var/www/html
+      - ./xdebug.ini:/usr/local/etc/php/conf.d/99-xdebug.ini
+    networks:
+      - audit_network
+      - internal_network
+    environment:
+      - PHP_IDE_CONFIG=serverName=audit
+      - XDEBUG_MODE=trace,debug
+      - XDEBUG_TRIGGER=1
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: {{PHP_MEMORY_LIMIT:-1g}}
+          cpus: '{{PHP_CPU_LIMIT:-2.0}}'
+        reservations:
+          memory: 256m
+    pids_limit: 200
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm-healthcheck || php -r 'echo 1;'"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # Nginx Web 服务器
+  nginx:
+    image: nginx:alpine
+    container_name: {{PROJECT_NAME}}_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - audit_network
+    depends_on:
+      php:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
+        reservations:
+          memory: 64m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # 数据库服务
+  db:
+    # MySQL 配置
+    # image: mysql:{{DB_VERSION}}
+    # environment:
+    #   MYSQL_ROOT_PASSWORD: audit_root_pass
+    #   MYSQL_DATABASE: audit_db
+    #   MYSQL_USER: audit_user
+    #   MYSQL_PASSWORD: audit_pass
+
+    # PostgreSQL 配置
+    # image: postgres:{{DB_VERSION}}
+    # environment:
+    #   POSTGRES_DB: audit_db
+    #   POSTGRES_USER: audit_user
+    #   POSTGRES_PASSWORD: audit_pass
+
+    image: mysql:8.0
+    container_name: {{PROJECT_NAME}}_db
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-audit_root_pass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-audit_db}
+      MYSQL_USER: ${MYSQL_USER:-audit_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-audit_pass}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - audit_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: {{DB_MEMORY_LIMIT:-1g}}
+          cpus: '1.0'
+        reservations:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Redis（可选）
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: {{PROJECT_NAME}}_redis
+  #   networks:
+  #     - audit_network
+  #   restart: unless-stopped
+
+  # SSRF 测试靶标容器
+  # 仅在 Docker 内部网络可访问，用于验证 SSRF 漏洞
+  ssrf-target:
+    image: nginx:alpine
+    container_name: {{PROJECT_NAME}}_ssrf_target
+    networks:
+      - internal_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: '0.25'
+
+  # OOB 回调监听器
+  # 用于 SSRF/XXE/RCE 外带验证（DNS Rebinding、HTTP 回调等）
+  # Phase-4 专家发送 payload 指向此服务，检查 log.jsonl 验证漏洞
+  oob-listener:
+    image: python:3-alpine
+    container_name: {{PROJECT_NAME}}_oob
+    command: >
+      python3 -c "
+      import http.server, json, os, datetime;
+      os.makedirs('/oob', exist_ok=True);
+      class H(http.server.BaseHTTPRequestHandler):
+          def _log(self):
+              entry = {'timestamp': datetime.datetime.now().isoformat(), 'method': self.command, 'path': self.path, 'headers': dict(self.headers), 'client': self.client_address[0]};
+              with open('/oob/log.jsonl', 'a') as f: f.write(json.dumps(entry) + '\n');
+              self.send_response(200); self.end_headers(); self.wfile.write(b'OOB_CALLBACK_OK')
+          def do_GET(self): self._log()
+          def do_POST(self): self._log()
+          def do_PUT(self): self._log()
+          def log_message(self, *a): pass
+      http.server.HTTPServer(('0.0.0.0', 9001), H).serve_forever()
+      "
+    ports:
+      - "{{OOB_PORT:-9001}}:9001"
+    volumes:
+      - {{WORK_DIR}}/oob:/oob
+    networks:
+      - audit_network
+      - internal_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9001/health\")'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: '0.25'
+
+networks:
+  # 外部可访问网络
+  audit_network:
+    driver: bridge
+
+  # 内部网络（仅容器间通信，模拟内网）
+  internal_network:
+    driver: bridge
+    internal: true
+
+volumes:
+  db_data:

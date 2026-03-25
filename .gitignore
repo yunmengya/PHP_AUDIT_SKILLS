@@ -1,0 +1,22 @@
+# Dependencies
+vendor/
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker runtime
+docker-compose.override.yml
+
+# Audit runtime outputs (generated per-run)
+/tmp/
+
+# Claude Code
+.claude/

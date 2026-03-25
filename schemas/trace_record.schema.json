@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trace Record",
+  "description": "追踪记录：调用链/动态绑定/请求响应/报错点",
+  "type": "object",
+  "required": ["route_id", "route_url", "call_chain", "filters_encountered", "dynamic_bindings", "raw_request", "raw_response_status"],
+  "properties": {
+    "route_id": { "type": "string" },
+    "route_url": { "type": "string" },
+    "call_chain": { "type": "array", "items": { "type": "string" } },
+    "filters_encountered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["function", "effective", "reason"],
+        "properties": {
+          "function": { "type": "string" },
+          "effective": { "type": "boolean" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "dynamic_bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "resolved"],
+        "properties": {
+          "type": { "type": "string", "enum": ["call_user_func", "variable_method", "dynamic_include"] },
+          "resolved": { "type": "string" }
+        }
+      }
+    },
+    "raw_request": { "type": "string" },
+    "raw_response_status": { "type": "integer" },
+    "error_point": { "type": ["string", "null"] },
+    "error_vs_sink": { "type": ["string", "null"], "enum": ["before_sink", "after_sink", null] }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Race Condition Result",
+  "description": "竞态条件测试结果，由 race_condition_auditor 专家 Agent 输出",
+  "type": "object",
+  "required": ["sink_id", "route_url", "specialist", "test_type", "rounds_executed", "results", "final_verdict", "confidence"],
+  "properties": {
+    "sink_id": {
+      "type": "string",
+      "pattern": "^sink_\\d+$",
+      "description": "关联 priority_queue 的 id"
+    },
+    "route_url": {
+      "type": "string",
+      "description": "路由路径"
+    },
+    "specialist": {
+      "type": "string",
+      "const": "race_condition_auditor",
+      "description": "执行攻击的专家 Agent 名"
+    },
+    "test_type": {
+      "type": "string",
+      "enum": ["TOCTOU", "double_spend", "token_replay", "rate_limit", "session_race", "db_transaction"],
+      "description": "竞态条件测试类型"
+    },
+    "rounds_executed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["round", "strategy", "concurrent_requests", "total_attempts", "success_count", "success_rate", "time_window_ms", "payload", "result"],
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "strategy": {
+            "type": "string",
+            "description": "策略名称"
+          },
+          "concurrent_requests": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "并发请求数"
+          },
+          "total_attempts": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "总尝试次数"
+          },
+          "success_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "成功触发次数"
+          },
+          "success_rate": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "成功率"
+          },
+          "time_window_ms": {
+            "type": "number",
+            "minimum": 0,
+            "description": "攻击时间窗口毫秒"
+          },
+          "payload": {
+            "type": "string",
+            "description": "实际发送的 Payload"
+          },
+          "evidence_detail": {
+            "type": ["string", "null"],
+            "description": "证据详情"
+          },
+          "result": {
+            "type": "string",
+            "enum": ["confirmed", "suspected", "failed"]
+          },
+          "baseline_comparison": {
+            "type": "string",
+            "description": "对比正常请求的差异描述"
+          }
+        }
+      }
+    },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["confirmed", "suspected", "potential", "not_vulnerable"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    }
+  }
+}

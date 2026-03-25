@@ -1,0 +1,178 @@
+%% PHP Security Audit - Agent Flow Diagram
+%% 37 Agents across 6 Phases
+%% Render: https://mermaid.live or VS Code Mermaid extension
+
+graph TD
+    %% ============================================================
+    %% Phase 1: 环境智能识别与构建 (team1, 4 agents)
+    %% ============================================================
+    subgraph P1["Phase 1: 环境智能识别与构建 — team1/"]
+        direction TB
+        ED["env-detective<br/>📄 env_detective.md<br/>框架指纹 / PHP版本 / DB类型 / 扩展"]
+        SR["schema-reconstructor<br/>📄 schema_reconstructor.md<br/>→ reconstructed_schema.sql"]
+        DB["docker-builder<br/>📄 docker_builder.md<br/>+ shared/env_selfheal.md<br/>→ environment_status.json<br/>→ docker-compose.yml"]
+        QC0["qc0<br/>📄 qc0.md<br/>→ QC-0 验证结果"]
+
+        ED -->|"环境分析结果"| DB
+        SR -->|"表结构"| DB
+        DB --> QC0
+    end
+
+    %% ============================================================
+    %% Phase 2: 静态资产侦察 (team2, 7 agents)
+    %% ============================================================
+    subgraph P2["Phase 2: 静态资产侦察 — team2/"]
+        direction TB
+        TR["tool-runner<br/>📄 tool_runner.md<br/>→ psalm_taint.json<br/>→ progpilot.json<br/>→ ast_sinks.json"]
+        RM["route-mapper<br/>📄 route_mapper.md<br/>→ route_map.json"]
+        AA["auth-auditor<br/>📄 auth_auditor.md<br/>→ auth_matrix.json"]
+        DSC["dep-scanner<br/>📄 dep_scanner.md<br/>→ dep_risk.json"]
+        CE["context-extractor<br/>📄 context_extractor.md<br/>→ context_packs/*.json"]
+        RC["risk-classifier<br/>📄 risk_classifier.md<br/>→ priority_queue.json"]
+        QC1["qc1<br/>📄 qc1.md<br/>→ QC-1 验证结果"]
+
+        TR --> CE
+        RM --> CE
+        AA --> CE
+        DSC --> CE
+        CE --> RC
+        RC --> QC1
+    end
+
+    %% ============================================================
+    %% Phase 3: 鉴权模拟与动态追踪 (team3, 4 agents)
+    %% ============================================================
+    subgraph P3["Phase 3: 鉴权模拟与动态追踪 — team3/"]
+        direction TB
+        AS["auth-simulator<br/>📄 auth_simulator.md<br/>→ credentials.json"]
+        TD2["trace-dispatcher<br/>📄 trace_dispatcher.md<br/>内部 spawn trace-worker"]
+        TW["trace-worker ×2<br/>📄 trace_worker.md<br/>→ traces/*.json"]
+        QC2["qc2<br/>📄 qc2.md<br/>→ QC-2 验证结果"]
+
+        AS --> TD2
+        TD2 -->|"spawn"| TW
+        TW -->|"traces"| TD2
+        TD2 --> QC2
+    end
+
+    %% ============================================================
+    %% Phase 4: 深度对抗审计 (team4, 17 agents)
+    %% ============================================================
+    subgraph P4["Phase 4: 深度对抗审计 — team4/"]
+        direction TB
+
+        subgraph P4_EXPERTS["16 个漏洞专家（按需启动）"]
+            direction LR
+            RCE["rce-auditor<br/>📄 rce_auditor.md"]
+            SQLI["sqli-auditor<br/>📄 sqli_auditor.md"]
+            XSS["xss-auditor<br/>📄 xss_ssti_auditor.md"]
+            LFI["lfi-auditor<br/>📄 lfi_auditor.md"]
+            SSRF["ssrf-auditor<br/>📄 ssrf_auditor.md"]
+            FW["filewrite-auditor<br/>📄 filewrite_auditor.md"]
+            XXE["xxe-auditor<br/>📄 xxe_auditor.md"]
+            DES["deserial-auditor<br/>📄 deserial_auditor.md"]
+            AUTHZ["authz-auditor<br/>📄 authz_auditor.md"]
+            CFG["config-auditor<br/>📄 config_auditor.md"]
+            INFO["infoleak-auditor<br/>📄 infoleak_auditor.md"]
+            NOSQL["nosql-auditor<br/>📄 nosql_auditor.md"]
+            RACE["race-auditor<br/>📄 race_condition_auditor.md"]
+            CRYPTO["crypto-auditor<br/>📄 crypto_auditor.md"]
+            WP["wp-auditor<br/>📄 wordpress_auditor.md"]
+            BIZ["bizlogic-auditor<br/>📄 business_logic_auditor.md"]
+        end
+
+        P4_S1(["Step 1: 并行分析<br/>不碰容器"])
+        P4_S2(["Step 2: 串行攻击<br/>独占容器"])
+        QC3["qc3<br/>📄 qc3.md<br/>→ QC-3 物理取证"]
+
+        P4_S1 --> P4_EXPERTS
+        P4_EXPERTS --> P4_S2
+        P4_S2 -->|"exploits/*.json"| QC3
+    end
+
+    %% ============================================================
+    %% Phase 4.5: 后渗透智能分析 (team4.5, 4 agents)
+    %% ============================================================
+    subgraph P45["Phase 4.5: 后渗透智能分析 — team4.5/"]
+        direction TB
+        AGB["attack-graph-builder<br/>📄 attack_graph_builder.md<br/>→ attack_graph.json"]
+        CORR["correlation-engine<br/>📄 correlation_engine.md<br/>+ shared/false_positive_patterns.md<br/>+ shared/second_order.md<br/>→ correlation_report.json"]
+        REM["remediation-generator<br/>📄 remediation_generator.md<br/>+ shared/framework_patterns.md<br/>→ patches/*.patch"]
+        POC["poc-generator<br/>📄 poc_generator.md<br/>→ poc/poc_*.py<br/>→ poc/run_all.sh"]
+
+        AGB --> REM
+        AGB --> POC
+        CORR --> REM
+        CORR --> POC
+    end
+
+    %% ============================================================
+    %% Phase 5: 清理与报告 (team5, 3 agents + sarif)
+    %% ============================================================
+    subgraph P5["Phase 5: 清理与报告 — team5/"]
+        direction TB
+        EC["env-cleaner<br/>📄 env_cleaner.md<br/>停Xdebug / 还原代码 / 重置DB"]
+        RW["report-writer<br/>📄 report_writer.md<br/>→ audit_report.md"]
+        SAR["sarif-exporter<br/>（内联 prompt）<br/>→ audit_report.sarif.json"]
+        QCF["qc-final<br/>📄 qc_final.md<br/>→ QC-Final 验证结果"]
+
+        EC --> QCF
+        RW --> QCF
+        SAR --> QCF
+    end
+
+    %% ============================================================
+    %% Phase 间连线 + Gate
+    %% ============================================================
+    QC0 --> G1{"GATE-1"}
+    G1 -->|"PASS → full"| TR
+    G1 -->|"PASS → full"| RM
+    G1 -->|"PASS → full"| AA
+    G1 -->|"PASS → full"| DSC
+    G1 -->|"FAIL"| RETRY_DB["重试 docker-builder"]
+    RETRY_DB --> DB
+
+    QC1 --> G2{"GATE-2"}
+    G2 --> AS
+
+    QC2 --> G3{"GATE-3"}
+    G3 --> P4_S1
+
+    QC3 --> G4{"GATE-4"}
+    G4 --> AGB
+    G4 --> CORR
+
+    POC --> G45{"GATE-4.5"}
+    REM --> G45
+    G45 --> EC
+    G45 --> RW
+    G45 --> SAR
+
+    QCF --> DONE(["审计完成"])
+
+    %% ============================================================
+    %% 共享数据流（跨 Phase）
+    %% ============================================================
+    RC -.->|"priority_queue.json<br/>决定启动哪些专家"| P4_S1
+    CE -.->|"context_packs/"| P4_S1
+    AS -.->|"credentials.json"| P4_S1
+    TD2 -.->|"traces/"| P4_S1
+
+    P4_EXPERTS -.->|"audit_session.db<br/>实时共享发现"| P4_EXPERTS
+    P4_EXPERTS -.->|"second_order/<br/>二阶漏洞"| CORR
+
+    %% ============================================================
+    %% Styles
+    %% ============================================================
+    style P1 fill:#0d1b2a,stroke:#e94560,color:#eee
+    style P2 fill:#0d1b2a,stroke:#f39c12,color:#eee
+    style P3 fill:#0d1b2a,stroke:#2ecc71,color:#eee
+    style P4 fill:#0d1b2a,stroke:#e74c3c,color:#eee
+    style P45 fill:#0d1b2a,stroke:#9b59b6,color:#eee
+    style P5 fill:#0d1b2a,stroke:#3498db,color:#eee
+    style P4_EXPERTS fill:#1a1a2e,stroke:#e74c3c,color:#eee
+    style G1 fill:#533483,stroke:#e94560,color:#fff
+    style G2 fill:#533483,stroke:#f39c12,color:#fff
+    style G3 fill:#533483,stroke:#2ecc71,color:#fff
+    style G4 fill:#533483,stroke:#e74c3c,color:#fff
+    style G45 fill:#533483,stroke:#9b59b6,color:#fff

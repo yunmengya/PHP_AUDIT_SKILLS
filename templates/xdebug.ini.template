@@ -1,0 +1,33 @@
+; Xdebug 配置 - 代码审计专用
+; 同时启用 trace（调用链追踪）和 debug（断点调试）模式
+
+[xdebug]
+; 模式: trace=调用链追踪, debug=断点调试
+xdebug.mode=trace,debug
+
+; 仅在请求包含 XDEBUG_TRIGGER 时启动
+; 避免对所有请求产生 trace（性能考虑）
+xdebug.start_with_request=trigger
+
+; Trace 输出目录
+xdebug.trace_output_dir=/tmp/xdebug_traces
+
+; Trace 输出格式: 1=机器可读格式（tab 分隔）
+xdebug.trace_format=1
+
+; Trace 输出文件名: trace.%t（按时间戳命名）
+xdebug.trace_output_name=trace.%t.%R
+
+; 收集变量赋值
+xdebug.collect_assignments=1
+
+; 收集函数返回值
+xdebug.collect_return=1
+
+; Debug 配置
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
+
+; 日志（调试用，生产环境关闭）
+; xdebug.log=/tmp/xdebug.log
+; xdebug.log_level=3

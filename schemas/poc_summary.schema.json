@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PoC Summary",
+  "description": "Phase-4.5 poc_generator 输出的 PoC 脚本摘要",
+  "type": "object",
+  "required": ["generated_at", "total_confirmed", "poc_generated", "scripts"],
+  "properties": {
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_confirmed": { "type": "integer" },
+    "poc_generated": { "type": "integer" },
+    "poc_skipped": { "type": "integer" },
+    "scripts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sink_id", "vuln_type", "file"],
+        "properties": {
+          "sink_id": { "type": "string" },
+          "vuln_type": { "type": "string" },
+          "file": { "type": "string", "description": "PoC 脚本文件名" },
+          "endpoint": { "type": "string" },
+          "auth_required": { "type": "boolean" },
+          "curl_command": { "type": "string", "description": "等效 curl 命令" }
+        }
+      }
+    }
+  }
+}

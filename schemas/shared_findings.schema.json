@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Shared Finding Entry",
+  "description": "Phase-4 专家间实时共享发现的单条记录（JSONL 每行一条）",
+  "type": "object",
+  "required": ["timestamp", "source_agent", "finding_type", "priority", "data"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_agent": {
+      "type": "string",
+      "description": "写入方 Agent 名"
+    },
+    "finding_type": {
+      "type": "string",
+      "enum": ["credential", "internal_url", "secret_key", "endpoint", "bypass_method", "config_value"]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["critical", "high", "medium"]
+    },
+    "data": {
+      "type": "object",
+      "required": ["key", "value"],
+      "properties": {
+        "key": { "type": "string", "description": "发现的名称/标识" },
+        "value": { "type": "string", "description": "发现的值" },
+        "context": { "type": "string", "description": "发现的上下文描述" },
+        "source_location": { "type": "string", "description": "发现来源 file:line" }
+      }
+    },
+    "target_agents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "建议的消费方 Agent 名"
+    },
+    "consumed_by": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "已消费的 Agent 名"
+    }
+  }
+}

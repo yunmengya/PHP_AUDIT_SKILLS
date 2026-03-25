@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Business Logic Result",
+  "description": "业务逻辑审计结果，由 business_logic_auditor 专家 Agent 输出",
+  "type": "object",
+  "required": ["sink_id", "route_url", "specialist", "business_flow", "rounds_executed", "results", "final_verdict", "confidence"],
+  "properties": {
+    "sink_id": {
+      "type": "string",
+      "pattern": "^sink_\\d+$",
+      "description": "关联 priority_queue 的 id"
+    },
+    "route_url": {
+      "type": "string",
+      "description": "路由路径"
+    },
+    "specialist": {
+      "type": "string",
+      "const": "business_logic_auditor",
+      "description": "执行审计的专家 Agent 名"
+    },
+    "business_flow": {
+      "type": "string",
+      "description": "受影响的业务流程描述"
+    },
+    "rounds_executed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["round", "strategy", "payload", "business_impact", "state_before", "state_after", "persisted", "result"],
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "strategy": {
+            "type": "string",
+            "enum": ["price_tamper", "coupon_abuse", "payment_bypass", "flow_skip", "negative_value", "sms_bomb", "state_machine"],
+            "description": "攻击策略"
+          },
+          "payload": {
+            "type": "string",
+            "description": "实际发送的 Payload"
+          },
+          "business_impact": {
+            "type": "string",
+            "description": "业务影响描述: 资金损失/数据泄露/流程绕过等"
+          },
+          "state_before": {
+            "type": "string",
+            "description": "操作前状态"
+          },
+          "state_after": {
+            "type": "string",
+            "description": "操作后状态"
+          },
+          "persisted": {
+            "type": "boolean",
+            "description": "异常状态是否被持久化"
+          },
+          "evidence_detail": {
+            "type": ["string", "null"],
+            "description": "证据详情"
+          },
+          "result": {
+            "type": "string",
+            "enum": ["confirmed", "suspected", "failed"]
+          }
+        }
+      }
+    },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["confirmed", "suspected", "potential", "not_vulnerable"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    }
+  }
+}

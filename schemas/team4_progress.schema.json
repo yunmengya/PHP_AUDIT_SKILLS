@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Team4 Progress Tracker",
+  "description": "Phase-4 专家 Agent 进度跟踪，由各专家更新，主调度器和 QC-3 读取",
+  "type": "object",
+  "required": ["experts", "status"],
+  "properties": {
+    "experts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["agent_name", "task_id", "status"],
+        "properties": {
+          "agent_name": {
+            "type": "string",
+            "description": "专家 Agent 名称"
+          },
+          "task_id": {
+            "type": "string",
+            "description": "对应的 Task ID"
+          },
+          "sink_type": {
+            "type": "string",
+            "description": "负责的 Sink 类型"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["waiting", "running", "completed", "failed", "timeout"],
+            "description": "Agent 执行状态"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sinks_total": {
+            "type": "integer",
+            "description": "分配的 Sink 总数"
+          },
+          "sinks_completed": {
+            "type": "integer",
+            "description": "已审计完成的 Sink 数"
+          },
+          "vulns_found": {
+            "type": "integer",
+            "description": "发现的漏洞数"
+          },
+          "error_message": {
+            "type": "string",
+            "description": "失败时的错误信息"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["in_progress", "completed", "partial_failure"],
+      "description": "整体 Phase-4 状态"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_experts": {
+      "type": "integer"
+    },
+    "completed_experts": {
+      "type": "integer"
+    }
+  }
+}

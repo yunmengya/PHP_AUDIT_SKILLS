@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Crypto Audit Result",
+  "description": "密码学审计结果，由 crypto_auditor 专家 Agent 输出",
+  "type": "object",
+  "required": ["sink_id", "category", "specialist", "rounds_executed", "results", "final_verdict", "confidence"],
+  "properties": {
+    "sink_id": {
+      "type": "string",
+      "pattern": "^sink_\\d+$",
+      "description": "关联 priority_queue 的 id"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["password_hashing", "random_number", "encryption", "jwt", "session_token", "signature", "key_management"],
+      "description": "密码学审计类别"
+    },
+    "specialist": {
+      "type": "string",
+      "const": "crypto_auditor",
+      "description": "执行审计的专家 Agent 名"
+    },
+    "rounds_executed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["round", "strategy", "target_function", "target_file", "target_line", "weakness", "evidence", "exploitability", "result"],
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "strategy": {
+            "type": "string",
+            "description": "策略名称"
+          },
+          "target_function": {
+            "type": "string",
+            "description": "被审计的密码学函数"
+          },
+          "target_file": {
+            "type": "string",
+            "description": "文件路径"
+          },
+          "target_line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "行号"
+          },
+          "weakness": {
+            "type": "string",
+            "description": "弱点描述"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "证据: 可预测输出/弱密钥/算法降级等"
+          },
+          "exploitability": {
+            "type": "string",
+            "enum": ["直接可利用", "需要条件", "理论可能"],
+            "description": "可利用程度"
+          },
+          "result": {
+            "type": "string",
+            "enum": ["confirmed", "suspected", "failed"]
+          }
+        }
+      }
+    },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["confirmed", "suspected", "potential", "not_vulnerable"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    }
+  }
+}

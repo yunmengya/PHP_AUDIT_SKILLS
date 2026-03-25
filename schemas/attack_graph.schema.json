@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Attack Graph",
+  "description": "攻击图谱，由 attack-graph-builder 输出",
+  "type": "object",
+  "required": ["generated_at", "total_nodes", "total_edges", "total_paths", "nodes", "edges", "paths"],
+  "properties": {
+    "generated_at": { "type": "string", "format": "date-time" },
+    "total_nodes": { "type": "integer", "description": "漏洞节点总数" },
+    "total_edges": { "type": "integer", "description": "关联边总数" },
+    "total_paths": { "type": "integer", "description": "攻击路径总数" },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "vuln_type", "endpoint", "confidence", "severity"],
+        "properties": {
+          "node_id": { "type": "string", "pattern": "^V-\\d+$" },
+          "vuln_type": { "type": "string" },
+          "sub_type": { "type": "string" },
+          "endpoint": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["confirmed", "highly_suspected", "potential_risk"] },
+          "output_data": { "type": "string", "description": "此漏洞产出的数据/能力" },
+          "required_access": { "type": "string", "enum": ["anonymous", "authenticated", "admin"] },
+          "grants_access": { "type": "string", "description": "获得的访问级别" },
+          "severity": { "type": "string", "enum": ["Critical", "High", "Medium", "Low", "Info"] }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "relationship"],
+        "properties": {
+          "from": { "type": "string", "description": "起点 node_id" },
+          "to": { "type": "string", "description": "终点 node_id" },
+          "relationship": {
+            "type": "string",
+            "enum": ["credential_reuse", "token_forge", "privilege_escalation", "data_extraction", "lateral_movement"]
+          },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path_id", "score", "confidence", "nodes", "entry_point", "final_impact"],
+        "properties": {
+          "path_id": { "type": "string", "pattern": "^P-\\d+$" },
+          "score": { "type": "number", "description": "路径评分" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "nodes": { "type": "array", "items": { "type": "string" }, "description": "有序 node_id 列表" },
+          "entry_point": { "type": "string" },
+          "final_impact": { "type": "string" },
+          "narrative": { "type": "string", "description": "攻击叙事" },
+          "remediation_priority": { "type": "string", "enum": ["P0", "P1", "P2"] }
+        }
+      }
+    },
+    "escalation_patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern_name": { "type": "string" },
+          "involved_vulns": { "type": "array", "items": { "type": "string" } },
+          "individual_severity": { "type": "string" },
+          "combined_severity": { "type": "string" },
+          "explanation": { "type": "string" }
+        }
+      }
+    },
+    "mermaid_diagram": { "type": "string", "description": "完整 Mermaid 图谱代码" }
+  }
+}

@@ -1,0 +1,115 @@
+%% PHP Security Audit Pipeline Flow
+%% Render: https://mermaid.live or VS Code Mermaid extension
+
+graph TD
+    Start(["php-audit TARGET_PATH"]) --> S1["Step 1-4<br/>Docker 检查 | 路径验证 | 工作目录 | 断点检测"]
+    S1 --> S5["Step 5: 加载共享资源<br/>anti_hallucination + sink_definitions + data_contracts"]
+    S5 --> S6["Step 6: TeamCreate + 创建静态任务 #1 ~ #14"]
+
+    S6 --> P1_START
+
+    subgraph P1["Phase 1: 环境智能识别与构建"]
+        P1_START["phase1-env.md"] --> P1_PAR(["并行"])
+        P1_PAR --> ED["env-detective #1<br/>框架指纹识别"]
+        P1_PAR --> SR["schema-reconstructor #2<br/>表结构重建"]
+        ED --> DB["docker-builder #3<br/>Docker 环境构建"]
+        SR --> DB
+        DB --> QC0["qc0 #4<br/>环境验证"]
+    end
+
+    QC0 --> G1{"GATE-1<br/>environment_status.json?"}
+    G1 -->|"PASS"| P2_START
+    G1 -->|"FAIL"| RETRY["重试 docker-builder<br/>自愈循环 / 用户介入"]
+    RETRY --> DB
+
+    subgraph P2["Phase 2: 静态资产侦察"]
+        P2_START["phase2-recon.md"] --> P2_PAR(["并行"])
+        P2_PAR --> TR["tool-runner #5<br/>Psalm / Progpilot"]
+        P2_PAR --> RM["route-mapper #6<br/>路由映射"]
+        P2_PAR --> AU["auth-auditor #7<br/>鉴权审计"]
+        P2_PAR --> DSC["dep-scanner #8<br/>组件扫描"]
+        TR --> CE["context-extractor #9<br/>上下文抽取"]
+        RM --> CE
+        AU --> CE
+        DSC --> CE
+        CE --> RC["risk-classifier #10<br/>优先级定级"]
+        RC --> QC1["qc1 #11<br/>侦察完整性"]
+    end
+
+    QC1 --> G2{"GATE-2<br/>priority_queue.json?"}
+    G2 -->|"PASS"| DT["phase2-tasks-dynamic.md<br/>按 sink 类型动态创建 Phase 4/4.5/5 任务"]
+
+    DT --> P3_START
+
+    subgraph P3["Phase 3: 鉴权模拟与动态追踪"]
+        P3_START["phase3-trace.md"] --> AS["auth-simulator #12<br/>鉴权模拟"]
+        AS --> TDP["trace-dispatcher #13<br/>追踪调度与执行<br/>(内部并行 spawn trace-worker)"]
+        TDP --> QC2["qc2 #14<br/>调用链验证"]
+    end
+
+    QC2 --> G3{"GATE-3<br/>credentials.json?"}
+    G3 --> P4_START
+
+    subgraph P4["Phase 4: 深度对抗审计"]
+        P4_START["phase4-exploit.md"] --> P4_A(["Step 1: 并行分析 - 不碰容器"])
+        P4_A --> RCE["rce-auditor"]
+        P4_A --> SQLI["sqli-auditor"]
+        P4_A --> XSS["xss-auditor"]
+        P4_A --> LFI["lfi-auditor"]
+        P4_A --> SSRF["ssrf-auditor"]
+        P4_A --> FW["filewrite-auditor"]
+        P4_A --> MORE["... 按需启动"]
+        RCE --> P4_B
+        SQLI --> P4_B
+        XSS --> P4_B
+        LFI --> P4_B
+        SSRF --> P4_B
+        FW --> P4_B
+        MORE --> P4_B
+        P4_B["Step 2: 串行攻击 - 独占容器<br/>按 P0 > P1 > P2 > P3 优先级逐个执行"]
+        P4_B --> QC3["qc3<br/>物理取证验证"]
+    end
+
+    QC3 --> G4{"GATE-4<br/>exploits/*.json?"}
+    G4 --> P45_START
+
+    subgraph P45["Phase 4.5: 后渗透智能分析"]
+        P45_START["phase45-post.md"] --> P45_P1(["并行"])
+        P45_P1 --> AGB["attack-graph-builder<br/>攻击图谱构建"]
+        P45_P1 --> CORR["correlation-engine<br/>关联分析"]
+        AGB --> P45_P2(["并行"])
+        CORR --> P45_P2
+        P45_P2 --> REM["remediation-generator<br/>修复 Patch"]
+        P45_P2 --> POC["poc-generator<br/>PoC 脚本"]
+    end
+
+    POC --> G45{"GATE-4.5<br/>poc/*.py + patches/?"}
+    REM --> G45
+
+    G45 --> P5_START
+
+    subgraph P5["Phase 5: 清理与报告"]
+        P5_START["phase5-report.md"] --> P5_PAR(["并行"])
+        P5_PAR --> EC["env-cleaner<br/>环境清理"]
+        P5_PAR --> RW["report-writer<br/>报告撰写"]
+        P5_PAR --> SAR["sarif-exporter<br/>SARIF 导出"]
+        EC --> QCF["qc-final<br/>报告完整性验证"]
+        RW --> QCF
+        SAR --> QCF
+    end
+
+    QCF --> CLEAN["Shutdown Agents + TeamDelete + tmux 清理"]
+    CLEAN --> DONE(["审计完成<br/>audit_report.md + SARIF + PoC + Patches"])
+
+    %% Styles
+    style P1 fill:#1a1a2e,stroke:#e94560,color:#eee
+    style P2 fill:#1a1a2e,stroke:#f39c12,color:#eee
+    style P3 fill:#1a1a2e,stroke:#2ecc71,color:#eee
+    style P4 fill:#1a1a2e,stroke:#e74c3c,color:#eee
+    style P45 fill:#1a1a2e,stroke:#9b59b6,color:#eee
+    style P5 fill:#1a1a2e,stroke:#3498db,color:#eee
+    style G1 fill:#533483,stroke:#e94560,color:#fff
+    style G2 fill:#533483,stroke:#f39c12,color:#fff
+    style G3 fill:#533483,stroke:#2ecc71,color:#fff
+    style G4 fill:#533483,stroke:#e74c3c,color:#fff
+    style G45 fill:#533483,stroke:#9b59b6,color:#fff
