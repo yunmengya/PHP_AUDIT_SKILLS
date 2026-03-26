@@ -102,7 +102,7 @@ The following 17 rules are hard constraints for all Agents. Violating any single
 - NoSQL injection MUST **prove that query semantics have been altered**; MUST NOT rely solely on operators appearing in the response
 - MongoDB operator injection: MUST compare result differences between normal queries vs injected queries
 - GraphQL injection: MUST prove that depth/batch/introspection queries returned **data beyond authorized scope**
-- MUST NOT treat GraphQL Schema introspection itself as a vulnerability (unless introspection exposes sensitive field definitions)
+- GraphQL Schema introspection is a vulnerability ONLY WHEN it exposes sensitive field definitions. Introspection of non-sensitive public schema is NOT a vulnerability
 - Redis CRLF injection: MUST prove that additional commands were executed (e.g., confirmed via INFO response)
 
 ## Rule 13: Business Logic Vulnerabilities Require Complete Business Context

@@ -462,7 +462,7 @@ Every verification report MUST contain the following three parts — none MAY be
 |:----:|--------|------|------|:----:|
 | C1 | P0 Sink full coverage | P0 count in priority_queue = P0 result count in exploits | 【填写：P0=?个, 已覆盖=?个】 | ⬜ |
 | C2 | P1 Sink full coverage | P1 count in priority_queue = P1 result count in exploits | 【填写：P1=?个, 已覆盖=?个】 | ⬜ |
-| C3 | Report sections complete | Each P0/P1 has an independent section in audit_report.md | 【填写：缺失=?条】 | ⬜ |
+| C3 | Report sections complete | Each P0/P1 has an independent section in 审计报告.md | 【填写：缺失=?条】 | ⬜ |
 | C4 | No omission declaration | Untested P0 MUST have skip reason (not_applicable + reason) | 【填写】 | ⬜ |
 
 **Verification Script:**
@@ -611,7 +611,7 @@ ldap_search/ldap_bind → ldap_auditor
 ## Phase 5: Report Generation Verification (Team-5 Output)
 
 **Agent Under Verification:** report_writer, sarif_exporter (Team-5)
-**Verification Source Files:** audit_report.md, audit_report.sarif.json, poc/*.py, poc/run_all.sh
+**Verification Source Files:** 报告/审计报告.md, 报告/audit_report.sarif.json, PoC脚本/*.py, PoC脚本/一键运行.sh
 
 | # | Check Item | Expected | Actual | Status |
 |:----:|--------|------|------|:----:|

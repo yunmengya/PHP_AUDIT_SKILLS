@@ -322,7 +322,7 @@ if (app()->environment('local', 'development', 'testing')) {
 CORS_ALLOWED_ORIGINS=*
 ```
 **Why It's a False Positive**: Development/testing environment CORS configuration does not affect production security.
-**How to Distinguish**: Confirm whether the configuration only takes effect in non-production environments. If the production `.env` or deployment config also uses `*` → not a false positive. Record the finding but **do not alert**; note it in the review.
+**How to Distinguish**: Confirm whether the configuration only takes effect in non-production environments. If the production `.env` or deployment config also uses `*` → not a false positive. Record the finding with severity `"info"` and tag `[DEV_ONLY]`. Add context in review notes.
 
 ### FP-CORS-003: CORS Restricted to Known Subdomains
 

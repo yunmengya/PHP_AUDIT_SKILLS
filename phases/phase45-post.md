@@ -71,7 +71,7 @@ Agent(
         + framework_patterns.md contents
 )
 ```
-Output: $WORK_DIR/patches/*.patch, $WORK_DIR/patches/remediation_summary.json
+Output: $WORK_DIR/修复补丁/*.patch, $WORK_DIR/修复补丁/remediation_summary.json
 
 **Agent 4: poc-generator**
 ```

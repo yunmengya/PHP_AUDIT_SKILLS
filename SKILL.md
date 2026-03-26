@@ -636,7 +636,7 @@ Map sink_type → auditor agent using this table:
     PHP < 5.3.4      → Null Byte truncation LFI viable (include $_GET['f'].'.php' + %00)
 
   **Anti-skip rule**: If priority_queue.json is empty or missing:
-    → MUST proceed to Phase-4 (do not halt)
+    → MUST proceed to Phase-4 without halting
     → Launch framework-adaptive forced agents
     → Print: "⚠️ 未检测到高优先级 Sink，但仍执行框架强制审计项"
 
@@ -657,7 +657,7 @@ Map sink_type → auditor agent using this table:
     task-N+2: "Report writing"            (blockedBy: [N])
     task-N+3: "QC: Final report"          (blockedBy: [N+1, N+2])
 
-### Phase-3: 鉴权模拟与动态追踪
+### Phase-3: Authentication Simulation & Dynamic Tracing
 
 > 📋 Detailed flow: `references/phase3_tracing.md`
 > 📄 Agent instructions: `phases/phase3-trace.md`
@@ -1022,7 +1022,7 @@ Print pipeline: ALL ✅
 
 ### QC Failure Recovery Strategy
 
-**CRITICAL: QC failure does NOT mean skip all subsequent phases! Each QC has independent recovery.**
+**CRITICAL: On QC failure, MUST continue to all subsequent phases. Each QC has independent recovery.**
 
 - Phase-1 QC FAIL (env build) → re-send failed_items to docker-builder, all retries exhausted → halt for user intervention. **NO degradation allowed — Docker MUST succeed.**
 - Phase-2 QC FAIL (static recon) → identify responsible agent via failed_items, re-run. Note coverage gap in report. **MUST continue to Phase-3, Phase-4, Phase-5.**
@@ -1113,7 +1113,7 @@ On any timeout:
 2. Update agent_states: `jq '.agent_states["AGENT_ID"].status = "timeout"'`
 3. Save current progress to checkpoint.json
 4. Mark ⏱️ timeout in pipeline view
-5. Continue to next step (do not block overall flow)
+5. Continue to next step — proceeding is MANDATORY regardless of timeout
 
 On global timeout:
 - Save progress to checkpoint.json

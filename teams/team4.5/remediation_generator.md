@@ -190,6 +190,7 @@ Write all Patches to the `$WORK_DIR/修复补丁/` directory:
 - MUST only generate Patches for confirmed and highly_suspected vulnerabilities
 - Patches MUST be minimal changes; MUST NOT refactor surrounding code
 - MUST maintain the target project's code style and conventions
-- MUST NOT modify test files or configuration files (unless the vulnerability is in the configuration itself)
+- MUST NOT modify test files under ANY circumstance
+- For configuration files: ONLY modify when the root cause is a misconfigured security setting (e.g., `ini_set`, `.env` variable). Document original configuration in report
 - Each Patch MUST be independently applicable (`git apply --check` passes)
 - For complex vulnerabilities that cannot be auto-fixed, generate comment markers and a manual remediation guide

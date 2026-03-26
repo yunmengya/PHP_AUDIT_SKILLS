@@ -62,8 +62,8 @@ RCE · SQLi · 反序列化 · LFI · 文件写入 · SSRF · XSS/SSTI · XXE ·
 | **Phase 2: 静态侦察** | 6 | 工具扫描、路由映射、鉴权矩阵、上下文抽取、风险定级 | `priority_queue.json`、`context_packs/` |
 | **Phase 3: 动态追踪** | 3+N | 鉴权模拟、Xdebug 追踪、调用链校验 | `traces/*.json`、`credentials.json` |
 | **Phase 4: 深度利用** | 21+1 | 21 类漏洞专家审计 + Mini-Researcher | `exploits/*.json`、`research/*.json` |
-| **Phase 4.5: 后渗透** | 4 | 攻击图谱、关联分析、Patch 生成、PoC 生成 | `attack_graph.json`、`poc/*.py` |
-| **Phase 5: 报告收口** | 3 | 报告生成、SARIF 导出、环境清理 | `audit_report.md`、`.sarif.json` |
+| **Phase 4.5: 后渗透** | 4 | 攻击图谱、关联分析、Patch 生成、PoC 生成 | `attack_graph.json`、`PoC脚本/*.py` |
+| **Phase 5: 报告收口** | 3 | 报告生成、SARIF 导出、环境清理 | `报告/审计报告.md`、`.sarif.json` |
 | **QC: 质检** | 2 | 独立质检员池、贯穿全流程 | QC 记录写入 `audit_session.db` |
 
 ### 攻击循环流程
@@ -530,7 +530,7 @@ Phase 4.5: attack-graph-builder ∥ correlation-engine
   ↓
 Phase 5: env-cleaner ∥ report-writer ∥ sarif-exporter → 最终 QC
   ↓
-输出: audit_report.md + .sarif.json + exploits/ + poc/ + patches/
+输出: 报告/审计报告.md + 报告/audit_report.sarif.json + PoC脚本/ + 修复补丁/ + 经验沉淀/ + 质量报告/
 ```
 
 </details>
