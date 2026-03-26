@@ -140,7 +140,7 @@ for f in "$@"; do
         jq -e 'type == "array"' "$f" >/dev/null 2>&1 \
           || { echo "❌ ${GATE_NAME} FAIL: invalid structure in ${BASENAME} (must be array)"; ALL_PASS=false; } ;;
       exploit_summary.json)
-        jq -e '.total_audited and .exploits' "$f" >/dev/null 2>&1 \
+        jq -e 'has("total_audited") and has("exploits")' "$f" >/dev/null 2>&1 \
           || { echo "❌ ${GATE_NAME} FAIL: missing required fields in ${BASENAME}"; ALL_PASS=false; } ;;
     esac
   fi
@@ -266,7 +266,7 @@ Check if `${HOME}/.php_audit/${PROJECT_NAME}/` contains a recent directory with 
      • Each context_pack JSON is parseable
    - Phase-3 done? → verify credentials.json:
      • File exists and is valid JSON
-     • If checkpoint.mode == "degraded" for Phase-3: accept missing credentials
+     • If checkpoint `.phases.phase3.mode` == "degraded": accept missing credentials
        but mark Phase-4 as NOT_VERIFIED mode
    - Phase-4 done? → verify exploits/*.json:
      • At least 1 exploit JSON exists and is valid
@@ -465,6 +465,8 @@ Level 3 — USER HALT:   If critical artifacts missing (no fallback possible), S
 ```bash
 bash "$WORK_DIR/.audit_state/phase_transition.sh" "INIT" "PHASE_1"
 # If exit code != 0 → STOP. State machine violation.
+PHASE_TIMEOUT_MIN=20
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
 打印: ━━━ 进入 Phase-1: 环境智能识别与构建 ━━━
@@ -526,6 +528,8 @@ Print pipeline: Phase-1 ✅ | Phase-2~5 ⏳
 **Step 1 — ENTER:**
 ```bash
 bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_1_PASS" "PHASE_2"
+PHASE_TIMEOUT_MIN=25
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
 打印: ━━━ 进入 Phase-2: 静态资产侦察 ━━━
@@ -661,6 +665,8 @@ Map sink_type → auditor agent using this table:
 **Step 1 — ENTER:**
 ```bash
 bash "$WORK_DIR/.audit_state/phase_transition.sh" "CREATE_DYNAMIC_TASKS" "PHASE_3"
+PHASE_TIMEOUT_MIN=20
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
 打印: ━━━ 进入 Phase-3: 鉴权模拟与动态追踪 ━━━
@@ -883,6 +889,8 @@ Print pipeline: Phase-1~4 ✅ | Phase-4.5~5 ⏳
 **Step 1 — ENTER:**
 ```bash
 bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_4_PASS" "PHASE_4_5"
+PHASE_TIMEOUT_MIN=15
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
 打印: ━━━ 进入 Phase-4.5: 后渗透智能分析 ━━━
@@ -934,6 +942,8 @@ Print pipeline: Phase-1~4.5 ✅ | Phase-5 ⏳
 **Step 1 — ENTER:**
 ```bash
 bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_4_5_PASS" "PHASE_5"
+PHASE_TIMEOUT_MIN=15
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
 打印: ━━━ 进入 Phase-5: 清理与报告 ━━━

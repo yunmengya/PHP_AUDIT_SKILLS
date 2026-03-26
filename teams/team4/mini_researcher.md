@@ -58,7 +58,7 @@ Use available search tools to obtain the latest intelligence:
 3. **Exploit-DB / PoC search**:
    ```bash
    # Search in known PoC repositories
-   curl -s "https://www.exploit-db.com/search?q={component}+{version}" 2>/dev/null || echo "Exploit-DB 不可达，跳过"
+   curl -s "https://www.exploit-db.com/search?q={component}+{version}" 2>/dev/null || echo "Exploit-DB unreachable, skipping"
    ```
 
 4. **Web search fallback** (if the above is insufficient):

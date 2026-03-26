@@ -190,7 +190,7 @@ POST /api/endpoint with malformed body
   - `__VUE_DEVTOOLS_GLOBAL_HOOK__` present
   - React DevTools markers
 - **Inline comment leakage**:
-  - `<!-- TODO: 记得删除测试账户 admin/test123 -->`
+  - `<!-- TODO: Remember to delete test account admin/test123 -->`
   - `<!-- API endpoint: http://internal-api:8080 -->`
 
 ### R12 - DNS/Network Information Leakage
