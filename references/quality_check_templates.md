@@ -652,7 +652,7 @@ ldap_search/ldap_bind → ldap_auditor
 
 ## Final Quality Report Template
 
-> After all phases pass verification, the last QC inspector generates a summary `$WORK_DIR/quality_report.md`.
+> After all phases pass verification, the last QC inspector generates a summary `$WORK_DIR/质量报告/质量报告.md`.
 
 ```markdown
 # Audit Quality Report

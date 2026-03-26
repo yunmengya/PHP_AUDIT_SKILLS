@@ -121,8 +121,8 @@ Team-4.5 completes → spawn quality-checker-1
 ```
 report_writer + sarif_exporter complete → spawn quality-checker-1
   Verification template: Phase 5: Report Generation Verification
-  Output files: audit_report.md, audit_report.sarif.json, poc/*.py, poc/run_all.sh
-  → Pass → Quality checker generates quality_report.md → Process ends
+  Output files: 报告/审计报告.md, 报告/audit_report.sarif.json, PoC脚本/, 修复补丁/, 经验沉淀/
+  → Pass → Quality checker generates 质量报告/质量报告.md → Process ends
   → Fail → Notify report_writer to correct (max 2 rounds)
 ```
 
@@ -205,5 +205,5 @@ After all phases pass verification, the lead SHALL assign the report generation 
    bash tools/audit_db.sh qc-read "$WORK_DIR"
    ```
 3. Consolidate verification results from all phases
-4. Generate `$WORK_DIR/quality_report.md`
+4. Generate `$WORK_DIR/质量报告/质量报告.md`
 5. Close all quality checkers, completing the entire audit process

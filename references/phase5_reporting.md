@@ -24,13 +24,13 @@ Wait for all three to complete
     → prompt: teams/qc/quality_checker.md
             + references/quality_check_templates.md (Phase 5: report generation validation + final quality report template)
             + shared/output_standard.md + shared/data_contracts.md + shared/evidence_contract.md
-            + PHASE=5, TARGET_AGENT=team5, OUTPUT_FILES=audit_report.md,audit_report.sarif.json,poc/,poc/run_all.sh
+            + PHASE=5, TARGET_AGENT=team5, OUTPUT_FILES=报告/审计报告.md,报告/audit_report.sarif.json,PoC脚本/,修复补丁/,经验沉淀/
             + WORK_DIR
 
 Completed
 Parse quality check results:
   - verdict=fail → send back to report-writer for correction (max 2 rounds)
-  - verdict=pass → quality checker generates $WORK_DIR/quality_report.md (using final quality report template)
+  - verdict=pass → quality checker generates $WORK_DIR/质量报告/质量报告.md (using final quality report template)
 
 Write checkpoint.json: {"completed": ["env", "scan", "trace", "exploit", "report"], "current": "done"}
 Print final pipeline view
@@ -78,5 +78,5 @@ fi
 ```
 
 ```
-告知用户: "审计完成！报告文件: $WORK_DIR/audit_report.md"
+告知用户: "审计完成！报告文件: $WORK_DIR/报告/审计报告.md"
 ```

@@ -636,8 +636,8 @@ Map sink_type → auditor agent using this table:
     PHP < 5.3.4      → Null Byte truncation LFI viable (include $_GET['f'].'.php' + %00)
 
   **Anti-skip rule**: If priority_queue.json is empty or missing:
-    → DO NOT skip Phase-4!
-    → STILL launch framework-adaptive forced agents
+    → MUST proceed to Phase-4 (do not halt)
+    → Launch framework-adaptive forced agents
     → Print: "⚠️ 未检测到高优先级 Sink，但仍执行框架强制审计项"
 
   Create tasks for each required expert:
@@ -1024,9 +1024,9 @@ Print pipeline: ALL ✅
 **CRITICAL: QC failure does NOT mean skip all subsequent phases! Each QC has independent recovery.**
 
 - Phase-1 QC FAIL (env build) → re-send failed_items to docker-builder, all retries exhausted → halt for user intervention. **NO degradation allowed — Docker MUST succeed.**
-- Phase-2 QC FAIL (static recon) → identify responsible agent via failed_items, re-run. Note coverage gap in report. **DO NOT skip Phase-3/4/5.**
-- Phase-3 QC FAIL (dynamic trace) → fall back to static analysis for broken routes. **DO NOT skip Phase-4/5.**
-- Phase-4 QC FAIL (evidence) → mark as degraded. **DO NOT skip Phase-4.5/5.**
+- Phase-2 QC FAIL (static recon) → identify responsible agent via failed_items, re-run. Note coverage gap in report. **MUST continue to Phase-3, Phase-4, Phase-5.**
+- Phase-3 QC FAIL (dynamic trace) → fall back to static analysis for broken routes. **MUST continue to Phase-4, Phase-5.**
+- Phase-4 QC FAIL (evidence) → mark as degraded. **MUST continue to Phase-4.5, Phase-5.**
 
 ### Agent Injection Layer System
 

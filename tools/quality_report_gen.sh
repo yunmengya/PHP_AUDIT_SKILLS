@@ -2,7 +2,7 @@
 # ============================================================
 # quality_report_gen.sh — 质量报告生成脚本
 # ============================================================
-# 从 SQLite 读取 QC 记录，生成 $WORK_DIR/quality_report.md
+# 从 SQLite 读取 QC 记录，生成 $WORK_DIR/质量报告/质量报告.md
 #
 # 用法: quality_report_gen.sh <WORK_DIR>
 # ============================================================
@@ -10,7 +10,8 @@ set -euo pipefail
 
 WORK_DIR="${1:?用法: quality_report_gen.sh <WORK_DIR>}"
 SESSION_DB="${WORK_DIR}/audit_session.db"
-OUTPUT="${WORK_DIR}/quality_report.md"
+OUTPUT="${WORK_DIR}/质量报告/质量报告.md"
+mkdir -p "${WORK_DIR}/质量报告"
 
 if [ ! -f "$SESSION_DB" ]; then
     echo "错误: 数据库不存在 $SESSION_DB"
