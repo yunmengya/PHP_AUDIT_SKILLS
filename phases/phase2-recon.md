@@ -17,11 +17,17 @@ echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 
 **Step 2 — SPAWN:**
 ```
-spawn tool_runner       (Task #5, background, read teams/team2/tool_runner.md)
-spawn route_mapper      (Task #6, background, read teams/team2/route_mapper.md)
-spawn auth_auditor      (Task #7, background, read teams/team2/auth_auditor.md)
-spawn dep_scanner       (Task #8, background, read teams/team2/dep_scanner.md)
-→ WAIT for Task #5,#6,#7,#8 ALL completed
+spawn psalm-scanner         (Task #5a, background, read skills/scanners/psalm_scanner.md)
+spawn progpilot-scanner     (Task #5b, background, read skills/scanners/progpilot_scanner.md)
+spawn ast-scanner           (Task #5c, background, read skills/scanners/ast_scanner.md)
+spawn phpstan-scanner       (Task #5d, background, read skills/scanners/phpstan_scanner.md)
+spawn semgrep-scanner       (Task #5e, background, read skills/scanners/semgrep_scanner.md)
+spawn composer-audit-scanner(Task #5f, background, read skills/scanners/composer_audit_scanner.md)
+spawn codeql-scanner        (Task #5g, background, optional, read skills/scanners/codeql_scanner.md)
+spawn route_mapper          (Task #6, background, read teams/team2/route_mapper.md)
+spawn auth_auditor          (Task #7, background, read teams/team2/auth_auditor.md)
+spawn dep_scanner           (Task #8, background, read teams/team2/dep_scanner.md)
+→ WAIT for Task #5a~#5g,#6,#7,#8 ALL completed
 spawn context_extractor (Task #9, foreground, read teams/team2/context_extractor.md)
 → WAIT for Task #9 completed
 spawn risk_classifier   (Task #10, foreground, read teams/team2/risk_classifier.md)
@@ -64,30 +70,116 @@ Print pipeline: Phase-1 ✅ | Phase-2 ✅ | Phase-3~5 ⏳
 
 ## Execution Steps
 
-### Parallel Step
+### Parallel Step 1: Scanners + Route + Auth + Dep (10 agents)
 
-Read the following file contents:
-- ${SKILL_DIR}/teams/team2/tool_runner.md
-- ${SKILL_DIR}/teams/team2/route_mapper.md
+Read the following scanner skill files:
+- ${SKILL_DIR}/skills/scanners/psalm_scanner.md (S-020)
+- ${SKILL_DIR}/skills/scanners/progpilot_scanner.md (S-021)
+- ${SKILL_DIR}/skills/scanners/ast_scanner.md (S-022)
+- ${SKILL_DIR}/skills/scanners/phpstan_scanner.md (S-023)
+- ${SKILL_DIR}/skills/scanners/semgrep_scanner.md (S-024)
+- ${SKILL_DIR}/skills/scanners/composer_audit_scanner.md (S-025)
+- ${SKILL_DIR}/skills/scanners/codeql_scanner.md (S-026, optional)
+
+Read the following agent files:
+- ${SKILL_DIR}/teams/team2/route_mapper.md (S-030)
 - ${SKILL_DIR}/teams/team2/auth_auditor.md
 - ${SKILL_DIR}/teams/team2/dep_scanner.md
 
-Spawn four Agents simultaneously (background mode, true parallelism):
+Spawn 10 Agents simultaneously (background mode, true parallelism):
 
-**Agent 1: tool-runner**
+**Agent 1: psalm-scanner**
 ```
 Agent(
-  name="tool-runner",
+  name="psalm-scanner",
   team_name="php-audit",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
-  prompt= Prompt template(TASK_ID=5) + tool_runner.md contents
+  prompt= Prompt template(TASK_ID=5a) + psalm_scanner.md contents
 )
 ```
-Output: $WORK_DIR/psalm_taint.json, $WORK_DIR/progpilot.json, $WORK_DIR/ast_sinks.json, $WORK_DIR/phpstan.json, $WORK_DIR/semgrep.json, $WORK_DIR/composer_audit.json, $WORK_DIR/codeql.json
+Output: $WORK_DIR/psalm_taint.json
 
-**Agent 2: route-mapper**
+**Agent 2: progpilot-scanner**
+```
+Agent(
+  name="progpilot-scanner",
+  team_name="php-audit",
+  run_in_background=true,
+  mode="bypassPermissions",
+  subagent_type="general-purpose",
+  prompt= Prompt template(TASK_ID=5b) + progpilot_scanner.md contents
+)
+```
+Output: $WORK_DIR/progpilot.json
+
+**Agent 3: ast-scanner**
+```
+Agent(
+  name="ast-scanner",
+  team_name="php-audit",
+  run_in_background=true,
+  mode="bypassPermissions",
+  subagent_type="general-purpose",
+  prompt= Prompt template(TASK_ID=5c) + ast_scanner.md contents
+)
+```
+Output: $WORK_DIR/ast_sinks.json
+
+**Agent 4: phpstan-scanner**
+```
+Agent(
+  name="phpstan-scanner",
+  team_name="php-audit",
+  run_in_background=true,
+  mode="bypassPermissions",
+  subagent_type="general-purpose",
+  prompt= Prompt template(TASK_ID=5d) + phpstan_scanner.md contents
+)
+```
+Output: $WORK_DIR/phpstan.json
+
+**Agent 5: semgrep-scanner**
+```
+Agent(
+  name="semgrep-scanner",
+  team_name="php-audit",
+  run_in_background=true,
+  mode="bypassPermissions",
+  subagent_type="general-purpose",
+  prompt= Prompt template(TASK_ID=5e) + semgrep_scanner.md contents
+)
+```
+Output: $WORK_DIR/semgrep.json
+
+**Agent 6: composer-audit-scanner**
+```
+Agent(
+  name="composer-audit-scanner",
+  team_name="php-audit",
+  run_in_background=true,
+  mode="bypassPermissions",
+  subagent_type="general-purpose",
+  prompt= Prompt template(TASK_ID=5f) + composer_audit_scanner.md contents
+)
+```
+Output: $WORK_DIR/composer_audit.json
+
+**Agent 7: codeql-scanner** (optional — skip on install failure)
+```
+Agent(
+  name="codeql-scanner",
+  team_name="php-audit",
+  run_in_background=true,
+  mode="bypassPermissions",
+  subagent_type="general-purpose",
+  prompt= Prompt template(TASK_ID=5g) + codeql_scanner.md contents
+)
+```
+Output: $WORK_DIR/codeql.json
+
+**Agent 8: route-mapper**
 ```
 Agent(
   name="route-mapper",
