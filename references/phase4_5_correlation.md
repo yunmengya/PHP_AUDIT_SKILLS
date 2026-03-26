@@ -36,8 +36,8 @@ Wait for both to complete
 
 **Phase-4.5 Gate Verification** (MUST execute):
 ```bash
-test -d "$WORK_DIR/poc" && ls "$WORK_DIR/poc/"*.py >/dev/null 2>&1 && echo "GATE-4.5 PASS" || echo "GATE-4.5 FAIL: poc/ 不存在或为空"
-test -d "$WORK_DIR/patches" && echo "PATCHES PASS" || echo "PATCHES FAIL"
+test -d "$WORK_DIR/PoC脚本" && ls "$WORK_DIR/PoC脚本/"*.py >/dev/null 2>&1 && echo "GATE-4.5 PASS" || echo "GATE-4.5 FAIL: PoC脚本/ 不存在或为空"
+test -d "$WORK_DIR/修复补丁" && echo "PATCHES PASS" || echo "PATCHES FAIL"
 ```
 GATE-4.5 PASS → Write to checkpoint.json: {"completed": ["env", "scan", "trace", "exploit", "post_exploit"], "current": "report"}
 GATE-4.5 FAIL → Check whether poc-generator / remediation-generator actually executed and returned results

@@ -134,7 +134,7 @@ For each vulnerability:
 Based on the remediation strategy matrix and framework patterns:
 1. Generate minimal fixes (modify only necessary code)
 2. Maintain the original code style (indentation, naming conventions)
-3. Do not introduce new dependencies (unless necessary)
+3. Avoid introducing new dependencies — ONLY add a dependency when no existing library or built-in function can address the vulnerability, and document the justification
 4. Add comments explaining the remediation rationale
 
 ### Step 4: Patch File Generation

@@ -589,7 +589,7 @@ ldap_search/ldap_bind → ldap_auditor
 ## Phase 4.5: Correlation Analysis Verification (Team-4.5 Output)
 
 **Agent Under Verification:** correlation_engine, attack_graph_builder (Team-4.5)
-**Verification Source Files:** attack_graph.json, correlation_report.json, patches/*.patch
+**Verification Source Files:** attack_graph.json, correlation_report.json, 修复补丁/*.patch
 
 | # | Check Item | Expected | Actual | Status |
 |:----:|--------|------|------|:----:|
@@ -626,7 +626,7 @@ ldap_search/ldap_bind → ldap_auditor
 | 9 | SARIF validity | Valid JSON, version=2.1.0, results count = report vulnerability count | 【填写：results数=?, 报告数=?】 | ⬜ |
 | 10 | SARIF severity mapping | confirmed→error, suspected→warning, potential→note | 【填写：映射错误数=?】 | ⬜ |
 | 11 | PoC syntax passes | All .py pass `python3 -c "compile(...)"` | 【填写：通过率=?%】 | ⬜ |
-| 12 | PoC run_all.sh exists | poc/run_all.sh exists and contains all PoC execution commands | 【填写】 | ⬜ |
+| 12 | PoC run_all.sh exists | PoC脚本/一键运行.sh exists and contains all PoC execution commands | 【填写】 | ⬜ |
 | 13 | PoC URL consistent | Target URLs in scripts match report | 【填写：不一致数=?】 | ⬜ |
 | 14 | Agent coverage matrix | All 21 Phase-4 Agents present, with status + Sink count + confirmed count | 【填写：覆盖/21】 | ⬜ |
 | 15 | EVID evidence completeness | All confirmed have all required EVID_* points for that type | 【填写：缺失 EVID 数=?】 | ⬜ |

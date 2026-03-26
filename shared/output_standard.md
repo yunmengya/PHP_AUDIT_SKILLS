@@ -49,8 +49,8 @@
 - Exploit files: `exploits/{sink_id}.json`, sink_id uses kebab-case
   - ✅ `exploits/sqli-user-login.json`
   - ❌ `exploits/SQLi_User_Login.json`
-- PoC files: `poc/{vuln_type}_{sink_id}.py`
-- Patch files: `patches/{finding_id}.patch`
+- PoC files: `PoC脚本/{vuln_type}_{sink_id}.py`
+- Patch files: `修复补丁/{finding_id}.patch`
 
 ### Constraint 6: UTF-8 Encoding
 - All text files MUST be UTF-8 encoded (no BOM)

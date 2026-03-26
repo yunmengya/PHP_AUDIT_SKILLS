@@ -488,7 +488,7 @@ $WORK_DIR/
 | GATE-2 | `priority_queue.json` + `context_packs/` 存在 |
 | GATE-3 | `credentials.json` 存在 |
 | GATE-4 | `exploits/*.json` 存在 |
-| GATE-4.5 | `poc/*.py` 存在 |
+| GATE-4.5 | `PoC脚本/*.py` 存在 |
 
 ### QC 降级策略
 

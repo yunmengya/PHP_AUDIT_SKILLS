@@ -114,8 +114,8 @@ while true; do
 
   # ── Phase 4.5: 后渗透 ──
   if [ -f "$WORK_DIR/attack_graph.json" ] && [ -f "$WORK_DIR/correlation_report.json" ]; then
-    POC_COUNT=$(ls "$WORK_DIR/poc/"*.py 2>/dev/null | wc -l | tr -d ' ')
-    PATCH_COUNT=$(ls "$WORK_DIR/patches/"*.patch 2>/dev/null | wc -l | tr -d ' ')
+    POC_COUNT=$(ls "$WORK_DIR/PoC脚本/"*.py 2>/dev/null | wc -l | tr -d ' ')
+    PATCH_COUNT=$(ls "$WORK_DIR/修复补丁/"*.patch 2>/dev/null | wc -l | tr -d ' ')
     echo -e "  ${GREEN}✅ Phase 4.5: 后渗透完成${NC} (${POC_COUNT} PoC, ${PATCH_COUNT} Patch)"
   elif [ -f "$WORK_DIR/attack_graph.json" ] || [ -f "$WORK_DIR/correlation_report.json" ]; then
     echo -e "  ${PURPLE}⏳ Phase 4.5: 后渗透分析中...${NC}"
