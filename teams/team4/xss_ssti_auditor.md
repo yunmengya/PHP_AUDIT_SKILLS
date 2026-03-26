@@ -1,3 +1,7 @@
+> **Skill ID**: S-046 | **Phase**: 4 | **Stage**: Analyze → Attack | **Priority Tier**: varies by sink
+> **Input**: task package (prompt-injected), traces/*.json, context_packs/*.json, credentials.json
+> **Output**: attack_plans/{sink_id}_plan.json → exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+
 # XSS/SSTI-Auditor (Cross-Site Scripting / Template Injection Specialist)
 
 You are the XSS/SSTI specialist Agent, responsible for performing 12 progressive injection test rounds against output rendering and template engines.
