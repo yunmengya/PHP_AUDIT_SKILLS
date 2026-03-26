@@ -197,17 +197,16 @@ Phase-3 (追踪):
 
 **断点续审融合**: 如果 checkpoint.json 显示已完成某些 Phase，则对应 Task 直接 TaskUpdate 为 completed，跳过已完成的 Phase。
 
-#### Step 6.3: 扁平调度 — 直接 spawn 叶子 Agent
+#### Step 6.3: 严格顺序调度 — 逐 Phase 阻塞执行
 
-**核心原则**:
-1. 每个 Phase 完成后，打印**累积更新**的流水线视图（参考 `references/pipeline_view.md`）
-2. **直接读取 `teams/**/*.md` 文件作为 Agent prompt**，不使用中间调度 skill
-3. 每个 Agent 的 prompt = 叶子 Agent .md 内容 + 共享资源 + TASK_ID + TARGET_PATH + WORK_DIR
-4. 并行 Agent 用 `background` 模式 spawn，串行 Agent 用 `foreground` 模式
-5. **Phase 间部分并行**: Phase-2 的 tool-runner/route-mapper/auth_auditor/dep-scanner 完成后，
-   若 Docker 环境已就绪（Phase-1 质检通过），可立即启动 Phase-3 的 auth-simulator，
-   与 Phase-2 的 context-extractor/risk-classifier 并行执行。
-   条件: auth-simulator 不依赖 context_packs（它只需要 route_map + auth_matrix + Docker 环境）。
+**🚫🚫🚫 主调度器铁律（最高优先级，违反任何一条即视为失败）🚫🚫🚫**
+
+1. **你是调度器，不是审计员。** 你的唯一职责是 spawn Agent、等待结果、验证 Gate、推进到下一个 Phase。
+2. **禁止自行分析代码。** 不要读取目标项目的 PHP 源码，不要自己发现漏洞，不要输出任何漏洞结论。所有代码分析由 Agent 完成。
+3. **禁止跳过任何 Phase。** 必须严格按 Phase-1 → Phase-2 → Phase-3 → Phase-4 → Phase-4.5 → Phase-5 顺序执行。
+4. **禁止提前输出结果。** 在 Phase-5 report-writer 完成之前，不要向用户展示任何漏洞发现、修复建议、风险评估。
+5. **每个 Phase 必须阻塞等待。** spawn 当前 Phase 的所有 Agent → 等待全部完成 → 执行 Gate 验证 → Gate PASS 后才能进入下一个 Phase。
+6. **严格遵守 blockedBy 依赖。** 上游 Task 未 completed 之前，下游 Task 绝对不能 spawn。
 
 **Agent prompt 构建规则**: 对于每个 spawn 的 Agent，在 prompt 开头注入以下内容:
 ```
@@ -237,77 +236,153 @@ WORK_DIR={WORK_DIR}
 
 ---
 
-#### Phase Gate Protocol（Phase 间产物验证 — 强制执行）
+#### 严格 Phase 执行协议（逐步执行，不可跳步）
 
-**⚠️ 此规则优先级最高，违反将导致报告缺失 Burp 复现包和 PoC。**
+**总流程状态机（必须严格按此顺序转移，不可跳转）:**
 
-在将任何 Phase 标记为 completed 写入 checkpoint.json **之前**，必须执行 bash 验证该 Phase 的产物文件确实存在于磁盘:
-
-```bash
-# Phase-1 gate
-test -f "$WORK_DIR/environment_status.json" && echo "GATE-1 PASS" || echo "GATE-1 FAIL: environment_status.json missing"
-
-# Phase-2 gate
-test -f "$WORK_DIR/priority_queue.json" && test -d "$WORK_DIR/context_packs" && echo "GATE-2 PASS" || echo "GATE-2 FAIL"
-
-# Phase-3 gate
-test -f "$WORK_DIR/credentials.json" && echo "GATE-3 PASS" || echo "GATE-3 FAIL"
-
-# Phase-4 gate ← 关键！缺失此产物 = 报告无 Burp 包
-test -d "$WORK_DIR/exploits" && ls "$WORK_DIR/exploits/"*.json >/dev/null 2>&1 && echo "GATE-4 PASS" || echo "GATE-4 FAIL: exploits/ 不存在或为空"
-
-# Phase-4.5 gate ← 关键！缺失此产物 = 报告无 PoC
-test -d "$WORK_DIR/poc" && ls "$WORK_DIR/poc/"*.py >/dev/null 2>&1 && echo "GATE-4.5 PASS" || echo "GATE-4.5 FAIL: poc/ 不存在或为空"
+```
+INIT → PHASE_1 → GATE_1 → PHASE_2 → GATE_2 → CREATE_DYNAMIC_TASKS → PHASE_3 → GATE_3 → PHASE_4 → GATE_4 → PHASE_4_5 → GATE_4_5 → PHASE_5 → DONE
 ```
 
-**GATE FAIL 时的处理**: 不要写入 checkpoint.json 完成标记。读取 `checkpoint.json` 的 `agent_states` 判断失败原因:
-- 状态为 `spawned` 但无 `completed_at` → Agent 未正常执行，立即重新 spawn
-- 状态为 `failed` 且 `redo_count < 2` → 通知 Agent 重做
-- 状态为 `timeout` → 记录超时警告，用已有部分结果继续
-- 无对应 agent_states 条目 → Agent 未被 spawn，立即 spawn 执行
-- Agent 返回为空 → 记录降级警告后继续
+**每个 Phase 的执行模板（所有 Phase 统一遵守）:**
 
-**⚠️ 绝对禁止**: 在未实际 spawn Phase-4/4.5 Agent 的情况下，将 exploit/post_exploit 写入 checkpoint.completed。这会导致 report-writer 无法生成 Burp 复现包和 PoC 脚本。
+```
+第 1 步: 打印 "━━━ 进入 Phase-{N}: {名称} ━━━"
+第 2 步: 读取该 Phase 对应的 teams/teamN/*.md 文件
+第 3 步: spawn 该 Phase 的 Agent（并行的用 background，串行的用 foreground）
+第 4 步: 【阻塞等待】等待该 Phase 所有 Agent 完成（全部返回 completed）
+第 5 步: 执行 GATE-N 验证（bash 命令验证产物文件存在）
+第 6 步: GATE PASS → 写 checkpoint → 打印流水线视图 → 进入下一个 Phase
+         GATE FAIL → 诊断 + 重试（不进入下一个 Phase）
+```
+
+**🚫 在第 4 步（阻塞等待）期间，主调度器只做以下事情:**
+- 等待 Agent 的 SendMessage
+- 回复 Agent 的问题（如需要）
+- 打印进度信息（如 "等待 docker-builder 完成..."）
+- **绝不：** 自己去读目标项目代码、分析漏洞、输出结论
 
 ---
 
 ### Phase-1: 环境智能识别与构建
 
-> 📋 详细流程见 `references/phase1_environment.md`（由主调度器按需加载给对应 Agent）
-> 质检流程详见对应 phase reference 文件。
+> 📋 详细流程见 `references/phase1_environment.md`
 
-**Gate 检查:**
-```bash
-test -f "$WORK_DIR/environment_status.json" && echo "GATE-1 PASS" || echo "GATE-1 FAIL: environment_status.json missing"
+**第 1 步: 宣告进入 Phase-1**
+```
+打印: ━━━ 进入 Phase-1: 环境智能识别与构建 ━━━
 ```
 
-**版本预判警告**（GATE-1 PASS 后立即执行）:
-```bash
-# 读取 version_alerts，如果存在 critical/high 级别 CVE 则打印警告
-ALERTS=$(cat "$WORK_DIR/environment_status.json" | jq -r '.version_alerts[]? | select(.severity == "critical" or .severity == "high") | "⚠️ \(.component) \(.detected_version): \(.cve_id) [\(.severity)] - \(.description) → 优先分配: \(.affected_auditors | join(", "))"')
-if [ -n "$ALERTS" ]; then
-  echo "━━━ 版本安全预判警告 ━━━"
-  echo "$ALERTS"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━"
-fi
+**第 2 步: spawn Phase-1 Agent（3 个）**
 ```
-> 预判结果不阻断流程，但会影响 Phase-4 调度优先级 — 存在 critical CVE 的 Auditor 将被提升为最高优先级 spawn。
+spawn env_detective       (Task #1, background, 读取 teams/team1/env_detective.md)
+spawn schema_reconstructor (Task #2, background, 读取 teams/team1/schema_reconstructor.md)
+```
 
+**第 3 步: 【阻塞等待】等待 Task #1 和 #2 都 completed**
+```
+⏳ 等待 env_detective 和 schema_reconstructor 完成...
+（期间不做任何其他事情，只等待）
+```
+
+**第 4 步: spawn docker_builder（依赖 #1 和 #2）**
+```
+确认 Task #1 和 #2 都已 completed
+spawn docker_builder (Task #3, foreground, 读取 teams/team1/docker_builder.md)
+```
+
+**第 5 步: 【阻塞等待】等待 Task #3 completed**
+
+**第 6 步: spawn 质检员**
+```
+spawn quality_checker (Task #4, foreground, 读取 teams/qc/quality_checker.md)
+```
+
+**第 7 步: 【阻塞等待】等待质检结果**
+- 质检通过 → 继续
+- 质检失败 → 将 failed_items 发回 docker_builder 重做（最多 3 次）
+
+**第 8 步: GATE-1 验证**
+```bash
+test -f "$WORK_DIR/environment_status.json" && echo "GATE-1 PASS" || echo "GATE-1 FAIL"
+```
+
+**第 9 步: GATE-1 PASS 后处理**
+```bash
+# 版本预判警告（仅打印，不阻断）
+ALERTS=$(cat "$WORK_DIR/environment_status.json" | jq -r '.version_alerts[]? | select(.severity == "critical" or .severity == "high") | "⚠️ \(.component) \(.detected_version): \(.cve_id) [\(.severity)]"')
+[ -n "$ALERTS" ] && echo "━━━ 版本安全预判警告 ━━━" && echo "$ALERTS"
+```
+
+**第 10 步: 写 checkpoint + 打印流水线视图**
+```
 写入 checkpoint.json: {"completed": ["env"], "current": "scan"}
-打印流水线视图
+打印流水线视图（Phase-1 ✅，Phase-2~5 ⏳）
+```
+
+**🚫 此时才可以进入 Phase-2。不允许在 Phase-1 期间做任何 Phase-2 的事情。**
+
+---
+
 ### Phase-2: 静态资产侦察
 
-> 📋 详细流程见 `references/phase2_recon.md`（由主调度器按需加载给对应 Agent）
-> 质检流程详见对应 phase reference 文件。
+> 📋 详细流程见 `references/phase2_recon.md`
 
-**Phase-2 Gate 验证**（必须执行）:
+**第 1 步: 宣告进入 Phase-2**
+```
+打印: ━━━ 进入 Phase-2: 静态资产侦察 ━━━
+```
+
+**第 2 步: spawn Phase-2 并行 Agent（4 个）**
+```
+spawn tool_runner   (Task #5, background, 读取 teams/team2/tool_runner.md)
+spawn route_mapper  (Task #6, background, 读取 teams/team2/route_mapper.md)
+spawn auth_auditor  (Task #7, background, 读取 teams/team2/auth_auditor.md)
+spawn dep_scanner   (Task #8, background, 读取 teams/team2/dep_scanner.md)
+```
+
+**第 3 步: 【阻塞等待】等待 Task #5, #6, #7, #8 全部 completed**
+```
+⏳ 等待 4 个侦察 Agent 完成...
+（期间不做任何其他事情，只等待）
+```
+
+**第 4 步: spawn context_extractor（依赖 #5,#6,#7,#8）**
+```
+确认 Task #5,#6,#7,#8 都已 completed
+spawn context_extractor (Task #9, foreground, 读取 teams/team2/context_extractor.md)
+```
+
+**第 5 步: 【阻塞等待】等待 Task #9 completed**
+
+**第 6 步: spawn risk_classifier（依赖 #9）**
+```
+spawn risk_classifier (Task #10, foreground, 读取 teams/team2/risk_classifier.md)
+```
+
+**第 7 步: 【阻塞等待】等待 Task #10 completed**
+
+**第 8 步: spawn 质检员**
+```
+spawn quality_checker (Task #11, foreground)
+```
+
+**第 9 步: 【阻塞等待】等待质检结果**
+
+**第 10 步: GATE-2 验证**
 ```bash
 test -f "$WORK_DIR/priority_queue.json" && test -d "$WORK_DIR/context_packs" && echo "GATE-2 PASS" || echo "GATE-2 FAIL"
 ```
-GATE-2 PASS → 写入 checkpoint.json: {"completed": ["env", "scan"], "current": "trace"}
-GATE-2 FAIL → 不写入 checkpoint，检查 context-extractor / risk-classifier 是否正常执行
-打印流水线视图
-### 动态创建 Phase-4/5 任务
+- GATE-2 PASS → 写入 checkpoint: {"completed": ["env", "scan"], "current": "trace"}
+- GATE-2 FAIL → 检查 context-extractor / risk-classifier 是否正常执行，不进入下一 Phase
+
+**第 11 步: 打印流水线视图（Phase-1 ✅，Phase-2 ✅，Phase-3~5 ⏳）**
+
+**🚫 此时才可以进入动态任务创建 + Phase-3。**
+
+---
+
+### 动态创建 Phase-4/5 任务（GATE-2 PASS 后立即执行）
 
 读取 $WORK_DIR/priority_queue.json
 按 sink 类型创建 Phase-4 任务（仅存在对应 sink 类型才创建）:
@@ -383,20 +458,80 @@ GATE-2 FAIL → 不写入 checkpoint，检查 context-extractor / risk-classifie
 
 ### Phase-3: 鉴权模拟与动态追踪
 
-> 📋 详细流程见 `references/phase3_tracing.md`（由主调度器按需加载给对应 Agent）
-> 质检流程详见对应 phase reference 文件。
+> 📋 详细流程见 `references/phase3_tracing.md`
 
-**Phase-3 Gate 验证**（必须执行）:
+**第 1 步: 宣告进入 Phase-3**
+```
+打印: ━━━ 进入 Phase-3: 鉴权模拟与动态追踪 ━━━
+```
+
+**第 2 步: spawn Phase-3 Agent**
+```
+spawn auth_simulator (Task #12, foreground, 读取 teams/team3/auth_simulator.md)
+  注入: environment_status.json + route_map.json + auth_matrix.json + Docker 环境信息
+```
+
+**第 3 步: 【阻塞等待】等待 Task #12 completed**
+
+**第 4 步: spawn trace_auditor（依赖 #12）**
+```
+spawn trace_auditor (Task #13, foreground, 读取 teams/team3/trace_auditor.md)
+  注入: credentials.json + context_packs/
+```
+
+**第 5 步: 【阻塞等待】等待 Task #13 completed**
+
+**第 6 步: spawn 质检员**
+```
+spawn quality_checker (Task #14, foreground)
+```
+
+**第 7 步: 【阻塞等待】等待质检结果**
+
+**第 8 步: GATE-3 验证**
 ```bash
 test -f "$WORK_DIR/credentials.json" && echo "GATE-3 PASS" || echo "GATE-3 FAIL"
 ```
-写入 checkpoint.json: {"completed": ["env", "scan", "trace"], "current": "exploit"}
-打印流水线视图
+- GATE-3 PASS → 写入 checkpoint: {"completed": ["env", "scan", "trace"], "current": "exploit"}
+- GATE-3 FAIL → 检查 auth_simulator / trace_auditor 是否正常执行，不进入下一 Phase
+
+**第 9 步: 打印流水线视图（Phase-1 ✅，Phase-2 ✅，Phase-3 ✅，Phase-4~5 ⏳）**
+
+**🚫 此时才可以进入 Phase-4。不允许在 Phase-3 期间做任何 Phase-4 的事情。**
+
+---
+
 ### Phase-4: 深度对抗审计（并行分析 + 串行攻击）
 
-> 📋 详细流程见 `references/phase4_attack_logic.md`（由主调度器按需加载给对应 Agent）
+> 📋 详细流程见 `references/phase4_attack_logic.md`
 > **⚠️ 此 Phase 是 Burp 复现包和物理证据的唯一来源，绝对不可跳过。**
-> 质检流程（"完成一个、校验一个" + 综合校验）详见 reference 文件。
+
+**第 1 步: 宣告进入 Phase-4**
+```
+打印: ━━━ 进入 Phase-4: 深度对抗审计 ━━━
+```
+
+**第 2 步: 读取 priority_queue.json 确定需要的 Auditor**
+```
+读取 $WORK_DIR/priority_queue.json
+按 sink_type → agent 映射表 确定要 spawn 的 Auditor 列表
+加上 框架自适应调度 的强制 Auditor
+```
+
+**第 3 步: 按优先级批次 spawn Auditor**
+```
+P0 Auditor: spawn 全部（background）
+P1 Auditor: P0 全部完成后 spawn（background）
+P2/P3 Auditor: P1 全部完成后 spawn（background）
+```
+
+**第 4 步: 【逐批阻塞等待】每批 Auditor 全部完成后再 spawn 下一批**
+```
+⏳ 等待 P0 批次全部完成...
+⏳ spawn P1 批次，等待全部完成...
+⏳ spawn P2/P3 批次，等待全部完成...
+（每个 Auditor 完成后立即内联质检，不通过则重做，最多 2 次）
+```
 
 **🔒 auth_matrix 不可变铁律:**
 - `auth_matrix.json` 由 Phase-2 risk_classifier 生成，Phase-4 所有 Auditor **只读引用、禁止修改**
@@ -415,44 +550,129 @@ Phase-4 串行攻击阶段，主调度器在每个 Auditor 每轮攻击后检查
 约束: 每次审计最多 **10 次**研究委派（全局计数器），每次限时 **3 分钟**。
 研究结果注入格式及 Auditor 消费规则详见 `phases/phase4-exploit.md` 和 `references/phase4_attack_logic.md`。
 
-**Phase-4 Gate 验证**（必须执行）:
-```bash
-test -d "$WORK_DIR/exploits" && ls "$WORK_DIR/exploits/"*.json >/dev/null 2>&1 && echo "GATE-4 PASS" || echo "GATE-4 FAIL: exploits/ 不存在或为空，report-writer 将无法生成 Burp 复现包"
+**第 5 步: 所有 Auditor 完成后，执行综合质检**
+```
+spawn quality_checker (综合校验, foreground)
 ```
 
-GATE-4 PASS → 执行漏洞汇总生成（`exploit_summary.json`，详见 reference）→ 写入 checkpoint.json: {"completed": ["env", "scan", "trace", "exploit"], "current": "report"}
-GATE-4 FAIL → **不写入 checkpoint**。执行 Agent 状态诊断:
+**第 6 步: 【阻塞等待】等待综合质检完成**
+
+**第 7 步: GATE-4 验证**
 ```bash
-# 查询 Phase-4 所有 agent 状态
+test -d "$WORK_DIR/exploits" && ls "$WORK_DIR/exploits/"*.json >/dev/null 2>&1 && echo "GATE-4 PASS" || echo "GATE-4 FAIL: exploits/ 不存在或为空"
+```
+
+**第 8 步: GATE-4 结果处理**
+- GATE-4 PASS → 执行漏洞汇总生成（`exploit_summary.json`）→ 写入 checkpoint → 进入 Phase-4.5
+- GATE-4 FAIL → **不写入 checkpoint**，执行 Agent 状态诊断:
+```bash
 jq '.agent_states | to_entries[] | select(.key | test("auditor")) | {agent: .key, status: .value.status, redo: .value.redo_count, pivot: .value.pivot_triggered}' "$WORK_DIR/checkpoint.json"
 ```
-- 状态为 `spawned` 且无 `completed_at` → Agent 卡住，终止并重新 spawn
-- 状态为 `failed` 且 `redo_count < 2` → 将 QC 的 failed_items 发回 Agent 重做
-- 状态为 `timeout` → 保留已有部分结果，标注降级
-- 无对应条目 → Agent 未被 spawn，回到 Step 1 补充 spawn
-- 所有 agent 状态为 `passed` 但 exploits/ 为空 → 所有 Sink 确认安全，生成"无漏洞"报告
-打印流水线视图
+  - `spawned` 无 `completed_at` → Agent 卡住，终止并重新 spawn
+  - `failed` 且 `redo_count < 2` → 将 failed_items 发回重做
+  - `timeout` → 保留部分结果，标注降级
+  - 无条目 → Agent 未 spawn，立即补充 spawn
+  - 全部 `passed` 但 exploits/ 为空 → 所有 Sink 确认安全，生成"无漏洞"报告
+
+**第 9 步: 打印流水线视图（Phase-1~4 ✅，Phase-4.5~5 ⏳）**
+
+**🚫 此时才可以进入 Phase-4.5。**
+
+---
+
 ### Phase-4.5: 后渗透智能分析
 
-> 📋 详细流程见 `references/phase4_5_correlation.md`（由主调度器按需加载给对应 Agent）
+> 📋 详细流程见 `references/phase4_5_correlation.md`
 > **⚠️ 此 Phase 是 PoC 脚本的唯一来源，绝对不可跳过。**
 
-**Phase-4.5 Gate 验证**（必须执行）:
+**第 1 步: 宣告进入 Phase-4.5**
+```
+打印: ━━━ 进入 Phase-4.5: 后渗透智能分析 ━━━
+```
+
+**第 2 步: spawn Phase-4.5 Agent（可并行）**
+```
+spawn attack_graph_builder    (background, 读取对应 .md)
+spawn correlation_engine      (background, 读取 teams/team4_5/correlation_engine.md)
+```
+
+**第 3 步: 【阻塞等待】等待攻击图谱 + 关联分析完成**
+
+**第 4 步: spawn 修复和 PoC 生成（可并行）**
+```
+spawn remediation_generator   (background, 读取对应 .md)
+spawn poc_generator           (background, 读取对应 .md)
+```
+
+**第 5 步: 【阻塞等待】等待修复和 PoC 生成完成**
+
+**第 6 步: GATE-4.5 验证**
 ```bash
 test -d "$WORK_DIR/poc" && ls "$WORK_DIR/poc/"*.py >/dev/null 2>&1 && echo "GATE-4.5 PASS" || echo "GATE-4.5 FAIL: poc/ 不存在或为空"
 test -d "$WORK_DIR/patches" && echo "PATCHES PASS" || echo "PATCHES FAIL"
 ```
-GATE-4.5 PASS → 写入 checkpoint.json: {"completed": ["env", "scan", "trace", "exploit", "post_exploit"], "current": "report"}
-GATE-4.5 FAIL → 检查 poc-generator / remediation-generator 是否实际执行并返回结果
-打印流水线视图
+- GATE-4.5 PASS → 写入 checkpoint: {"completed": ["env", "scan", "trace", "exploit", "post_exploit"], "current": "report"}
+- GATE-4.5 FAIL → 检查 poc-generator / remediation-generator 是否实际执行，不进入下一 Phase
+
+**第 7 步: 打印流水线视图（Phase-1~4.5 ✅，Phase-5 ⏳）**
+
+**🚫 此时才可以进入 Phase-5。**
+
+---
 
 ### Phase-5: 清理与报告
 
-> 📋 详细流程见 `references/phase5_reporting.md`（由主调度器按需加载给对应 Agent）
-> 质检流程详见对应 phase reference 文件。
+> 📋 详细流程见 `references/phase5_reporting.md`
 
-写入 checkpoint.json: {"completed": ["env", "scan", "trace", "exploit", "report"], "current": "done"}
-打印最终流水线视图
+**第 1 步: 宣告进入 Phase-5**
+```
+打印: ━━━ 进入 Phase-5: 清理与报告 ━━━
+```
+
+**第 2 步: spawn cleanup_agent**
+```
+spawn cleanup_agent (foreground, 读取对应 .md)
+  职责: 停止 Docker 容器、清理临时文件
+```
+
+**第 3 步: 【阻塞等待】等待清理完成**
+
+**第 4 步: spawn report_writer**
+```
+spawn report_writer (foreground, 读取 teams/team5/report_writer.md)
+  注入: exploit_summary.json + exploits/*.json + poc/*.py + patches/*.php
+```
+
+**第 5 步: 【阻塞等待】等待报告完成**
+
+**第 6 步: spawn 最终质检**
+```
+spawn quality_checker (最终报告质检, foreground)
+```
+
+**第 7 步: 【阻塞等待】等待最终质检结果**
+- 质检通过 → 继续
+- 质检失败 → report_writer 修正后重新提交（最多 2 次）
+
+**第 8 步: 写入最终 checkpoint**
+```
+写入 checkpoint.json: {"completed": ["env", "scan", "trace", "exploit", "post_exploit", "report"], "current": "done"}
+```
+
+**第 9 步: 打印最终流水线视图（全部 ✅）**
+
+**第 10 步: 向用户输出审计完成通知**
+```
+━━━ 审计完成 ━━━
+报告文件: $WORK_DIR/audit_report.md
+PoC 目录: $WORK_DIR/poc/
+修复补丁: $WORK_DIR/patches/
+Burp 包: $WORK_DIR/exploits/
+质量报告: $WORK_DIR/quality_report.md
+━━━━━━━━━━━━━━━
+```
+
+**🚫 只有在 Phase-5 全部完成后，才向用户展示任何漏洞发现和修复建议。**
 
 ### QC 失败回退策略
 
