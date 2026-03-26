@@ -4,7 +4,7 @@
 
 **全链路 PHP 代码安全审计 AI Agent 系统**
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![Agents](https://img.shields.io/badge/agents-40+-green)
 ![Auditors](https://img.shields.io/badge/auditors-21_types-red)
 ![Schemas](https://img.shields.io/badge/schemas-25-orange)
@@ -22,7 +22,8 @@
 
 ### 🔄 全链路自动化
 - **6 阶段流水线**：Phase 1~5 + Phase 4.5 自动编排，覆盖侦察→追踪→利用→后渗透→报告
-- **断点续审**：通过 `checkpoint.json` 记录阶段状态，支持中断恢复与增量审计
+- **机械级防跳步**：`phase_transition.sh` 状态锁 + `gate_check.sh` 产物校验 + 5 步模板（ENTER→SPAWN→WAIT→GATE→EXIT），13 次精确状态转换，数学级不可跳过
+- **断点续审**：通过 `checkpoint.json` 记录阶段状态，支持中断恢复与增量审计（恢复协议强制"从已验证点的下一步重跑"，不允许标记跳过）
 - **错误自恢复**：DB 损坏、Agent 崩溃、Token 溢出、磁盘不足等 5 种异常场景自动恢复
 
 ### 🎯 21 种漏洞类型覆盖
@@ -49,6 +50,8 @@ RCE · SQLi · 反序列化 · LFI · 文件写入 · SSRF · XSS/SSTI · XXE ·
 - **独立 QC 池**：按需 spawn 质检员，"完成一个、校验一个"，含图记忆 + 研究员专项检查
 - **25 个 JSON Schema**：所有 Agent 间数据交换严格校验格式
 - **Auditor 自检**：每个审计员内置 `auditor_self_check.md` 自我校验清单
+- **AI 指令英文化**：所有 AI 指令文件使用英文编写（AI 解析更精确），用户输出保持中文（报告/目录名/终端消息）
+- **语义陷阱消除**：全量清除双重否定、括号内否定、模糊 unless 等可能导致 AI 误解的表述
 
 ---
 
@@ -478,7 +481,25 @@ $WORK_DIR/
 
 ---
 
-## Gate 门禁与 QC 策略
+## Gate 门禁与状态机
+
+### Phase 状态机（机械级防跳步）
+
+```
+INIT → PHASE_1 → GATE_1_PASS → PHASE_2 → GATE_2_PASS → CREATE_DYNAMIC_TASKS
+  → PHASE_3 → GATE_3_PASS → PHASE_4 → GATE_4_PASS → PHASE_4_5 → GATE_4_5_PASS
+  → PHASE_5 → DONE
+```
+
+**5 层独立防御**：
+
+| 防御层 | 机制 | 作用 |
+|--------|------|------|
+| **状态锁** | `phase_transition.sh` 严格匹配当前状态，不符则 `exit 1` | 阻止任何非法状态跳转 |
+| **产物校验** | `gate_check.sh` 验证文件存在性、非空、JSON 语法、UTF-8 编码、关键字段 | 确保每阶段产出完整 |
+| **5 步模板** | 每个 Phase 强制执行 ENTER→SPAWN→WAIT→GATE→EXIT | 统一执行结构 |
+| **3 级恢复** | retry→degrade→halt，降级只标记不跳步 | 异常时仍保持流程完整 |
+| **恢复协议** | 断点续审从已验证点的**下一步**重跑 | 防止恢复时跳过阶段 |
 
 ### Gate 强制验收
 
@@ -572,6 +593,39 @@ Agent 启动时按层级注入共享知识：
 | 辅助工具 | 12 个 |
 | 环境模板 | 10 个 |
 | Markdown 文件 | 70+ 个 |
+
+---
+
+## 本分支改进摘要（v2.1.0）
+
+本分支（`初步写死跳步-AI指令英文-输出中文文件组织`）在 v2.0.0 基础上进行了 **11 轮、95 项** 系统性修复与强化：
+
+### 🔐 机械级防跳步（核心改进）
+- 新增 `phase_transition.sh` 状态锁脚本，13 次精确状态转换
+- 新增 `gate_check.sh` 5 层产物校验（存在性 + 非空 + JSON 语法 + UTF-8 + Schema 抽检）
+- 统一 6 个 Phase 为 5 步模板（ENTER→SPAWN→WAIT→GATE→EXIT）
+- 3 级失败恢复（retry→degrade→halt），降级只标记不跳步
+
+### 🌐 AI 指令英文化
+- 66+ 个 AI 指令文件全部转为英文（AI 解析精确度显著提升）
+- 用户输出保持中文：报告内容、目录名、终端消息、【填写】占位符
+
+### 📝 语义陷阱消除
+- 清除所有 "DO NOT skip" 双重否定 → "MUST continue to" 正向逻辑
+- 消除括号内否定弱信号 → 直接表述
+- 拆分 "MUST NOT...(unless)" 歧义条件 → 独立规则
+- 模糊 "unless necessary" → 具体条件说明
+
+### 📂 输出路径统一
+- 全部输出目录中文命名：报告/、PoC脚本/、修复补丁/、经验沉淀/、质量报告/、原始数据/
+- 跨文件路径引用 100% 一致（SKILL.md / output_standard.md / 各 Phase / QC / 工具脚本 / README / 流程图）
+
+### 🛠 其他修复（部分）
+- `final_verdict` 枚举值全系统统一（`not_vulnerable` 替代 `safe`）
+- `gate_check.sh` jq falsy 修复（0 个漏洞不再被判为失败）
+- 6 个 Phase 全部添加 `PHASE_TIMEOUT_MIN` + `phase_start_time`
+- Schema 枚举值与代码完全同步
+- `audit_monitor.sh` jq 访问器修复
 
 ---
 
