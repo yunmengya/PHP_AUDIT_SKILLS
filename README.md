@@ -453,23 +453,28 @@ bash audit_db.sh qc-read [phase]                  # 读取质检记录
 
 ## 输出产物
 
-审计完成后，`$WORK_DIR/` 目录包含：
+审计完成后，`$WORK_DIR/` 目录结构：
 
-| 产物 | 说明 |
-|------|------|
-| `audit_report.md` | 主审计报告（含 Burp 复现包、攻击链、数据流） |
-| `audit_report.sarif.json` | SARIF 2.1.0 标准报告（可导入 GitHub/VS Code） |
-| `exploits/*.json` | 每个 Sink 的攻击结果与物理证据 |
-| `exploit_summary.json` | 漏洞汇总统计 |
-| `attack_graph.json` | 攻击路径图谱 |
-| `attack_graph_data.json` | 图记忆完整导出 |
-| `correlation_report.json` | 跨审计员关联分析（含图关联） |
-| `patches/*.patch` | 修复建议补丁（框架适配） |
-| `poc/poc_*.py` | 可执行 PoC 脚本 |
-| `poc/run_all.sh` | PoC 批量执行脚本 |
-| `research/*.json` | Mini-Researcher 研究结果 |
-| `checkpoint.json` | 审计流程进度状态（支持断点续审） |
-| `audit_session.db` | SQLite 审计数据库（记忆/发现/质检） |
+```
+$WORK_DIR/
+├── 报告/
+│   ├── 审计报告.md              ← 全中文主报告（含 Burp 模板、攻击链、AI验证标记）
+│   └── audit_report.sarif.json  ← SARIF 2.1.0（可导入 GitHub/VS Code）
+├── PoC脚本/
+│   ├── poc_{sink_id}.py         ← 每个漏洞的 PoC
+│   └── 一键运行.sh              ← 批量执行
+├── 修复补丁/
+│   └── {finding_id}.patch       ← 框架适配修复
+├── 经验沉淀/
+│   ├── 经验总结.md              ← 绕过技巧/失败教训/新模式
+│   └── 共享文件更新建议.md
+├── 质量报告/
+│   └── 质量报告.md
+└── 原始数据/                    ← 中间产物归档
+    ├── exploits/, traces/, context_packs/
+    ├── attack_graph.json, correlation_report.json
+    └── checkpoint.json
+```
 
 ---
 

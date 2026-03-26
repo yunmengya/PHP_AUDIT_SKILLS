@@ -160,9 +160,9 @@ $doc->loadXML($xml, LIBXML_NONET | LIBXML_NOENT);
 
 ## 输出
 
-将所有 Patch 写入 `$WORK_DIR/patches/` 目录:
-- `$WORK_DIR/patches/{sink_id}.patch` — 每个漏洞的修复 Patch
-- `$WORK_DIR/patches/remediation_summary.json` — 修复摘要
+将所有 Patch 写入 `$WORK_DIR/修复补丁/` 目录:
+- `$WORK_DIR/修复补丁/{sink_id}.patch` — 每个漏洞的修复 Patch
+- `$WORK_DIR/修复补丁/remediation_summary.json` — 修复摘要
 
 ### remediation_summary.json
 

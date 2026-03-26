@@ -84,6 +84,6 @@ Agent(
   prompt= 提示词模板(TASK_ID=M+3) + poc_generator.md 内容
 )
 ```
-输出: $WORK_DIR/poc/poc_*.py, $WORK_DIR/poc/poc_summary.json, $WORK_DIR/poc/run_all.sh
+输出: $WORK_DIR/PoC脚本/poc_*.py, $WORK_DIR/PoC脚本/poc_summary.json, $WORK_DIR/PoC脚本/一键运行.sh
 
 **等待两者完成。**

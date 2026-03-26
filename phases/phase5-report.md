@@ -39,7 +39,7 @@ Agent(
   prompt= 提示词模板(TASK_ID=N+2) + report_writer.md 内容
 )
 ```
-输出: $WORK_DIR/audit_report.md
+输出: $WORK_DIR/报告/审计报告.md
 
 **Agent 3: sarif-exporter**
 ```
@@ -52,7 +52,7 @@ Agent(
   prompt= 提示词模板(TASK_ID=N+3) + sarif_exporter.md 内容
 )
 ```
-输出: $WORK_DIR/audit_report.sarif.json
+输出: $WORK_DIR/报告/audit_report.sarif.json
 
 **等待三者全部完成。**
 
@@ -74,17 +74,30 @@ Agent(
 
 **等待完成。**
 
-### 后置 Step: 敏感数据清理（最终质检通过后）
+### 后置 Step: 敏感数据清理 + 文件整理（最终质检通过后）
 
-最终质检（quality-checker-final）验证通过后，执行敏感数据清理:
+最终质检（quality-checker-final）验证通过后，执行敏感数据清理和文件整理:
 
 ```bash
 # 由主调度器直接执行（无需 spawn Agent）
-# 安全删除 audit_session.db（含明文凭证）
+
+# 1. 安全删除 audit_session.db（含明文凭证）
 if [ -f "$WORK_DIR/audit_session.db" ]; then
   dd if=/dev/urandom of="$WORK_DIR/audit_session.db" bs=1k count=$(stat -f%z "$WORK_DIR/audit_session.db" 2>/dev/null || stat -c%s "$WORK_DIR/audit_session.db" 2>/dev/null) 2>/dev/null
   rm -f "$WORK_DIR/audit_session.db" "$WORK_DIR/audit_session.db-wal" "$WORK_DIR/audit_session.db-shm"
 fi
 rm -rf "$WORK_DIR/second_order/" 2>/dev/null || true
 rm -f "$WORK_DIR/.shared_findings.lock" 2>/dev/null || true
+
+# 2. 文件整理：将中间产物归档到 原始数据/
+for f in environment_status.json route_map.json auth_matrix.json ast_sinks.json \
+         priority_queue.json credentials.json dep_risk.json exploit_summary.json \
+         attack_graph.json correlation_report.json attack_graph_data.json checkpoint.json; do
+  [ -f "$WORK_DIR/$f" ] && mv "$WORK_DIR/$f" "$WORK_DIR/原始数据/"
+done
+[ -d "$WORK_DIR/exploits" ] && mv "$WORK_DIR/exploits" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/context_packs" ] && mv "$WORK_DIR/context_packs" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/traces" ] && mv "$WORK_DIR/traces" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/research" ] && mv "$WORK_DIR/research" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/.audit_state" ] && mv "$WORK_DIR/.audit_state" "$WORK_DIR/原始数据/"
 ```

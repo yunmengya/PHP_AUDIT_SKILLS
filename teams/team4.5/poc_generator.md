@@ -247,11 +247,11 @@ curl 等效命令:
 
 ## 输出
 
-将所有 PoC 写入 `$WORK_DIR/poc/` 目录:
-- `$WORK_DIR/poc/poc_{sink_id}.py` — 每个漏洞的 PoC 脚本
-- `$WORK_DIR/poc/poc_summary.json` — PoC 摘要
-- `$WORK_DIR/poc/requirements.txt` — Python 依赖
-- `$WORK_DIR/poc/run_all.sh` — 批量执行脚本
+将所有 PoC 写入 `$WORK_DIR/PoC脚本/` 目录:
+- `$WORK_DIR/PoC脚本/poc_{sink_id}.py` — 每个漏洞的 PoC 脚本
+- `$WORK_DIR/PoC脚本/poc_summary.json` — PoC 摘要
+- `$WORK_DIR/PoC脚本/requirements.txt` — Python 依赖
+- `$WORK_DIR/PoC脚本/一键运行.sh` — 批量执行脚本
 
 ### poc_summary.json
 

@@ -72,13 +72,19 @@ PROJECT_NAME=$(basename "$ARGUMENTS")
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 WORK_DIR="/tmp/${PROJECT_NAME}/${TIMESTAMP}"
 mkdir -p "$WORK_DIR"
+# Agent 工作目录（内部使用，Agent 写入这些路径）
 mkdir -p "$WORK_DIR/.audit_state"
 mkdir -p "$WORK_DIR/exploits"
 mkdir -p "$WORK_DIR/context_packs"
 mkdir -p "$WORK_DIR/traces"
-mkdir -p "$WORK_DIR/second_order"
-mkdir -p "$WORK_DIR/poc"
-mkdir -p "$WORK_DIR/patches"
+mkdir -p "$WORK_DIR/research"
+# 最终输出目录（用户可见，Phase-5 完成后整理到这里）
+mkdir -p "$WORK_DIR/报告"
+mkdir -p "$WORK_DIR/PoC脚本"
+mkdir -p "$WORK_DIR/修复补丁"
+mkdir -p "$WORK_DIR/经验沉淀"
+mkdir -p "$WORK_DIR/质量报告"
+mkdir -p "$WORK_DIR/原始数据"
 bash tools/audit_db.sh init-memory  # 确保记忆库存在
 bash tools/audit_db.sh init-graph   # 确保关系型图表存在
 mkdir -p "$WORK_DIR/research"       # Mini-Researcher 输出目录
@@ -608,8 +614,8 @@ spawn poc_generator           (background, 读取对应 .md)
 
 **第 6 步: GATE-4.5 验证**
 ```bash
-test -d "$WORK_DIR/poc" && ls "$WORK_DIR/poc/"*.py >/dev/null 2>&1 && echo "GATE-4.5 PASS" || echo "GATE-4.5 FAIL: poc/ 不存在或为空"
-test -d "$WORK_DIR/patches" && echo "PATCHES PASS" || echo "PATCHES FAIL"
+test -d "$WORK_DIR/PoC脚本" && ls "$WORK_DIR/PoC脚本/"*.py >/dev/null 2>&1 && echo "GATE-4.5 PASS" || echo "GATE-4.5 FAIL: PoC脚本/ 不存在或为空"
+test -d "$WORK_DIR/修复补丁" && echo "PATCHES PASS" || echo "PATCHES FAIL"
 ```
 - GATE-4.5 PASS → 写入 checkpoint: {"completed": ["env", "scan", "trace", "exploit", "post_exploit"], "current": "report"}
 - GATE-4.5 FAIL → 检查 poc-generator / remediation-generator 是否实际执行，不进入下一 Phase
@@ -654,21 +660,37 @@ spawn quality_checker (最终报告质检, foreground)
 - 质检通过 → 继续
 - 质检失败 → report_writer 修正后重新提交（最多 2 次）
 
-**第 8 步: 写入最终 checkpoint**
-```
-写入 checkpoint.json: {"completed": ["env", "scan", "trace", "exploit", "post_exploit", "report"], "current": "done"}
+**第 8 步: 文件整理 — 将中间产物归档到原始数据/**
+```bash
+# 移动所有中间产物到 原始数据/ 目录，保持用户可见目录整洁
+for f in environment_status.json route_map.json auth_matrix.json ast_sinks.json \
+         priority_queue.json credentials.json dep_risk.json exploit_summary.json \
+         attack_graph.json correlation_report.json attack_graph_data.json checkpoint.json; do
+  [ -f "$WORK_DIR/$f" ] && mv "$WORK_DIR/$f" "$WORK_DIR/原始数据/"
+done
+[ -d "$WORK_DIR/exploits" ] && mv "$WORK_DIR/exploits" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/context_packs" ] && mv "$WORK_DIR/context_packs" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/traces" ] && mv "$WORK_DIR/traces" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/research" ] && mv "$WORK_DIR/research" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/.audit_state" ] && mv "$WORK_DIR/.audit_state" "$WORK_DIR/原始数据/"
 ```
 
-**第 9 步: 打印最终流水线视图（全部 ✅）**
+**第 9 步: 写入最终 checkpoint**
+```
+写入 原始数据/checkpoint.json: {"completed": ["env", "scan", "trace", "exploit", "post_exploit", "report"], "current": "done"}
+```
 
-**第 10 步: 向用户输出审计完成通知**
+**第 10 步: 打印最终流水线视图（全部 ✅）**
+
+**第 11 步: 向用户输出审计完成通知**
 ```
 ━━━ 审计完成 ━━━
-报告文件: $WORK_DIR/audit_report.md
-PoC 目录: $WORK_DIR/poc/
-修复补丁: $WORK_DIR/patches/
-Burp 包: $WORK_DIR/exploits/
-质量报告: $WORK_DIR/quality_report.md
+📋 审计报告: $WORK_DIR/报告/审计报告.md
+📊 SARIF:    $WORK_DIR/报告/audit_report.sarif.json
+🔧 PoC脚本: $WORK_DIR/PoC脚本/
+🩹 修复补丁: $WORK_DIR/修复补丁/
+📝 经验沉淀: $WORK_DIR/经验沉淀/
+📁 原始数据: $WORK_DIR/原始数据/
 ━━━━━━━━━━━━━━━
 ```
 
@@ -718,14 +740,23 @@ Burp 包: $WORK_DIR/exploits/
 
 ## 输出
 
-最终输出文件:
-- `$WORK_DIR/audit_report.md` — 主报告
-- `$WORK_DIR/audit_report.sarif.json` — SARIF 2.1.0 格式
-- `$WORK_DIR/exploits/*.json` — 每个 Sink 的详细攻击结果
-- `$WORK_DIR/exploit_summary.json` — 漏洞汇总统计
-- `$WORK_DIR/attack_graph.json` — 攻击图谱
-- `$WORK_DIR/correlation_report.json` — 跨审计员关联分析报告
-- `$WORK_DIR/patches/*.patch` — 自动修复代码 Patch
-- `$WORK_DIR/poc/poc_*.py` — 漏洞验证 PoC 脚本
-- `$WORK_DIR/poc/run_all.sh` — 批量 PoC 执行脚本
-- `$WORK_DIR/checkpoint.json` — 审计进度检查点
+最终输出目录结构:
+```
+$WORK_DIR/
+├── 报告/
+│   ├── 审计报告.md              ← 主报告（全中文，含 Burp 模板 + 攻击链 + AI验证标记）
+│   └── audit_report.sarif.json  ← 机器可读报告
+├── PoC脚本/
+│   ├── poc_{sink_id}.py
+│   └── 一键运行.sh
+├── 修复补丁/
+│   └── {finding_id}.patch
+├── 经验沉淀/
+│   ├── 经验总结.md
+│   └── 共享文件更新建议.md
+├── 质量报告/
+│   └── 质量报告.md
+└── 原始数据/                    ← 中间产物归档
+    ├── exploits/, traces/, context_packs/ 等
+    └── checkpoint.json
+```

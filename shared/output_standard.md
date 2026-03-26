@@ -63,6 +63,42 @@
 
 ## 各 Team 输出必需文件清单
 
+> **输出目录结构**: 所有文件按以下目录组织，不得散放在 WORK_DIR 根目录。
+
+```
+$WORK_DIR/
+├── 报告/
+│   ├── 审计报告.md              ← 主报告（全中文，含 Burp 模板 + 攻击链 + AI验证标记）
+│   └── audit_report.sarif.json  ← 机器可读报告（给 CI/CD 用）
+├── PoC脚本/
+│   ├── poc_{sink_id}.py         ← 独立 PoC 脚本
+│   ├── requirements.txt
+│   └── 一键运行.sh
+├── 修复补丁/
+│   └── {finding_id}.patch
+├── 经验沉淀/
+│   ├── 经验总结.md
+│   └── 共享文件更新建议.md
+├── 质量报告/
+│   └── 质量报告.md
+└── 原始数据/
+    ├── environment_status.json
+    ├── route_map.json
+    ├── auth_matrix.json
+    ├── ast_sinks.json
+    ├── priority_queue.json
+    ├── credentials.json
+    ├── dep_risk.json
+    ├── exploit_summary.json
+    ├── attack_graph.json
+    ├── correlation_report.json
+    ├── attack_graph_data.json
+    ├── context_packs/
+    ├── traces/
+    ├── exploits/
+    └── .audit_state/
+```
+
 ### Team-1（环境构建）
 
 | 文件 | Schema | 必需 | 说明 |
@@ -73,14 +109,12 @@
 
 | 文件 | Schema | 必需 | 说明 |
 |------|--------|:----:|------|
-| route_map.json | route_map.schema.json | ✅ | 路由表（endpoint + controller + file:line） |
-| auth_matrix.json | auth_matrix.schema.json | ✅ | 权限矩阵（路由 × 角色） |
+| route_map.json | route_map.schema.json | ✅ | 路由表 |
+| auth_matrix.json | auth_matrix.schema.json | ✅ | 权限矩阵 |
 | ast_sinks.json | — | ✅ | AST Sink 扫描结果 |
-| priority_queue.json | priority_queue.schema.json | ✅ | 优先级排序（P0-P3） |
-| context_packs/*.json | context_pack.schema.json | ✅ | 上下文包（Source→Sink 调用层） |
+| priority_queue.json | priority_queue.schema.json | ✅ | 优先级排序 |
+| context_packs/*.json | context_pack.schema.json | ✅ | 上下文包 |
 | dep_risk.json | dep_risk.schema.json | ⚠️ | 依赖风险评估 |
-| psalm_taint.json | — | ⚠️ | Psalm 污点分析（允许 failed） |
-| progpilot.json | — | ⚠️ | Progpilot 扫描（允许 failed） |
 
 ### Team-3（动态追踪）
 
@@ -93,26 +127,26 @@
 
 | 文件 | Schema | 必需 | 说明 |
 |------|--------|:----:|------|
-| exploits/{sink_id}.json | — | ✅ | 每个利用结果（含物证） |
-| .audit_state/team4_progress.json | — | ✅ | 进度汇总+全部 findings |
+| exploits/{sink_id}.json | — | ✅ | 每个利用结果 |
+| .audit_state/team4_progress.json | — | ✅ | 进度汇总 |
 
 ### Team-4.5（关联分析）
 
 | 文件 | Schema | 必需 | 说明 |
 |------|--------|:----:|------|
-| attack_graph.json | — | ✅ | 攻击图（nodes + edges） |
+| attack_graph.json | — | ✅ | 攻击图 |
 | correlation_report.json | — | ✅ | 关联分析报告 |
-| patches/*.patch | — | ⚠️ | 修复补丁（仅 confirmed 必需） |
+| 修复补丁/*.patch | — | ⚠️ | 修复补丁 |
 
 ### Team-5（报告生成）
 
 | 文件 | Schema | 必需 | 说明 |
 |------|--------|:----:|------|
-| audit_report.md | — | ✅ | Markdown 审计报告（含 Burp 包） |
-| audit_report.sarif.json | SARIF 2.1.0 | ✅ | 机器可读报告 |
-| poc/*.py | — | ✅ | PoC 脚本（如有 confirmed） |
-| poc/run_all.sh | — | ✅ | 一键执行所有 PoC |
-| quality_report.md | — | ✅ | 最终质量报告（质检员生成） |
+| 报告/审计报告.md | — | ✅ | 全中文审计报告 |
+| 报告/audit_report.sarif.json | SARIF 2.1.0 | ✅ | 机器可读报告 |
+| PoC脚本/poc_*.py | — | ✅ | PoC 脚本（如有 confirmed） |
+| PoC脚本/一键运行.sh | — | ✅ | 批量执行 PoC |
+| 质量报告/质量报告.md | — | ✅ | 最终质量报告 |
 
 ---
 
@@ -152,9 +186,11 @@ done
 # 5. 必需文件存在性检测
 echo "=== 必需文件检测 ==="
 for f in environment_status.json route_map.json auth_matrix.json ast_sinks.json \
-         priority_queue.json credentials.json audit_report.md audit_report.sarif.json; do
+         priority_queue.json credentials.json; do
   [ -f "$WORK_DIR/$f" ] || echo "MISSING: $f"
 done
+[ -f "$WORK_DIR/报告/审计报告.md" ] || echo "MISSING: 报告/审计报告.md"
+[ -f "$WORK_DIR/报告/audit_report.sarif.json" ] || echo "MISSING: 报告/audit_report.sarif.json"
 [ -d "$WORK_DIR/context_packs" ] || echo "MISSING: context_packs/"
 [ -d "$WORK_DIR/traces" ] || echo "MISSING: traces/"
 [ -d "$WORK_DIR/exploits" ] || echo "MISSING: exploits/"
@@ -187,22 +223,21 @@ except ImportError:
 
 ## Markdown 报告格式约束
 
-### audit_report.md 必需章节
+### 审计报告.md 必需章节
 
 1. **概述** — 审计范围、目标、方法
 2. **环境信息** — PHP 版本、框架、数据库
-3. **漏洞摘要表** — 全部发现的一览表（ID / 类型 / 等级 / 端点）
+3. **漏洞摘要表** — 全部发现的一览表（编号 / 类型 / 等级 / AI验证 / 端点）
 4. **漏洞详情**（每条漏洞一个子章节）:
-   - 漏洞描述
-   - 影响范围
-   - 复现步骤（含 Burp 格式 HTTP 请求/响应）
-   - 物证截图/输出
+   - AI 验证状态（🟢/🟡/🔴 醒目标签）
+   - 攻击链（Mermaid 流程图）
+   - 数据流（Source → Sink）
+   - Burp 复现模板（完整 HTTP 请求，可直接复制到 Burp Repeater）
+   - 服务器响应（物理证据）
    - 修复方案（修复前 vs 修复后代码）
-   - 风险评级
-5. **覆盖率统计** — 已审计路由/跳过路由/总路由
-6. **Agent 覆盖矩阵** — 21 个 Auditor 执行状态
-7. **待补证风险池** — deferred/potential 的条目
-8. **附录** — 工具版本、配置参数
+5. **联合攻击链** — 跨漏洞组合攻击路径（Mermaid 图）
+6. **覆盖率统计** — 已审计/跳过/总路由 + Agent 执行状态表
+7. **待补证风险池** — 未完全验证的条目
 
 ### Burp 格式硬约束
 

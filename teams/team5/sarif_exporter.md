@@ -202,6 +202,6 @@ ls "$WORK_DIR/exploits/"*.json 2>/dev/null
 
 ## 输出
 
-文件: `$WORK_DIR/audit_report.sarif.json`
+文件: `$WORK_DIR/报告/audit_report.sarif.json`
 
 确保输出为格式化的 JSON（缩进 2 空格），便于人工审阅。
