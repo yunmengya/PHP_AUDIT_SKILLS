@@ -95,7 +95,7 @@ Every verification report MUST contain the following three parts — none MAY be
 
 ## Phase 2: Static Reconnaissance Verification (Team-2 Output)
 
-**Agent Under Verification:** route_scanner, auth_analyzer, ast_scanner, dep_scanner, context_builder, priority_ranker (all of Team-2)
+**Agent Under Verification:** route_mapper, auth_auditor, tool_runner, dep_scanner, context_extractor, risk_classifier (all of Team-2)
 **Verification Source Files:** route_map.json, auth_matrix.json, ast_sinks.json, context_packs/, priority_queue.json, dep_risk.json
 **Associated Schema:** corresponding schema files under schemas/
 
@@ -710,7 +710,7 @@ ldap_search/ldap_bind → ldap_auditor
 | Agent | Phase | Status | Sink Count | confirmed | suspected | potential | Redo Count |
 |-------|-------|--------|------------|-----------|-----------|-----------|------------|
 | docker_builder | 1 | 【?】 | - | - | - | - | 【?】 |
-| route_scanner | 2 | 【?】 | - | - | - | - | 【?】 |
+| route_mapper | 2 | 【?】 | - | - | - | - | 【?】 |
 | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ## Quality Conclusion

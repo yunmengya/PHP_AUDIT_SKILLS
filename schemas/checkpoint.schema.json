@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Checkpoint",
+  "description": "Audit checkpoint file for resume and progress tracking",
+  "type": "object",
+  "required": ["completed", "current", "mode"],
+  "properties": {
+    "completed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of completed phase names (e.g., [\"env\", \"scan\", \"trace\"])"
+    },
+    "current": {
+      "type": "string",
+      "description": "Currently executing phase name"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["full", "degraded"],
+      "description": "Overall audit mode — degraded if any phase degraded"
+    },
+    "framework": {
+      "type": "string",
+      "description": "Detected PHP framework name"
+    },
+    "total_sinks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of sinks identified in Phase-2"
+    },
+    "confirmed_vulns": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Running count of confirmed vulnerabilities"
+    },
+    "phase_timings": {
+      "type": "object",
+      "description": "Per-phase start/end timestamps",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "start": { "type": "string", "format": "date-time" },
+          "end": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "phases": {
+      "type": "object",
+      "description": "Per-phase degradation tracking",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["full", "degraded"]
+          },
+          "degradation_reason": {
+            "type": "string"
+          }
+        },
+        "required": ["mode"]
+      }
+    },
+    "agent_states": {
+      "type": "object",
+      "description": "Per-agent runtime status tracking",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["spawned", "running", "passed", "failed", "retrying", "degraded", "timed_out"]
+          },
+          "spawned_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "qc_verdict": {
+            "type": ["string", "null"],
+            "enum": ["pass", "fail", null]
+          },
+          "redo_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pivot_triggered": {
+            "type": "boolean"
+          }
+        },
+        "required": ["status"]
+      }
+    }
+  }
+}

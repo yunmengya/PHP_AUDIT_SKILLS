@@ -1,112 +1,158 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Mini-Researcher 研究结果",
-  "description": "Phase-4 Mini-Researcher Agent 的输出格式，存储于 $WORK_DIR/research/{research_id}.json",
+  "title": "Mini-Researcher Result",
+  "description": "Phase-4 Mini-Researcher Agent output format, stored at $WORK_DIR/research/{research_id}.json",
   "type": "object",
-  "required": ["research_id", "query", "target_component", "findings", "recommendations", "confidence"],
+  "required": [
+    "research_id",
+    "query",
+    "target_component",
+    "findings",
+    "recommendations",
+    "confidence"
+  ],
   "properties": {
     "research_id": {
       "type": "string",
       "pattern": "^research_\\d+$",
-      "description": "研究 ID，格式: research_{timestamp}"
+      "description": "Research ID, format: research_{timestamp}"
     },
     "query": {
       "type": "string",
       "minLength": 1,
-      "description": "原始研究问题"
+      "description": "Original research query"
     },
     "target_component": {
       "type": "string",
-      "description": "目标组件/框架/库名称 + 版本"
+      "description": "Target component / framework / library name + version"
     },
     "context": {
       "type": "string",
-      "description": "触发研究的上下文（Auditor 当前状态、失败原因等）"
+      "description": "Context that triggered the research (auditor current state, failure reasons etc.)"
     },
     "trigger_condition": {
       "type": "string",
-      "enum": ["MR-1", "MR-2", "MR-3", "MR-4", "MR-5"],
-      "description": "触发条件编号（参见 phase4_attack_logic.md 委派机制表）"
+      "enum": [
+        "MR-1",
+        "MR-2",
+        "MR-3",
+        "MR-4",
+        "MR-5"
+      ],
+      "description": "Trigger condition code (see phase4_attack_logic.md delegation mechanism table)"
     },
     "findings": {
       "type": "array",
-      "description": "研究发现列表",
+      "description": "List of research findings",
       "items": {
         "type": "object",
-        "required": ["type", "description", "source"],
+        "required": [
+          "type",
+          "description",
+          "source"
+        ],
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["cve", "exploit", "bypass_technique", "configuration", "general_intel"],
-            "description": "发现类型"
+            "enum": [
+              "cve",
+              "exploit",
+              "bypass_technique",
+              "configuration",
+              "general_intel"
+            ],
+            "description": "Finding type"
           },
           "id": {
             "type": "string",
-            "description": "CVE ID 或其他标识符（如 CVE-2024-XXXXX）"
+            "description": "CVE ID or other identifier (e.g. CVE-2024-XXXXX)"
           },
           "severity": {
             "type": "string",
-            "enum": ["critical", "high", "medium", "low", "info"],
-            "description": "严重度等级"
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "info"
+            ],
+            "description": "Severity level"
           },
           "description": {
             "type": "string",
             "minLength": 1,
-            "description": "漏洞/技术描述"
+            "description": "Vulnerability / technique description"
           },
           "affected_versions": {
             "type": "string",
-            "description": "受影响版本范围（如 < 2.15.1）"
+            "description": "Affected version range (e.g. < 2.15.1)"
           },
           "exploit_available": {
             "type": "boolean",
-            "description": "是否有公开利用代码"
+            "description": "Whether public exploit code is available"
           },
           "exploit_method": {
             "type": "string",
-            "description": "利用方法概述"
+            "description": "Exploit method overview"
           },
           "preconditions": {
             "type": "array",
-            "items": { "type": "string" },
-            "description": "利用前置条件列表"
+            "items": {
+              "type": "string"
+            },
+            "description": "List of exploit preconditions"
           },
           "payload_template": {
             "type": "string",
-            "description": "具体 payload 模板（如有）"
+            "description": "Specific payload template (if available)"
           },
           "source": {
             "type": "string",
             "minLength": 1,
-            "description": "信息来源（URL 或本地文件路径）"
+            "description": "Information source (URL or local file path)"
           }
         }
       }
     },
     "recommendations": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "minItems": 1,
-      "description": "建议 Auditor 尝试的方向"
+      "description": "Recommended directions for the auditor to try"
     },
     "confidence": {
       "type": "string",
-      "enum": ["high", "medium", "low"],
-      "description": "整体置信度: high=多源验证, medium=单源可靠, low=推测性"
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "Overall confidence: high=multi-source verified, medium=single reliable source, low=speculative"
     },
     "search_sources_used": {
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["known_cves.md", "lessons_learned.md", "framework_patterns.md", "attack_memory.db", "nvd_api", "github_advisory", "exploit_db", "web_search"]
+        "enum": [
+          "known_cves.md",
+          "lessons_learned.md",
+          "framework_patterns.md",
+          "attack_memory.db",
+          "nvd_api",
+          "github_advisory",
+          "exploit_db",
+          "web_search"
+        ]
       },
-      "description": "本次研究使用的信息源"
+      "description": "Information sources used in this research"
     },
     "duration_seconds": {
       "type": "integer",
       "minimum": 0,
       "maximum": 180,
-      "description": "研究耗时（秒），上限 180"
+      "description": "Research duration in seconds, max 180"
     }
   },
   "additionalProperties": false

@@ -73,11 +73,17 @@ HEADER
 sql "SELECT DISTINCT phase FROM qc_records ORDER BY phase" | while IFS= read -r phase; do
     [ -z "$phase" ] && continue
 
-    phase_pass=$(sql "SELECT COUNT(*) FROM qc_records WHERE phase='$phase' AND verdict='pass'")
-    phase_fail=$(sql "SELECT COUNT(*) FROM qc_records WHERE phase='$phase' AND verdict='fail'")
-    phase_total=$(sql "SELECT COUNT(*) FROM qc_records WHERE phase='$phase'")
-    phase_redos=$(sql "SELECT COALESCE(SUM(redo_count),0) FROM qc_records WHERE phase='$phase'")
-    avg_rate=$(sql "SELECT ROUND(AVG(pass_count * 100.0 / NULLIF(total_count, 0)), 1) FROM qc_records WHERE phase='$phase'")
+    # Sanitize phase value (should be numeric, reject anything else)
+    case "$phase" in
+        [0-9]|[0-9][0-9]) ;;  # valid: 1-99
+        *) continue ;;        # skip non-numeric values
+    esac
+
+    phase_pass=$(sql "SELECT COUNT(*) FROM qc_records WHERE phase='${phase}' AND verdict='pass'")
+    phase_fail=$(sql "SELECT COUNT(*) FROM qc_records WHERE phase='${phase}' AND verdict='fail'")
+    phase_total=$(sql "SELECT COUNT(*) FROM qc_records WHERE phase='${phase}'")
+    phase_redos=$(sql "SELECT COALESCE(SUM(redo_count),0) FROM qc_records WHERE phase='${phase}'")
+    avg_rate=$(sql "SELECT ROUND(AVG(pass_count * 100.0 / NULLIF(total_count, 0)), 1) FROM qc_records WHERE phase='${phase}'")
 
     # Phase name mapping
     case "$phase" in

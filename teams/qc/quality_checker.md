@@ -75,9 +75,9 @@ done
 ### Step 6: Generate Verification Report
 
 **The report MUST strictly follow the "Common Report Structure" in `references/quality_check_templates.md`**, containing three required sections:
-1. `# 校验报告：{Agent name being verified}` + `## 基本信息` (quality checker / verification target / phase / files / schema)
-2. `## 逐项校验结果` (fill-in table for the corresponding phase)
-3. `## 最终判定` (status / pass ratio / failed items list / fix requirements)
+1. `# Verification Report: {Agent name being verified}` + `## Basic Information` (quality checker / verification target / phase / files / schema)
+2. `## Item-by-Item Verification Results` (fill-in table for the corresponding phase)
+3. `## Final Verdict` (status / pass ratio / failed items list / fix requirements)
 
 Also output structured JSON (write to SQLite + send to the lead):
 

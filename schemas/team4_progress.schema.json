@@ -1,32 +1,45 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Team4 Progress Tracker",
-  "description": "Phase-4 专家 Agent 进度跟踪，由各专家更新，主调度器和 QC-3 读取",
+  "description": "Phase-4 specialist agent progress tracker, updated by specialists, read by main scheduler and QC-3",
   "type": "object",
-  "required": ["experts", "status"],
+  "required": [
+    "experts",
+    "status"
+  ],
   "properties": {
     "experts": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["agent_name", "task_id", "status"],
+        "required": [
+          "agent_name",
+          "task_id",
+          "status"
+        ],
         "properties": {
           "agent_name": {
             "type": "string",
-            "description": "专家 Agent 名称"
+            "description": "Specialist agent name"
           },
           "task_id": {
             "type": "string",
-            "description": "对应的 Task ID"
+            "description": "Corresponding task ID"
           },
           "sink_type": {
             "type": "string",
-            "description": "负责的 Sink 类型"
+            "description": "Assigned sink type"
           },
           "status": {
             "type": "string",
-            "enum": ["waiting", "running", "completed", "failed", "timeout"],
-            "description": "Agent 执行状态"
+            "enum": [
+              "waiting",
+              "running",
+              "completed",
+              "failed",
+              "timeout"
+            ],
+            "description": "Agent execution status"
           },
           "start_time": {
             "type": "string",
@@ -38,27 +51,31 @@
           },
           "sinks_total": {
             "type": "integer",
-            "description": "分配的 Sink 总数"
+            "description": "Total number of assigned sinks"
           },
           "sinks_completed": {
             "type": "integer",
-            "description": "已审计完成的 Sink 数"
+            "description": "Number of completed sink audits"
           },
           "vulns_found": {
             "type": "integer",
-            "description": "发现的漏洞数"
+            "description": "Number of vulnerabilities found"
           },
           "error_message": {
             "type": "string",
-            "description": "失败时的错误信息"
+            "description": "Error message on failure"
           }
         }
       }
     },
     "status": {
       "type": "string",
-      "enum": ["in_progress", "completed", "partial_failure"],
-      "description": "整体 Phase-4 状态"
+      "enum": [
+        "in_progress",
+        "completed",
+        "partial_failure"
+      ],
+      "description": "Overall Phase-4 status"
     },
     "started_at": {
       "type": "string",

@@ -6,9 +6,8 @@ You are the Report Writer agent, responsible for aggregating all audit results a
 
 - `WORK_DIR`: Working directory path
 - `$WORK_DIR/exploits/*.json` — Phase-4 audit results
-- `$WORK_DIR/attack_graph.json` — Phase-4.5 attack graph
+- `$WORK_DIR/attack_graph.json` — Phase-4.5 attack graph (includes relational graph data)
 - `$WORK_DIR/correlation_report.json` — Phase-4.5 correlation analysis (contains `graph_correlations`)
-- `$WORK_DIR/attack_graph_data.json` — Relational graph data
 - `$WORK_DIR/research/*.json` — Mini-Researcher research results (if available)
 - `$WORK_DIR/.audit_state/team4_progress.json` — Phase-4 progress and QC results
 - `$WORK_DIR/exploit_summary.json` — Vulnerability summary statistics
@@ -220,7 +219,7 @@ graph TD
 
 ## Zero-Vulnerability Report Specification
 
-When ALL exploit results have `final_verdict: "safe"` and `exploit_summary.json` shows `confirmed: 0, suspected: 0`:
+When ALL exploit results have `final_verdict: "not_vulnerable"` and `exploit_summary.json` shows `confirmed: 0, suspected: 0`:
 
 Generate the report with the following structure:
 ````markdown
@@ -280,7 +279,7 @@ After report generation is complete, execute the lessons learned workflow.
 - Sinks that exhausted all rounds and still failed, with failure reasons → write to the "失败记录" category
 - Non-typical attack surfaces or undocumented behaviors → write to the "新发现模式" category
 
-**Step 2:** Load `$WORK_DIR/attack_graph_data.json` (graph data) and extract inter-vulnerability relationships
+**Step 2:** Load `$WORK_DIR/attack_graph.json` (graph data) and extract inter-vulnerability relationships
 
 **Step 3:** Calculate technique effectiveness and label as [实测高效] / [实测低效]
 

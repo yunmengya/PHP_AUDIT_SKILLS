@@ -134,7 +134,7 @@ for f in "$@"; do
     BASENAME=$(basename "$f")
     case "$BASENAME" in
       environment_status.json)
-        jq -e '.php_version and .framework and .extensions' "$f" >/dev/null 2>&1 \
+        jq -e '.php_version and .framework and .framework_version' "$f" >/dev/null 2>&1 \
           || { echo "❌ ${GATE_NAME} FAIL: missing required fields in ${BASENAME}"; ALL_PASS=false; } ;;
       priority_queue.json)
         jq -e 'type == "array"' "$f" >/dev/null 2>&1 \
@@ -259,7 +259,7 @@ Check if `${HOME}/.php_audit/${PROJECT_NAME}/` contains a recent directory with 
    - Phase-1 done? → verify environment_status.json:
      • File exists and non-empty
      • Valid JSON (jq . < file >/dev/null 2>&1)
-     • Required fields present: php_version, framework, extensions
+     • Required fields present: php_version, framework, framework_version
    - Phase-2 done? → verify priority_queue.json + context_packs/:
      • priority_queue.json is valid JSON with at least 1 entry
      • context_packs/ directory exists and has ≥1 .json file
@@ -349,7 +349,7 @@ Phase-2 (Recon):
 
 Phase-3 (Tracing):
   task-12: "auth_simulator"                       activeForm="Simulating auth"         (blockedBy: [11])
-  task-13: "trace_auditor"                        activeForm="Dynamic tracing"         (blockedBy: [12])
+  task-13: "trace_dispatcher"                     activeForm="Dynamic tracing"         (blockedBy: [12])
   task-14: "QC: dynamic trace"                    activeForm="QC verifying traces"     (blockedBy: [13])
 ```
 
@@ -385,8 +385,8 @@ WORK_DIR={WORK_DIR}
 
 --- Shared Resources ---
 {shared/anti_hallucination.md content}
-{shared/sink_definitions.md content}
 {shared/data_contracts.md content}
+{shared/evidence_contract.md content}
 
 --- Your Task Instructions ---
 {teams/teamN/xxx.md content}
@@ -485,6 +485,8 @@ spawn quality_checker (Task #4, foreground, read teams/qc/quality_checker.md)
 ⏳ Block-wait QC result
   — QC PASS → continue
   — QC FAIL → re-send failed_items to docker_builder, check redo_count:
+    # Phase-1 allows 3 retries (vs 2 for other phases) because environment setup
+    # is a hard prerequisite — there is no degraded fallback. More retries before halt.
     if redo_count < 3 → increment redo_count, retry
     if redo_count >= 3 → halt for user intervention (Phase-1 cannot degrade)
 ```
@@ -668,7 +670,7 @@ bash "$WORK_DIR/.audit_state/phase_transition.sh" "CREATE_DYNAMIC_TASKS" "PHASE_
 spawn auth_simulator (Task #12, foreground, read teams/team3/auth_simulator.md)
   inject: environment_status.json + route_map.json + auth_matrix.json + Docker env info
 → WAIT for Task #12 completed
-spawn trace_auditor  (Task #13, foreground, read teams/team3/trace_auditor.md)
+spawn trace_dispatcher  (Task #13, foreground, read teams/team3/trace_dispatcher.md)
   inject: credentials.json + context_packs/
 → WAIT for Task #13 completed
 ```
@@ -678,7 +680,7 @@ spawn trace_auditor  (Task #13, foreground, read teams/team3/trace_auditor.md)
 spawn quality_checker (Task #14, foreground)
 ⏳ Block-wait QC result
   — QC PASS → continue
-  — QC FAIL → check trace_auditor redo_count:
+  — QC FAIL → check trace_dispatcher redo_count:
     if redo_count < 2 → increment redo_count, re-run with failed items
     if redo_count >= 2 → mark degraded, fall back to static analysis
 ```
@@ -724,6 +726,8 @@ Print pipeline: Phase-1 ✅ | Phase-2 ✅ | Phase-3 ✅ | Phase-4~5 ⏳
 bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_3_PASS" "PHASE_4"
 ```
 ```
+RESEARCH_COUNT=0   # Initialize Mini-Researcher dispatch counter
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 打印: ━━━ 进入 Phase-4: 深度对抗审计 ━━━
 ```
 
@@ -829,7 +833,7 @@ PASS → generate exploit_summary.json:
 # Generate exploit_summary.json (orchestrator inline action)
 CONFIRMED=$(cat "$WORK_DIR/exploits/"*.json 2>/dev/null | jq -s '[.[] | select(.final_verdict=="confirmed")] | length')
 SUSPECTED=$(cat "$WORK_DIR/exploits/"*.json 2>/dev/null | jq -s '[.[] | select(.final_verdict=="suspected")] | length')
-SAFE=$(cat "$WORK_DIR/exploits/"*.json 2>/dev/null | jq -s '[.[] | select(.final_verdict=="safe")] | length')
+SAFE=$(cat "$WORK_DIR/exploits/"*.json 2>/dev/null | jq -s '[.[] | select(.final_verdict=="not_vulnerable")] | length')
 TOTAL=$(ls "$WORK_DIR/exploits/"*.json 2>/dev/null | wc -l)
 cat > "$WORK_DIR/exploit_summary.json" << EOF
 {
@@ -967,7 +971,7 @@ bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-5" "$WORK_DIR/报告/审计报
 # Move all intermediate artifacts to 原始数据/ for clean user view
 for f in environment_status.json route_map.json auth_matrix.json ast_sinks.json \
          priority_queue.json credentials.json dep_risk.json exploit_summary.json \
-         attack_graph.json correlation_report.json attack_graph_data.json checkpoint.json; do
+         attack_graph.json correlation_report.json checkpoint.json; do
   [ -f "$WORK_DIR/$f" ] && mv "$WORK_DIR/$f" "$WORK_DIR/原始数据/"
 done
 [ -d "$WORK_DIR/exploits" ] && mv "$WORK_DIR/exploits" "$WORK_DIR/原始数据/"

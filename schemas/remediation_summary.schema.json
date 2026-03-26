@@ -1,34 +1,70 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Remediation Summary",
-  "description": "Phase-4.5 remediation_generator 输出的修复摘要",
+  "description": "Remediation summary output by Phase-4.5 remediation_generator",
   "type": "object",
-  "required": ["generated_at", "total_vulns", "patches_generated", "patches"],
+  "required": [
+    "generated_at",
+    "total_vulns",
+    "patches_generated",
+    "patches"
+  ],
   "properties": {
     "generated_at": {
       "type": "string",
       "format": "date-time"
     },
-    "total_vulns": { "type": "integer" },
-    "patches_generated": { "type": "integer" },
-    "patches_skipped": { "type": "integer" },
+    "total_vulns": {
+      "type": "integer"
+    },
+    "patches_generated": {
+      "type": "integer"
+    },
+    "patches_skipped": {
+      "type": "integer"
+    },
     "skip_reasons": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "patches": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["sink_id", "vuln_type", "file", "fix_strategy"],
+        "required": [
+          "sink_id",
+          "vuln_type",
+          "file",
+          "fix_strategy"
+        ],
         "properties": {
-          "sink_id": { "type": "string" },
-          "vuln_type": { "type": "string" },
-          "file": { "type": "string", "description": "修改的源文件路径" },
-          "patch_file": { "type": "string", "description": "Patch 文件路径" },
-          "fix_strategy": { "type": "string", "description": "修复策略描述" },
-          "breaking_change": { "type": "boolean" },
-          "verification": { "type": "string", "description": "验证建议" }
+          "sink_id": {
+            "type": "string"
+          },
+          "vuln_type": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string",
+            "description": "Modified source file path"
+          },
+          "patch_file": {
+            "type": "string",
+            "description": "Patch file path"
+          },
+          "fix_strategy": {
+            "type": "string",
+            "description": "Fix strategy description"
+          },
+          "breaking_change": {
+            "type": "boolean"
+          },
+          "verification": {
+            "type": "string",
+            "description": "Verification recommendation"
+          }
         }
       }
     }

@@ -1,90 +1,109 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Attack Memory Entry",
-  "description": "单次 Sink 攻击的经验记录，用于跨审计记忆复用",
+  "description": "Experience record for a single sink attack, used for cross-audit memory reuse",
   "type": "object",
-  "required": ["sink_type", "framework", "php_version", "status", "rounds_used", "timestamp"],
+  "required": [
+    "sink_type",
+    "framework",
+    "php_version",
+    "status",
+    "rounds_used",
+    "timestamp"
+  ],
   "properties": {
     "sink_type": {
       "type": "string",
-      "description": "Sink 类型 (rce/sqli/xss/ssrf/lfi/deserial/xxe/authz/config/infoleak/nosql/race/crypto/wordpress/bizlogic/filewrite)"
+      "description": "Sink type (rce/sqli/xss/ssrf/lfi/deserial/xxe/authz/config/infoleak/nosql/race/crypto/wordpress/bizlogic/filewrite)"
     },
     "sink_function": {
       "type": "string",
-      "description": "具体 Sink 函数名 (system/eval/query/unserialize 等)"
+      "description": "Specific sink function name (system/eval/query/unserialize etc.)"
     },
     "framework": {
       "type": "string",
-      "description": "目标框架 (Laravel/ThinkPHP/WordPress/Symfony/CodeIgniter/Yii2/raw-php)"
+      "description": "Target framework (Laravel/ThinkPHP/WordPress/Symfony/CodeIgniter/Yii2/raw-php)"
     },
     "framework_version": {
       "type": "string",
-      "description": "框架版本号"
+      "description": "Framework version number"
     },
     "php_version": {
       "type": "string",
-      "description": "PHP 版本 (如 7.4.33, 8.1.27)"
+      "description": "PHP version (e.g. 7.4.33, 8.1.27)"
     },
     "waf_type": {
       "type": "string",
-      "description": "WAF 类型 (none/ModSecurity/Cloudflare/custom)",
+      "description": "WAF type (none/ModSecurity/Cloudflare/custom)",
       "default": "none"
     },
     "status": {
       "type": "string",
-      "enum": ["confirmed", "failed", "partial"],
-      "description": "最终状态"
+      "enum": [
+        "confirmed",
+        "failed",
+        "partial"
+      ],
+      "description": "Final status"
     },
     "rounds_used": {
       "type": "integer",
-      "description": "实际使用的轮次数"
+      "description": "Actual number of rounds used"
     },
     "max_rounds": {
       "type": "integer",
-      "description": "该专家的最大轮次数"
+      "description": "Maximum rounds for this specialist"
     },
     "successful_round": {
       "type": "integer",
-      "description": "成功的轮次编号（仅 confirmed 时）"
+      "description": "Successful round number (only when confirmed)"
     },
     "successful_payload_type": {
       "type": "string",
-      "description": "成功的 payload 策略类型 (如 time_blind/filter_chain/LD_PRELOAD)"
+      "description": "Successful payload strategy type (e.g. time_blind/filter_chain/LD_PRELOAD)"
     },
     "successful_payload_summary": {
       "type": "string",
-      "description": "成功 payload 的脱敏摘要（不含具体 URL/路径）"
+      "description": "Sanitized summary of successful payload (excluding specific URLs/paths)"
     },
     "bypass_technique": {
       "type": "string",
-      "description": "绕过手法 (如 double_urlencode/unicode/IFS_substitution)"
+      "description": "Bypass technique (e.g. double_urlencode/unicode/IFS_substitution)"
     },
     "eliminated_strategies": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "已证明无效的策略列表"
+      "items": {
+        "type": "string"
+      },
+      "description": "List of strategies proven ineffective"
     },
     "failure_reason": {
       "type": "string",
-      "description": "失败原因分类 (waf_block/param_type_mismatch/framework_filter/runtime_version/auth_block)"
+      "description": "Failure reason category (waf_block/param_type_mismatch/framework_filter/runtime_version/auth_block)"
     },
     "environment_factors": {
       "type": "object",
       "properties": {
-        "disable_functions": { "type": "string" },
-        "open_basedir": { "type": "string" },
-        "allow_url_include": { "type": "string" }
+        "disable_functions": {
+          "type": "string"
+        },
+        "open_basedir": {
+          "type": "string"
+        },
+        "allow_url_include": {
+          "type": "string"
+        }
       },
-      "description": "影响结果的关键环境配置"
+      "description": "Key environment configurations affecting results"
     },
     "project_hash": {
       "type": "string",
-      "description": "项目标识哈希（用于增量审计匹配）"
+      "description": "Project identifier hash (for incremental audit matching)"
     },
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "记录时间"
+      "description": "Record timestamp"
     }
   }
 }

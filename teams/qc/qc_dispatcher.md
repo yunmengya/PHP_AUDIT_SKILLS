@@ -63,8 +63,8 @@ Team-2 all Agents complete → spawn quality-checker-1
 | route_map related | route_mapper |
 | auth_matrix related | auth_auditor |
 | ast_sinks related | tool_runner (AST scan) |
-| context_packs related | context_builder |
-| priority_queue related | priority_ranker |
+| context_packs related | context_extractor |
+| priority_queue related | risk_classifier |
 | dep_risk related | dep_scanner |
 
 ### Phase 3 Dynamic Tracing

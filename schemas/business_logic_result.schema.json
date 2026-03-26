@@ -1,27 +1,36 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Business Logic Result",
-  "description": "业务逻辑审计结果，由 business_logic_auditor 专家 Agent 输出",
+  "description": "Business logic audit result output by business_logic_auditor specialist agent",
   "type": "object",
-  "required": ["sink_id", "route_url", "specialist", "business_flow", "rounds_executed", "results", "final_verdict", "confidence"],
+  "required": [
+    "sink_id",
+    "route_url",
+    "specialist",
+    "business_flow",
+    "rounds_executed",
+    "results",
+    "final_verdict",
+    "confidence"
+  ],
   "properties": {
     "sink_id": {
       "type": "string",
       "pattern": "^sink_\\d+$",
-      "description": "关联 priority_queue 的 id"
+      "description": "Associated priority_queue id"
     },
     "route_url": {
       "type": "string",
-      "description": "路由路径"
+      "description": "Route path"
     },
     "specialist": {
       "type": "string",
       "const": "business_logic_auditor",
-      "description": "执行审计的专家 Agent 名"
+      "description": "Specialist agent name performing the audit"
     },
     "business_flow": {
       "type": "string",
-      "description": "受影响的业务流程描述"
+      "description": "Description of affected business flow"
     },
     "rounds_executed": {
       "type": "integer",
@@ -31,7 +40,16 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["round", "strategy", "payload", "business_impact", "state_before", "state_after", "persisted", "result"],
+        "required": [
+          "round",
+          "strategy",
+          "payload",
+          "business_impact",
+          "state_before",
+          "state_after",
+          "persisted",
+          "result"
+        ],
         "properties": {
           "round": {
             "type": "integer",
@@ -39,47 +57,71 @@
           },
           "strategy": {
             "type": "string",
-            "enum": ["price_tamper", "coupon_abuse", "payment_bypass", "flow_skip", "negative_value", "sms_bomb", "state_machine"],
-            "description": "攻击策略"
+            "enum": [
+              "price_tamper",
+              "coupon_abuse",
+              "payment_bypass",
+              "flow_skip",
+              "negative_value",
+              "sms_bomb",
+              "state_machine"
+            ],
+            "description": "Attack strategy"
           },
           "payload": {
             "type": "string",
-            "description": "实际发送的 Payload"
+            "description": "Actual payload sent"
           },
           "business_impact": {
             "type": "string",
-            "description": "业务影响描述: 资金损失/数据泄露/流程绕过等"
+            "description": "Business impact: financial loss / data leak / flow bypass etc."
           },
           "state_before": {
             "type": "string",
-            "description": "操作前状态"
+            "description": "State before operation"
           },
           "state_after": {
             "type": "string",
-            "description": "操作后状态"
+            "description": "State after operation"
           },
           "persisted": {
             "type": "boolean",
-            "description": "异常状态是否被持久化"
+            "description": "Whether abnormal state is persisted"
           },
           "evidence_detail": {
-            "type": ["string", "null"],
-            "description": "证据详情"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Evidence details"
           },
           "result": {
             "type": "string",
-            "enum": ["confirmed", "suspected", "failed"]
+            "enum": [
+              "confirmed",
+              "suspected",
+              "failed"
+            ]
           }
         }
       }
     },
     "final_verdict": {
       "type": "string",
-      "enum": ["confirmed", "suspected", "potential", "not_vulnerable"]
+      "enum": [
+        "confirmed",
+        "suspected",
+        "potential",
+        "not_vulnerable"
+      ]
     },
     "confidence": {
       "type": "string",
-      "enum": ["high", "medium", "low"]
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
     }
   }
 }

@@ -1,19 +1,47 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dependency Risk",
-  "description": "组件风险：包名/版本/CVE/严重程度/修复版本",
+  "description": "Dependency risk: package / version / CVE / severity / fix version",
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["package", "installed_version", "cve", "severity", "type", "description", "fixed_version"],
+    "required": [
+      "package",
+      "installed_version",
+      "cve",
+      "severity",
+      "type",
+      "description",
+      "fixed_version"
+    ],
     "properties": {
-      "package": { "type": "string" },
-      "installed_version": { "type": "string" },
-      "cve": { "type": "string" },
-      "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
-      "type": { "type": "string" },
-      "description": { "type": "string" },
-      "fixed_version": { "type": "string" }
+      "package": {
+        "type": "string"
+      },
+      "installed_version": {
+        "type": "string"
+      },
+      "cve": {
+        "type": "string"
+      },
+      "severity": {
+        "type": "string",
+        "enum": [
+          "CRITICAL",
+          "HIGH",
+          "MEDIUM",
+          "LOW"
+        ]
+      },
+      "type": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "fixed_version": {
+        "type": "string"
+      }
     }
   }
 }

@@ -1,41 +1,73 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Auth Gap Report",
-  "description": "Phase-2 route_mapper 输出的路由安全差距报告",
+  "description": "Route security gap report output by Phase-2 route_mapper",
   "type": "object",
-  "required": ["generated_by", "total_routes", "unprotected_routes", "summary"],
+  "required": [
+    "generated_by",
+    "total_routes",
+    "unprotected_routes",
+    "summary"
+  ],
   "properties": {
     "generated_by": {
       "type": "string",
       "const": "route_mapper"
     },
-    "total_routes": { "type": "integer" },
+    "total_routes": {
+      "type": "integer"
+    },
     "unprotected_routes": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["path", "method", "risk_level"],
+        "required": [
+          "path",
+          "method",
+          "risk_level"
+        ],
         "properties": {
-          "path": { "type": "string", "description": "路由路径" },
-          "method": { "type": "string", "description": "HTTP 方法" },
-          "controller": { "type": "string", "description": "控制器#方法" },
+          "path": {
+            "type": "string",
+            "description": "Route path"
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method"
+          },
+          "controller": {
+            "type": "string",
+            "description": "Controller#method"
+          },
           "missing_middleware": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "risk_level": {
             "type": "string",
-            "enum": ["high", "medium", "low"]
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
           }
         }
       }
     },
     "summary": {
       "type": "object",
-      "required": ["total_unprotected"],
+      "required": [
+        "total_unprotected"
+      ],
       "properties": {
-        "total_unprotected": { "type": "integer" },
-        "high_risk_count": { "type": "integer" }
+        "total_unprotected": {
+          "type": "integer"
+        },
+        "high_risk_count": {
+          "type": "integer"
+        }
       }
     }
   }

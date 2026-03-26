@@ -1,32 +1,46 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "WordPress Result",
-  "description": "WordPress 审计结果，由 wordpress_auditor 专家 Agent 输出",
+  "description": "WordPress audit result output by wordpress_auditor specialist agent",
   "type": "object",
-  "required": ["sink_id", "specialist", "scope", "component_name", "component_version", "rounds_executed", "results", "final_verdict", "confidence"],
+  "required": [
+    "sink_id",
+    "specialist",
+    "scope",
+    "component_name",
+    "component_version",
+    "rounds_executed",
+    "results",
+    "final_verdict",
+    "confidence"
+  ],
   "properties": {
     "sink_id": {
       "type": "string",
       "pattern": "^sink_\\d+$",
-      "description": "关联 priority_queue 的 id"
+      "description": "Associated priority_queue id"
     },
     "specialist": {
       "type": "string",
       "const": "wordpress_auditor",
-      "description": "执行审计的专家 Agent 名"
+      "description": "Specialist agent name performing the audit"
     },
     "scope": {
       "type": "string",
-      "enum": ["core", "plugin", "theme"],
-      "description": "审计范围"
+      "enum": [
+        "core",
+        "plugin",
+        "theme"
+      ],
+      "description": "Audit scope"
     },
     "component_name": {
       "type": "string",
-      "description": "WordPress 核心 / 插件名 / 主题名"
+      "description": "WordPress core / plugin name / theme name"
     },
     "component_version": {
       "type": "string",
-      "description": "组件版本号"
+      "description": "Component version number"
     },
     "rounds_executed": {
       "type": "integer",
@@ -36,7 +50,13 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["round", "strategy", "endpoint", "payload", "result"],
+        "required": [
+          "round",
+          "strategy",
+          "endpoint",
+          "payload",
+          "result"
+        ],
         "properties": {
           "round": {
             "type": "integer",
@@ -44,39 +64,66 @@
           },
           "strategy": {
             "type": "string",
-            "enum": ["core_cve", "plugin_audit", "xmlrpc", "rest_api", "shortcode", "nonce_bypass", "editor_rce"],
-            "description": "攻击策略"
+            "enum": [
+              "core_cve",
+              "plugin_audit",
+              "xmlrpc",
+              "rest_api",
+              "shortcode",
+              "nonce_bypass",
+              "editor_rce"
+            ],
+            "description": "Attack strategy"
           },
           "endpoint": {
             "type": "string",
-            "description": "目标端点"
+            "description": "Target endpoint"
           },
           "payload": {
             "type": "string",
-            "description": "实际发送的 Payload"
+            "description": "Actual payload sent"
           },
           "evidence_detail": {
-            "type": ["string", "null"],
-            "description": "证据详情"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Evidence details"
           },
           "cve_id": {
-            "type": ["string", "null"],
-            "description": "关联的 CVE 编号"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Associated CVE identifier"
           },
           "result": {
             "type": "string",
-            "enum": ["confirmed", "suspected", "failed"]
+            "enum": [
+              "confirmed",
+              "suspected",
+              "failed"
+            ]
           }
         }
       }
     },
     "final_verdict": {
       "type": "string",
-      "enum": ["confirmed", "suspected", "potential", "not_vulnerable"]
+      "enum": [
+        "confirmed",
+        "suspected",
+        "potential",
+        "not_vulnerable"
+      ]
     },
     "confidence": {
       "type": "string",
-      "enum": ["high", "medium", "low"]
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
     }
   }
 }

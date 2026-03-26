@@ -1,31 +1,123 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Route Map",
-  "description": "路由表：URL/方法/控制器/参数/中间件/鉴权（含 HTTP 路由和合成非 HTTP 入口）",
+  "description": "Route map: URL / method / controller / params / middleware / auth (including HTTP routes and synthetic non-HTTP entry points)",
   "type": "object",
-  "required": ["routes"],
+  "required": [
+    "routes"
+  ],
   "properties": {
     "routes": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "url", "method", "controller", "file", "line", "params", "param_sources", "middleware", "auth_level", "route_type"],
+        "required": [
+          "id",
+          "url",
+          "method",
+          "controller",
+          "file",
+          "line",
+          "params",
+          "param_sources",
+          "middleware",
+          "auth_level",
+          "route_type"
+        ],
         "properties": {
-          "id": { "type": "string", "pattern": "^route_(\\d+|synth_\\d+)$" },
-          "url": { "type": "string" },
-          "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "ANY", "CLI", "CRON", "QUEUE", "HOOK"] },
-          "controller": { "type": "string" },
-          "file": { "type": "string" },
-          "line": { "type": "integer", "minimum": 1 },
-          "params": { "type": "array", "items": { "type": "string" } },
-          "param_sources": { "type": "array", "items": { "type": "string" } },
-          "middleware": { "type": "array", "items": { "type": "string" } },
-          "auth_level": { "type": "string", "enum": ["anonymous", "authenticated", "admin", "system"] },
-          "route_type": { "type": "string", "enum": ["A", "B", "C"] },
-          "entry_type": { "type": "string", "enum": ["HTTP", "CLI", "CRON", "QUEUE", "HOOK"], "default": "HTTP" },
-          "synthetic_id": { "type": "string", "description": "合成路由 ID，如 ENTRY_CLI:artisan_import_users" },
-          "input_sources": { "type": "array", "items": { "type": "string" }, "description": "非 HTTP 入口的输入来源" },
-          "hidden": { "type": "boolean", "default": false }
+          "id": {
+            "type": "string",
+            "pattern": "^route_(\\d+|synth_\\d+)$"
+          },
+          "url": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "ANY",
+              "CLI",
+              "CRON",
+              "QUEUE",
+              "HOOK"
+            ]
+          },
+          "controller": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "param_sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "middleware": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "auth_level": {
+            "type": "string",
+            "enum": [
+              "anonymous",
+              "authenticated",
+              "admin",
+              "system"
+            ]
+          },
+          "route_type": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          "entry_type": {
+            "type": "string",
+            "enum": [
+              "HTTP",
+              "CLI",
+              "CRON",
+              "QUEUE",
+              "HOOK"
+            ],
+            "default": "HTTP"
+          },
+          "synthetic_id": {
+            "type": "string",
+            "description": "Synthetic route ID, e.g. ENTRY_CLI:artisan_import_users"
+          },
+          "input_sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Input sources for non-HTTP entry points"
+          },
+          "hidden": {
+            "type": "boolean",
+            "default": false
+          }
         }
       }
     }

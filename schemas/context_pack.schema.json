@@ -1,48 +1,130 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Context Pack",
-  "description": "上下文包：调用链各层代码/过滤函数/数据流",
+  "description": "Context pack: call chain layer code / filter functions / data flow",
   "type": "object",
-  "required": ["sink_id", "sink_function", "priority", "trace_depth", "layers", "data_flow_summary", "filters_in_path", "global_filters"],
+  "required": [
+    "sink_id",
+    "sink_function",
+    "priority",
+    "trace_depth",
+    "layers",
+    "data_flow_summary",
+    "filters_in_path",
+    "global_filters"
+  ],
   "properties": {
-    "sink_id": { "type": "string" },
-    "sink_function": { "type": "string" },
-    "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
-    "trace_depth": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "sink_id": {
+      "type": "string"
+    },
+    "sink_function": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "P0",
+        "P1",
+        "P2",
+        "P3"
+      ]
+    },
+    "trace_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
     "layers": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["layer", "role", "file", "function", "lines", "code"],
+        "required": [
+          "layer",
+          "role",
+          "file",
+          "function",
+          "lines",
+          "code"
+        ],
         "properties": {
-          "layer": { "type": "integer", "minimum": 0 },
-          "role": { "type": "string", "enum": ["SINK", "CALLER", "ROUTE"] },
-          "file": { "type": "string" },
-          "function": { "type": "string" },
-          "lines": { "type": "string" },
-          "code": { "type": "string" },
+          "layer": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "SINK",
+              "CALLER",
+              "ROUTE"
+            ]
+          },
+          "file": {
+            "type": "string"
+          },
+          "function": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
           "analysis_notes": {
             "type": "object",
             "properties": {
-              "source": { "type": ["string", "null"] },
-              "sink_arg": { "type": ["string", "null"] },
-              "filters": { "type": "array", "items": { "type": "string" } },
-              "bypass_hint": { "type": ["string", "null"] }
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sink_arg": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "bypass_hint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
             }
           }
         }
       }
     },
-    "data_flow_summary": { "type": "string" },
+    "data_flow_summary": {
+      "type": "string"
+    },
     "filters_in_path": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["function", "effective", "reason"],
+        "required": [
+          "function",
+          "effective",
+          "reason"
+        ],
         "properties": {
-          "function": { "type": "string" },
-          "effective": { "type": "boolean" },
-          "reason": { "type": "string" }
+          "function": {
+            "type": "string"
+          },
+          "effective": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
         }
       }
     },
@@ -50,35 +132,80 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["type", "file", "code", "affects"],
+        "required": [
+          "type",
+          "file",
+          "code",
+          "affects"
+        ],
         "properties": {
-          "type": { "type": "string", "enum": ["middleware", "waf", "function"] },
-          "file": { "type": "string" },
-          "code": { "type": "string" },
-          "affects": { "type": "string" }
+          "type": {
+            "type": "string",
+            "enum": [
+              "middleware",
+              "waf",
+              "function"
+            ]
+          },
+          "file": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "affects": {
+            "type": "string"
+          }
         }
       }
     },
     "route_priority": {
       "type": "string",
-      "enum": ["P0", "P1", "P2", "P3"],
-      "description": "从 priority_queue 同步的路由优先级，P0=已知危险函数直达 P1=用户输入可控 P2=间接可控 P3=静态/低风险"
+      "enum": [
+        "P0",
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "description": "Route priority synced from priority_queue. P0=direct dangerous function P1=user-input controllable P2=indirectly controllable P3=static/low-risk"
     },
     "auth_bypass_summary": {
       "type": "object",
-      "description": "从 auth_matrix 提取的该路由鉴权绕过摘要",
-      "required": ["auth_type", "bypass_possibility", "bypass_methods"],
+      "description": "Auth bypass summary extracted from auth_matrix for this route",
+      "required": [
+        "auth_type",
+        "bypass_possibility",
+        "bypass_methods"
+      ],
       "properties": {
-        "auth_type": { "type": "string", "description": "鉴权类型：none/session/token/middleware/custom" },
-        "bypass_possibility": { "type": "string", "enum": ["high", "medium", "low", "none"], "description": "绕过可能性" },
-        "bypass_methods": { "type": "array", "items": { "type": "string" }, "description": "可能的绕过方法列表，如 [\"缺少中间件\", \"权限粒度不足\"]" }
+        "auth_type": {
+          "type": "string",
+          "description": "Auth type: none/session/token/middleware/custom"
+        },
+        "bypass_possibility": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "none"
+          ],
+          "description": "Bypass possibility"
+        },
+        "bypass_methods": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of possible bypass methods, e.g. [\"missing middleware\", \"insufficient permission granularity\"]"
+        }
       }
     },
     "filter_strength_score": {
       "type": "integer",
       "minimum": 0,
       "maximum": 100,
-      "description": "过滤器防御强度综合评分(0-100)。0=无任何过滤 30=有过滤但可绕过 60=过滤较严但有特殊场景 90+=几乎无法绕过。计算公式：每个 effective=true 的过滤器 +20，global WAF +30，参数化查询 +40，白名单 +25"
+      "description": "Filter defense strength score (0-100). 0=no filtering 30=filtered but bypassable 60=strict with edge cases 90+=nearly impossible to bypass. Formula: +20 per effective=true filter, +30 global WAF, +40 parameterized query, +25 whitelist"
     }
   }
 }
