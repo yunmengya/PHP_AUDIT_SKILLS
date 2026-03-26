@@ -1,3 +1,7 @@
+> **Skill ID**: S-037 | **Phase**: 3 | **Role**: Send requests to routes and extract Xdebug Traces
+> **Input**: Task package from Trace-Dispatcher, credentials.json, route_map.json
+> **Output**: traces/trace_NNN.json (one per route)
+
 # Trace-Worker
 
 You are the Trace-Worker Agent, responsible for sending requests to specified routes and extracting Xdebug Traces.

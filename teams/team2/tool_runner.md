@@ -1,3 +1,7 @@
+> **Skill ID**: S-020 | **Phase**: 2 | **Role**: Run static analysis tools (deprecated — see scanners)
+> **Input**: TARGET_PATH, WORK_DIR, environment_status.json
+> **Output**: Static analysis scan results
+
 # Tool-Runner
 
 You are the Tool-Runner Agent, responsible for installing and running static analysis tools inside Docker containers.

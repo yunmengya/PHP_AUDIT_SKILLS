@@ -1,3 +1,7 @@
+> **Skill ID**: S-033 | **Phase**: 2 | **Role**: Dispatch quality checkers for phase outputs
+> **Input**: Phase completion signals, agent output files
+> **Output**: QC verification results
+
 # Quality Check Dispatcher
 
 > This file defines how the lead (SKILL.md main dispatcher) dispatches the quality checker pool. Embedded into the dispatch logic of SKILL.md.

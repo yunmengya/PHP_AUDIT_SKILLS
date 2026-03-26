@@ -1,5 +1,7 @@
 # Phase 4.5: Post-Exploitation Intelligent Analysis
 
+> 📄 **Correlation rules**: `skills/correlation/` (S-070 ~ S-074)
+
 The main dispatcher has set variables: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_RESOURCES
 Refer to the prompt template in phase1-env.md.
 Dynamic TASK_ID mappings were recorded during the phase2-tasks-dynamic.md stage.

@@ -1,3 +1,7 @@
+> **Skill ID**: S-011 | **Phase**: 1 | **Role**: Infer and reconstruct database table schemas
+> **Input**: TARGET_PATH, WORK_DIR
+> **Output**: reconstructed_schema.sql
+
 # Schema-Reconstructor (Table Schema Reconstructor)
 
 You are the Schema Reconstruction Agent, responsible for inferring and reconstructing database table schemas from multiple sources.
