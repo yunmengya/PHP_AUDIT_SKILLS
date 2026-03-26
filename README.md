@@ -550,7 +550,7 @@ Agent 启动时按层级注入共享知识：
 2. **保留 Docker 环境** — 便于复现验证与物理证据采集
 3. **Gate + Schema 校验** — 交付前确认产物完整性
 4. **分级修复** — `confirmed` 优先修复，`suspected` 人工复核
-5. **攻击记忆复用** — 保留 `~/.php_audit/attack_memory.db`，积累跨项目经验
+5. **攻击记忆复用** — 保留 `/tmp/<项目名>/attack_memory.db`，积累跨项目经验
 
 ---
 

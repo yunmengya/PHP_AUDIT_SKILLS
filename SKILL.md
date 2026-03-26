@@ -70,7 +70,7 @@ df -h /var/lib/docker 2>/dev/null || df -h /tmp
 ```bash
 PROJECT_NAME=$(basename "$ARGUMENTS")
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-WORK_DIR="${HOME}/.php_audit/${PROJECT_NAME}/${TIMESTAMP}"
+WORK_DIR="/tmp/${PROJECT_NAME}/${TIMESTAMP}"
 mkdir -p "$WORK_DIR"
 mkdir -p "$WORK_DIR/.audit_state"
 mkdir -p "$WORK_DIR/exploits"
