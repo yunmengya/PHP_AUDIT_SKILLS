@@ -218,6 +218,52 @@ graph TD
 
 ---
 
+## Zero-Vulnerability Report Specification
+
+When ALL exploit results have `final_verdict: "safe"` and `exploit_summary.json` shows `confirmed: 0, suspected: 0`:
+
+Generate the report with the following structure:
+````markdown
+# PHP 安全审计报告 — 未发现漏洞
+
+## 审计概况
+
+| 项目 | 详情 |
+|------|------|
+| 目标项目 | {PROJECT_NAME} |
+| 框架 | {framework} |
+| PHP 版本 | {php_version} |
+| 审计时间 | {timestamp} |
+| 扫描 Sink 数量 | {total_sinks} |
+| 确认漏洞 | 0 |
+| 疑似漏洞 | 0 |
+| **结论** | **未发现可利用漏洞** |
+
+## 审计覆盖范围
+
+{List all sink types tested: RCE, SQLi, XSS, File Upload, SSRF, etc.}
+
+## 安全设计亮点
+
+{Highlight positive security practices found during audit:
+- Parameterized queries
+- Input validation
+- Output encoding
+- etc.}
+
+## 建议改进项
+
+{Even with zero vulns, provide hardening suggestions:
+- CSP headers
+- Rate limiting
+- Security headers
+- etc.}
+````
+
+> Do NOT skip generating a report just because no vulnerabilities were found. The zero-vuln report confirms thoroughness.
+
+---
+
 ## Lessons Learned
 
 After report generation is complete, execute the lessons learned workflow.

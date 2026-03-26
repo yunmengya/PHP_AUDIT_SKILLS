@@ -37,6 +37,9 @@ All skill resources are located in the skill root directory (referred to as `SKI
   - `tools/type_juggling_tester.php` — PHP type juggling tester. Usage: `php type_juggling_tester.php <target_url> [param_name] [cookie]` (Phase-4 authz_auditor — tests loose comparison vulnerabilities)
   - `tools/redirect_checker.php` — Open redirect checker. Usage: `php redirect_checker.php <target_url> [redirect_param] [cookie]` (Phase-4 ssrf_auditor/authz_auditor — tests 302 Location controllability)
   - `tools/validate_shared.php` — Shared resource validator. Usage: `php tools/validate_shared.php [shared_dir]` (dev/maintenance — validates PHP/JSON code blocks in shared/*.md)
+  - `tools/audit_monitor.sh` — Real-time audit progress dashboard. Usage: `bash tools/audit_monitor.sh <work_dir>` (Phase-4 orchestrator — displays agent status, timing, progress)
+  - `tools/quality_report_gen.sh` — Quality report generator. Usage: `bash tools/quality_report_gen.sh <work_dir>` (Phase-4.5/5 — generates QC summary report)
+  - `tools/vuln_intel.sh` — External vulnerability intelligence query (no API key required). Usage: `bash tools/vuln_intel.sh <cve_or_keyword>` (Phase-4 Mini-Researcher — queries public CVE/NVD databases)
 
 ## Input Parameters
 
@@ -50,10 +53,12 @@ All skill resources are located in the skill root directory (referred to as `SKI
 ```bash
 docker --version
 docker compose version
+docker ps >/dev/null 2>&1  # Verify daemon is running, not just installed
 df -h /var/lib/docker 2>/dev/null || df -h /tmp
 ```
 
 - Docker not installed → prompt user to install Docker Desktop or Docker Engine
+- Docker daemon not running → prompt user to start Docker (`systemctl start docker` or open Docker Desktop)
 - docker compose not installed → prompt user to install docker-compose-plugin
 - Disk space < 5GB → warn insufficient space
 
@@ -68,10 +73,14 @@ df -h /var/lib/docker 2>/dev/null || df -h /tmp
 ### Step 3: Create Working Directory
 
 ```bash
-PROJECT_NAME=$(basename "$ARGUMENTS")
+PROJECT_NAME=$(basename "$ARGUMENTS" | tr -d '[:space:]' | tr -cd 'a-zA-Z0-9._-')
+# Sanitize: remove spaces and special characters to prevent path issues
+if [ -z "$PROJECT_NAME" ]; then
+  PROJECT_NAME="unknown_project"
+fi
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 WORK_DIR="/tmp/${PROJECT_NAME}/${TIMESTAMP}"
-mkdir -p "$WORK_DIR"
+mkdir -p "$WORK_DIR" || { echo "🛑 Cannot create working directory: $WORK_DIR"; exit 1; }
 # Agent working directories (internal, agents write to these paths)
 mkdir -p "$WORK_DIR/.audit_state"
 mkdir -p "$WORK_DIR/exploits"
@@ -128,8 +137,8 @@ for f in "$@"; do
         jq -e '.php_version and .framework and .extensions' "$f" >/dev/null 2>&1 \
           || { echo "❌ ${GATE_NAME} FAIL: missing required fields in ${BASENAME}"; ALL_PASS=false; } ;;
       priority_queue.json)
-        jq -e 'length > 0 and (.[0] | .sink_type and .priority)' "$f" >/dev/null 2>&1 \
-          || { echo "❌ ${GATE_NAME} FAIL: invalid structure in ${BASENAME}"; ALL_PASS=false; } ;;
+        jq -e 'type == "array"' "$f" >/dev/null 2>&1 \
+          || { echo "❌ ${GATE_NAME} FAIL: invalid structure in ${BASENAME} (must be array)"; ALL_PASS=false; } ;;
       exploit_summary.json)
         jq -e '.total_audited and .exploits' "$f" >/dev/null 2>&1 \
           || { echo "❌ ${GATE_NAME} FAIL: missing required fields in ${BASENAME}"; ALL_PASS=false; } ;;
@@ -169,7 +178,28 @@ chmod +x "$WORK_DIR/.audit_state/phase_transition.sh"
 
 > **Note**: Phase-produced JSON files (e.g., `environment_status.json`, `team4_progress.json`) and `audit_session.db` do NOT need pre-creation — each agent creates them on first write. JSON Schema files in `schemas/` are format constraints only, not runtime dependencies.
 
-checkpoint.json format: see `schemas/checkpoint.schema.json`. Core fields: `completed` (completed phase list), `current` (current phase), `mode` (full/degraded), `phase_timings`, `framework`, `total_sinks`, `confirmed_vulns`, `agent_states`.
+checkpoint.json format: see `schemas/checkpoint.schema.json`. Core fields: `completed` (completed phase list), `current` (current phase), `mode` (full/degraded), `phase_timings`, `framework`, `total_sinks`, `confirmed_vulns`, `agent_states`, `phases` (per-phase degradation tracking).
+
+**phases Degradation Tracking**: checkpoint.json includes a `phases` object recording per-phase status:
+```json
+{
+  "completed": ["env", "scan", "trace"],
+  "current": "exploit",
+  "mode": "degraded",
+  "phases": {
+    "phase1": {"mode": "full"},
+    "phase2": {"mode": "full"},
+    "phase3": {"mode": "degraded", "degradation_reason": "auth simulation failed"}
+  },
+  "agent_states": { ... }
+}
+```
+
+When writing degradation status, ALWAYS use this path format:
+```bash
+jq '.phases.phase3.mode = "degraded" | .phases.phase3.degradation_reason = "REASON"' \
+    "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" && mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
+```
 
 **agent_states Lifecycle Tracking**: checkpoint.json includes an `agent_states` object tracking each agent's runtime status:
 ```json
@@ -209,8 +239,22 @@ Check if `${HOME}/.php_audit/${PROJECT_NAME}/` contains a recent directory with 
 
 **Resume Protocol:**
 ```
+0. Validate checkpoint.json integrity before reading:
+   jq empty < "$WORK_DIR/checkpoint.json" 2>/dev/null
+   If invalid → check for backup:
+     if [ -f "$WORK_DIR/checkpoint.json.bak" ]; then
+       cp "$WORK_DIR/checkpoint.json.bak" "$WORK_DIR/checkpoint.json"
+       Print: "⚠️ checkpoint.json was corrupted, restored from backup"
+     else → halt, ask user to provide last known phase
+   On every successful checkpoint read, save backup:
+     cp "$WORK_DIR/checkpoint.json" "$WORK_DIR/checkpoint.json.bak"
+
 1. Read checkpoint.json → get last_completed_phase + mode (full/degraded)
 2. Set WORK_DIR to the previous audit directory
+2.5. Re-validate runtime environment matches saved state:
+   - Compare current `php -v` output with environment_status.json php_version
+   - Verify Docker daemon still running: `docker ps >/dev/null 2>&1`
+   - If mismatch → warn user, ask whether to continue or re-run Phase-1
 3. Verify ALL artifacts from completed phases actually exist AND are valid:
    - Phase-1 done? → verify environment_status.json:
      • File exists and non-empty
@@ -226,7 +270,7 @@ Check if `${HOME}/.php_audit/${PROJECT_NAME}/` contains a recent directory with 
        but mark Phase-4 as NOT_VERIFIED mode
    - Phase-4 done? → verify exploits/*.json:
      • At least 1 exploit JSON exists and is valid
-     • exploit_summary.json exists
+     • exploit_summary.json exists (generated at Phase-4 exit, not during attack)
 4. Find the LAST phase whose artifacts are ALL valid → that is the TRUE resume point
 5. Carry forward degradation flags:
    - If any completed phase has mode="degraded" in checkpoint → set
@@ -372,15 +416,30 @@ Step 4 — GATE:   Run gate_check.sh to verify artifacts. On FAIL → 3-level re
 Step 5 — EXIT:   Write checkpoint. Print pipeline view. State machine advances.
 ```
 
+#### Checkpoint Write Safety
+
+ALL checkpoint.json writes MUST use atomic write pattern to prevent corruption from concurrent access:
+```bash
+# Atomic write: write to temp file in same filesystem, then rename
+jq 'MODIFICATIONS' "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" && \
+    mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
+# NEVER use /tmp/cp.json — temp file MUST be on same filesystem as target for atomic mv
+```
+
+During Phase-4 parallel execution, checkpoint updates MUST be serialized:
+- ONLY the orchestrator writes checkpoint.json (agents use TaskUpdate/SendMessage)
+- Orchestrator processes agent completions ONE AT A TIME, updating checkpoint after each
+
 #### 3-Level Gate Failure Recovery (applies to ALL gates):
 
 ```
 Level 1 — AUTO RETRY:  Re-spawn failed agent(s) with same inputs. Max 2 retries.
 Level 2 — DEGRADED:    If retries exhausted, write degraded status to checkpoint:
-                        jq '.phases[CURRENT_PHASE].mode = "degraded" |
-                            .phases[CURRENT_PHASE].degradation_reason = "REASON"'
-                            "$WORK_DIR/checkpoint.json" > /tmp/cp.json &&
-                            mv /tmp/cp.json "$WORK_DIR/checkpoint.json"
+                        jq '.phases.CURRENT_PHASE_NAME.mode = "degraded" |
+                            .phases.CURRENT_PHASE_NAME.degradation_reason = "REASON" |
+                            .mode = "degraded"'
+                            "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" &&
+                            mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
                         Continue to next phase with available artifacts.
                         Print: "⚠️ Phase-N degraded: {reason}. Continuing with partial data."
 Level 3 — USER HALT:   If critical artifacts missing (no fallback possible), STOP.
@@ -399,6 +458,7 @@ Level 3 — USER HALT:   If critical artifacts missing (no fallback possible), S
 ### Phase-1: 环境智能识别与构建
 
 > 📋 Detailed flow: `references/phase1_environment.md`
+> 📄 Agent instructions: `phases/phase1-env.md`
 
 **Step 1 — ENTER:**
 ```bash
@@ -424,7 +484,9 @@ spawn docker_builder       (Task #3, foreground, read teams/team1/docker_builder
 spawn quality_checker (Task #4, foreground, read teams/qc/quality_checker.md)
 ⏳ Block-wait QC result
   — QC PASS → continue
-  — QC FAIL → re-send failed_items to docker_builder (max 3 retries)
+  — QC FAIL → re-send failed_items to docker_builder, check redo_count:
+    if redo_count < 3 → increment redo_count, retry
+    if redo_count >= 3 → halt for user intervention (Phase-1 cannot degrade)
 ```
 
 **Step 4 — GATE:**
@@ -455,6 +517,8 @@ Print pipeline: Phase-1 ✅ | Phase-2~5 ⏳
 ### Phase-2: 静态资产侦察
 
 > 📋 Detailed flow: `references/phase2_recon.md`
+> 📄 Agent instructions: `phases/phase2-recon.md`
+> 📄 Dynamic task template: `phases/phase2-tasks-dynamic.md`
 
 **Step 1 — ENTER:**
 ```bash
@@ -482,7 +546,9 @@ spawn risk_classifier   (Task #10, foreground, read teams/team2/risk_classifier.
 spawn quality_checker (Task #11, foreground)
 ⏳ Block-wait QC result
   — QC PASS → continue
-  — QC FAIL → identify failing agent, re-run with failed_items (max 2 retries)
+  — QC FAIL → identify failing agent, check redo_count:
+    if redo_count < 2 → increment redo_count, re-run with failed_items
+    if redo_count >= 2 → mark degraded, continue with available results
 ```
 
 **Step 4 — GATE:**
@@ -587,6 +653,7 @@ Map sink_type → auditor agent using this table:
 ### Phase-3: 鉴权模拟与动态追踪
 
 > 📋 Detailed flow: `references/phase3_tracing.md`
+> 📄 Agent instructions: `phases/phase3-trace.md`
 
 **Step 1 — ENTER:**
 ```bash
@@ -611,7 +678,9 @@ spawn trace_auditor  (Task #13, foreground, read teams/team3/trace_auditor.md)
 spawn quality_checker (Task #14, foreground)
 ⏳ Block-wait QC result
   — QC PASS → continue
-  — QC FAIL → re-run trace_auditor with failed items (max 2 retries)
+  — QC FAIL → check trace_auditor redo_count:
+    if redo_count < 2 → increment redo_count, re-run with failed items
+    if redo_count >= 2 → mark degraded, fall back to static analysis
 ```
 
 **Step 4 — GATE:**
@@ -622,7 +691,7 @@ bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-3" "$WORK_DIR/credentials.json
 #         Level 2: if auth fails, fall back to static analysis mode (no credentials)
 #                  Write degraded flag:
 #                  jq '.phases.phase3.mode = "degraded" | .phases.phase3.degradation_reason = "auth simulation failed"' \
-#                      "$WORK_DIR/checkpoint.json" > /tmp/cp.json && mv /tmp/cp.json "$WORK_DIR/checkpoint.json"
+#                      "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" && mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
 #                  Print: "⚠️ Phase-3 degraded: 鉴权模拟失败，退回静态分析模式"
 #                  ⚠️ DOWNSTREAM IMPACT: Phase-4 auditors MUST tag all auth-dependent
 #                     conclusions with [NOT_VERIFIED: Missing auth credentials].
@@ -647,6 +716,7 @@ Print pipeline: Phase-1 ✅ | Phase-2 ✅ | Phase-3 ✅ | Phase-4~5 ⏳
 ### Phase-4: 深度对抗审计（并行分析 + 串行攻击）
 
 > 📋 Detailed flow: `references/phase4_attack_logic.md`
+> 📄 Agent instructions: `phases/phase4-exploit.md`
 > **⚠️ This phase is the ONLY source of Burp reproduction packets and physical evidence. MUST NOT skip.**
 
 **Step 1 — ENTER:**
@@ -662,6 +732,11 @@ bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_3_PASS" "PHASE_4"
 Read $WORK_DIR/priority_queue.json → determine auditor list
 Add framework-adaptive forced auditors
 
+# Exploit file naming: each auditor writes to $WORK_DIR/exploits/{sink_id}.json
+# sink_id is unique per priority_queue entry (e.g., sink_001, sink_002)
+# Framework-forced auditors without a sink_id use: {auditor_type}_forced.json
+# This ensures NO two auditors write to the same file.
+
 # Check Phase-3 degradation flag for downstream impact
 PHASE3_MODE=$(jq -r '.phases.phase3.mode // "full"' "$WORK_DIR/checkpoint.json")
 if PHASE3_MODE == "degraded":
@@ -669,25 +744,33 @@ if PHASE3_MODE == "degraded":
     Print: "⚠️ Phase-3 was degraded — auth-dependent findings will be marked 'suspected'"
 
 Batch spawn by priority:
-  P0 auditors: spawn ALL (background)
+  # GUARD: skip empty priority tiers — if no P0 sinks exist, proceed directly to P1
+  P0 auditors: if P0 list is non-empty → spawn ALL (background), record spawned_at for each in checkpoint.agent_states
     Each auditor starts in Stage-1 (analysis only)
   → WAIT for ALL P0 Stage-1 completed
+    Per-auditor timeout: if any auditor exceeds AGENT_TIMEOUT_MIN (20 min) without
+    completing Stage-1, force-terminate it and mark as "timed_out" in agent_states.
   → Send START_ATTACK signal to all P0 auditors:
     SendMessage(agent_id, type="start_attack_signal", payload={"stage": 2, "max_rounds": 10})
   → WAIT for ALL P0 Stage-2 (attack) completed
+    Per-auditor timeout: same AGENT_TIMEOUT_MIN check per auditor
 
-  P1 auditors: spawn ALL (background)
-  → WAIT for ALL P1 Stage-1 completed
+  P1 auditors: if P1 list is non-empty → spawn ALL (background), record spawned_at
+  → WAIT for ALL P1 Stage-1 completed (with per-auditor timeout)
   → Send START_ATTACK signal to all P1 auditors
-  → WAIT for ALL P1 Stage-2 completed
+  → WAIT for ALL P1 Stage-2 completed (with per-auditor timeout)
 
-  P2/P3 auditors: spawn ALL (background)
-  → WAIT for ALL P2/P3 Stage-1 completed
+  P2/P3 auditors: if P2/P3 list is non-empty → spawn ALL (background), record spawned_at
+  → WAIT for ALL P2/P3 Stage-1 completed (with per-auditor timeout)
   → Send START_ATTACK signal to all P2/P3 auditors
   → WAIT for ALL P2/P3 Stage-2 completed
 
 After EACH auditor completes: run inline QC immediately
-  — QC FAIL → re-run that auditor (max 2 retries)
+  — QC FAIL → check redo_count:
+    if redo_count < 2 → increment redo_count, re-run auditor
+    if redo_count >= 2 → mark auditor as "degraded" in checkpoint, do NOT retry
+      jq '.agent_states["AGENT_ID"].status = "degraded"' checkpoint.json
+      Print: "⚠️ {agent} exhausted retries (2/2), marking degraded"
 ```
 
 **🔒 auth_matrix Immutability Law:**
@@ -789,6 +872,7 @@ Print pipeline: Phase-1~4 ✅ | Phase-4.5~5 ⏳
 ### Phase-4.5: 后渗透智能分析
 
 > 📋 Detailed flow: `references/phase4_5_correlation.md`
+> 📄 Agent instructions: `phases/phase45-post.md`
 > **⚠️ This phase is the ONLY source of PoC scripts. MUST NOT skip.**
 
 **Step 1 — ENTER:**
@@ -840,6 +924,7 @@ Print pipeline: Phase-1~4.5 ✅ | Phase-5 ⏳
 ### Phase-5: 清理与报告
 
 > 📋 Detailed flow: `references/phase5_reporting.md`
+> 📄 Agent instructions: `phases/phase5-report.md`
 
 **Step 1 — ENTER:**
 ```bash
@@ -865,7 +950,9 @@ spawn report_writer (foreground, read teams/team5/report_writer.md)
 spawn quality_checker (final report QC, foreground)
 ⏳ Block-wait final QC result
   — QC PASS → continue
-  — QC FAIL → report_writer revise and resubmit (max 2 retries)
+  — QC FAIL → check report_writer redo_count:
+    if redo_count < 2 → increment redo_count, revise and resubmit
+    if redo_count >= 2 → force output whatever is available
 ```
 
 **Step 4 — GATE + File Reorganization:**
@@ -949,9 +1036,33 @@ Record global start time on Step 1 of SKILL.md:
 echo "$(date +%s)" > "$WORK_DIR/.audit_state/global_start_time"
 ```
 
-Record each phase start time in ENTER step:
+**On Resume**: Reset global start time to avoid false timeout from stale timestamps:
 ```bash
+# In Resume Protocol, after setting WORK_DIR:
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/global_start_time"
+```
+
+Per-phase timeout mapping (set at each ENTER step):
+```bash
+# Phase-1
+PHASE_TIMEOUT_MIN=20
 echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
+
+# Phase-2
+PHASE_TIMEOUT_MIN=25
+
+# Phase-3
+PHASE_TIMEOUT_MIN=20
+
+# Phase-4
+PHASE_TIMEOUT_MIN=60
+AGENT_TIMEOUT_MIN=20  # per-auditor timeout
+
+# Phase-4.5
+PHASE_TIMEOUT_MIN=15
+
+# Phase-5
+PHASE_TIMEOUT_MIN=15
 ```
 
 During WAIT step, check elapsed time after each agent completion:
@@ -962,9 +1073,9 @@ NOW=$(date +%s)
 PHASE_ELAPSED=$(( (NOW - PHASE_START) / 60 ))
 GLOBAL_ELAPSED=$(( (NOW - GLOBAL_START) / 60 ))
 
-# Phase timeout check (use per-phase limit from table above)
+# Phase timeout check
 if [ "$PHASE_ELAPSED" -ge "$PHASE_TIMEOUT_MIN" ]; then
-  echo "⏱️ Phase timeout reached (${PHASE_ELAPSED}min)"
+  echo "⏱️ Phase timeout reached (${PHASE_ELAPSED}min / ${PHASE_TIMEOUT_MIN}min limit)"
   # Execute phase-specific recovery from table above
 fi
 

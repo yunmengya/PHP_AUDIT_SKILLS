@@ -801,3 +801,47 @@ Appended to the `evidence` field in each exploit_result:
 ```
 
 Reference specification: see `shared/evidence_contract.md`.
+
+## 28. attack_memory_entry (Attack Experience Record)
+
+Stores per-sink attack experience for cross-audit memory reuse.
+
+Schema: `schemas/attack_memory_entry.schema.json`
+
+Key fields:
+- `sink_function`, `sink_type` — identifies the sink
+- `framework`, `php_version` — environment context
+- `attempts[]` — list of payloads tried with success/fail status
+- `successful_bypass` — the technique that worked (if any)
+- `lessons_learned` — free-text notes for future audits
+
+Location: `$WORK_DIR/经验沉淀/` (generated in Phase-5)
+
+## 29. research_result (Mini-Researcher Output)
+
+Phase-4 Mini-Researcher agent output format.
+
+Schema: `schemas/research_result.schema.json`
+
+Key fields:
+- `research_id` — unique identifier (e.g., `research_001`)
+- `trigger` — what triggered the research (auditor request / orchestrator)
+- `query` — the research question
+- `findings` — structured answer with references
+- `applicable_to` — list of sink_ids that can benefit
+
+Location: `$WORK_DIR/research/{research_id}.json`
+
+## 30. shared_findings (Inter-Auditor Real-time Sharing)
+
+JSONL format for Phase-4 expert agents to share discoveries in real-time.
+
+Schema: `schemas/shared_findings.schema.json`
+
+Key fields:
+- `from_agent` — which auditor shared the finding
+- `finding_type` — category (credential, bypass, config, etc.)
+- `content` — the actual finding
+- `applicable_sinks` — which other sinks might benefit
+
+Location: `$WORK_DIR/shared_findings.jsonl` (append-only JSONL)

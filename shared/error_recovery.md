@@ -105,10 +105,10 @@ jq --arg agent "$AGENT_NAME" \
 # 4. false_positive_patterns.md (475 lines)
 
 # In the Agent prompt, retain only path references:
-echo "--- 按需引用资源（L3）---
-以下资源因 Token 预算限制未全文注入:
-- ${SKILL_DIR}/shared/php_specific_patterns.md（568 行）
-  摘要: PHP 特有安全模式库
+echo "--- On-demand Reference Resources (L3) ---
+The following resources were NOT fully injected due to token budget limits:
+- ${SKILL_DIR}/shared/php_specific_patterns.md (568 lines)
+  Summary: PHP-specific security pattern library
 "
 ```
 
