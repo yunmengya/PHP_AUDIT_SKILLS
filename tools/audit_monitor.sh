@@ -68,10 +68,10 @@ while true; do
 
   # ── Phase 2: 静态侦察 ──
   if [ -f "$WORK_DIR/priority_queue.json" ]; then
-    SINK_TOTAL=$(jq '.sinks | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
-    P0=$(jq '[.sinks[] | select(.priority=="P0")] | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
-    P1=$(jq '[.sinks[] | select(.priority=="P1")] | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
-    P2=$(jq '[.sinks[] | select(.priority=="P2")] | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
+    SINK_TOTAL=$(jq '. | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
+    P0=$(jq '[.[] | select(.priority=="P0")] | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
+    P1=$(jq '[.[] | select(.priority=="P1")] | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
+    P2=$(jq '[.[] | select(.priority=="P2")] | length' "$WORK_DIR/priority_queue.json" 2>/dev/null || echo 0)
     echo -e "  ${GREEN}✅ Phase 2: 侦察完成${NC} (${SINK_TOTAL} sinks)"
     echo -e "     优先级: ${RED}P0:${P0}${NC} ${YELLOW}P1:${P1}${NC} ${BLUE}P2:${P2}${NC}"
   elif [ -f "$WORK_DIR/route_map.json" ]; then
@@ -85,7 +85,7 @@ while true; do
 
   # ── Phase 3: 鉴权+追踪 ──
   if [ -f "$WORK_DIR/credentials.json" ]; then
-    ROLES=$(jq '.credentials | length' "$WORK_DIR/credentials.json" 2>/dev/null || echo "?")
+    ROLES=$(jq '. | keys | length' "$WORK_DIR/credentials.json" 2>/dev/null || echo "?")
     TRACE_COUNT=$(ls "$WORK_DIR/traces/"*.json 2>/dev/null | wc -l | tr -d ' ')
     echo -e "  ${GREEN}✅ Phase 3: 鉴权+追踪完成${NC} (${ROLES}角色, ${TRACE_COUNT}条trace)"
   elif [ -f "$WORK_DIR/priority_queue.json" ]; then
@@ -126,11 +126,11 @@ while true; do
   fi
 
   # ── Phase 5: 报告 ──
-  if [ -f "$WORK_DIR/audit_report.md" ]; then
-    REPORT_SIZE=$(wc -c < "$WORK_DIR/audit_report.md" | tr -d ' ')
+  if [ -f "$WORK_DIR/报告/审计报告.md" ]; then
+    REPORT_SIZE=$(wc -c < "$WORK_DIR/报告/审计报告.md" | tr -d ' ')
     REPORT_KB=$((REPORT_SIZE / 1024))
     SARIF_OK="❌"
-    [ -f "$WORK_DIR/audit_report.sarif.json" ] && SARIF_OK="✅"
+    [ -f "$WORK_DIR/报告/audit_report.sarif.json" ] && SARIF_OK="✅"
     echo -e "  ${GREEN}✅ Phase 5: 报告完成${NC} (${REPORT_KB}KB) SARIF:${SARIF_OK}"
   elif [ -f "$WORK_DIR/attack_graph.json" ]; then
     echo -e "  ${CYAN}⏳ Phase 5: 报告生成中...${NC}"

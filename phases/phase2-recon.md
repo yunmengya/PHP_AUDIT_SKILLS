@@ -26,7 +26,7 @@ Agent(
   prompt= Prompt template(TASK_ID=5) + tool_runner.md contents
 )
 ```
-Output: $WORK_DIR/psalm_taint.json, $WORK_DIR/progpilot.json, $WORK_DIR/ast_sinks.json, $WORK_DIR/phpstan_results.json, $WORK_DIR/semgrep_results.json, $WORK_DIR/composer_audit.json, $WORK_DIR/codeql_results.json
+Output: $WORK_DIR/psalm_taint.json, $WORK_DIR/progpilot.json, $WORK_DIR/ast_sinks.json, $WORK_DIR/phpstan.json, $WORK_DIR/semgrep.json, $WORK_DIR/composer_audit.json, $WORK_DIR/codeql.json
 
 **Agent 2: route-mapper**
 ```

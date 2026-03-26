@@ -410,7 +410,8 @@ Step 2 — SPAWN:  Read teams/teamN/*.md. Spawn agents (parallel=background, ser
                    jq '.agent_states["AGENT_ID"] = {"status":"spawned","spawned_at":"TIMESTAMP","redo_count":0}'
 Step 3 — WAIT:   Block-wait ALL agents completed. Run inline QC where required.
                  On each agent completion, update checkpoint.json agent_states:
-                   jq '.agent_states["AGENT_ID"].status = "completed" | .agent_states["AGENT_ID"].completed_at = "TIMESTAMP"'
+                   jq '.agent_states["AGENT_ID"].status = "passed" | .agent_states["AGENT_ID"].completed_at = "TIMESTAMP"'
+                   (Use "failed" if inline QC rejects the agent output; "passed" if accepted)
                  Check elapsed time: if (now - PHASE_START) > phase timeout → trigger timeout recovery
 Step 4 — GATE:   Run gate_check.sh to verify artifacts. On FAIL → 3-level recovery.
 Step 5 — EXIT:   Write checkpoint. Print pipeline view. State machine advances.

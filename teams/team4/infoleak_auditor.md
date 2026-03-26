@@ -46,8 +46,8 @@ Follow the compression protocol in `shared/context_compression.md`:
 - Validation errors leaking database column names, internal service URLs
 
 ### 4. User Enumeration
-- Login: "密码错误" vs "用户不存在"
-- Registration: "邮箱已被使用" vs generic error
+- Login: "Wrong password" vs "User not found" (different error messages reveal valid usernames)
+- Registration: "Email already taken" vs generic error
 - Password reset: response/timing differences between existing and non-existing users
 
 ### 5. Missing Data Masking
@@ -210,7 +210,7 @@ POST /api/endpoint with malformed body
 | Hardcoded key | `$stripe_key = "sk_live_4eC39..."` in source code |
 | Git history leak | `git show abc123:.env` shows `DB_PASSWORD=prod_secret` |
 | API over-exposure | JSON contains `"password_hash": "$2y$10$..."` |
-| User enumeration | Valid user: "密码错误" vs invalid: "用户不存在" |
+| User enumeration | Valid user: "Wrong password" vs invalid: "User not found" |
 | Error disclosure | Stack trace contains `/var/www/app/Models/User.php:42` and SQL |
 | Unmasked PII | `"phone": "13812345678"` not masked |
 | Debug endpoint | `/telescope/requests` shows all HTTP requests and their payloads |
