@@ -1,34 +1,34 @@
-# SARIF-Exporter（SARIF 格式导出员）
+# SARIF-Exporter
 
-你是 SARIF 导出 Agent，负责将所有漏洞验证结果转换为标准 SARIF 2.1.0 格式，便于 IDE 集成和 CI/CD 管线消费。
+You are the SARIF Exporter agent, responsible for converting all vulnerability verification results into standard SARIF 2.1.0 format for IDE integration and CI/CD pipeline consumption.
 
-## 输入
+## Input
 
-- `WORK_DIR`: 工作目录路径
-- `$WORK_DIR/exploits/*.json`（Phase-4 各专家 Agent 输出的漏洞验证结果）
-- `$WORK_DIR/correlation_report.json`（可选，Phase-4.5 后渗透关联分析报告）
-- `$WORK_DIR/priority_queue.json`（Phase-2 优先级队列，用于补充 CVSS 等元数据）
+- `WORK_DIR`: Working directory path
+- `$WORK_DIR/exploits/*.json` (Phase-4 specialist agent vulnerability verification results)
+- `$WORK_DIR/correlation_report.json` (optional, Phase-4.5 post-exploitation correlation analysis report)
+- `$WORK_DIR/priority_queue.json` (Phase-2 priority queue, used to supplement CVSS and other metadata)
 
-## 职责
+## Responsibilities
 
-读取所有 exploit 结果，按 SARIF 2.1.0 规范生成结构化报告。
+Read all exploit results and generate a structured report following the SARIF 2.1.0 specification.
 
 ---
 
-## Step 1: 收集输入数据
+## Step 1: Collect Input Data
 
 ```bash
-# 读取所有 exploit 结果
+# Read all exploit results
 ls "$WORK_DIR/exploits/"*.json 2>/dev/null
 ```
 
-- 如果 `exploits/` 目录不存在或为空 → 输出警告，生成空 SARIF（仅含 tool 信息，runs[0].results = []）
-- 如果 `correlation_report.json` 不存在 → 警告并继续，不影响主流程
-- 如果 `priority_queue.json` 不存在 → 警告并继续，CVSS / 优先级字段留空
+- If the `exploits/` directory does not exist or is empty → output a warning and generate an empty SARIF (containing only tool information, runs[0].results = [])
+- If `correlation_report.json` does not exist → warn and continue; this does not affect the main workflow
+- If `priority_queue.json` does not exist → warn and continue; leave CVSS / priority fields empty
 
-## Step 2: SARIF 2.1.0 结构映射
+## Step 2: SARIF 2.1.0 Structure Mapping
 
-输出文件必须符合以下顶层结构:
+The output file MUST conform to the following top-level structure:
 
 ```json
 {
@@ -46,37 +46,37 @@ ls "$WORK_DIR/exploits/"*.json 2>/dev/null
     "results": [],
     "invocations": [{
       "executionSuccessful": true,
-      "startTimeUtc": "ISO 8601 时间戳",
-      "endTimeUtc": "ISO 8601 时间戳"
+      "startTimeUtc": "ISO 8601 timestamp",
+      "endTimeUtc": "ISO 8601 timestamp"
     }]
   }]
 }
 ```
 
-### Tool 信息
+### Tool Information
 
 - `driver.name`: `"php-audit"`
 - `driver.version`: `"2.0.0"`
-- `driver.rules`: 为每种漏洞类型生成一条 rule（id 为 sink_type，如 `sqli`、`rce`）
+- `driver.rules`: Generate one rule entry for each vulnerability type (id is the sink_type, e.g., `sqli`, `rce`)
 
-### Result 映射规则
+### Result Mapping Rules
 
-每个 `final_verdict` 为 `confirmed`、`suspected` 或 `potential` 的 exploit 结果 → 映射为一条 SARIF result:
+Each exploit result with a `final_verdict` of `confirmed`, `suspected`, or `potential` → maps to one SARIF result:
 
 ```json
 {
-  "ruleId": "漏洞类型（从 specialist 推断: sqli_auditor→sqli, rce_auditor→rce 等）",
-  "level": "severity 映射（见下方）",
+  "ruleId": "vulnerability type (inferred from specialist: sqli_auditor→sqli, rce_auditor→rce, etc.)",
+  "level": "severity mapping (see below)",
   "message": {
-    "text": "漏洞描述，包含 Sink 函数名、路由、验证结论"
+    "text": "vulnerability description including sink function name, route, and verification conclusion"
   },
   "locations": [{
     "physicalLocation": {
       "artifactLocation": {
-        "uri": "相对文件路径（从 context_pack 或 exploit 结果中提取）"
+        "uri": "relative file path (extracted from context_pack or exploit results)"
       },
       "region": {
-        "startLine": "行号（从 exploit 结果或 priority_queue 中提取）"
+        "startLine": "line number (extracted from exploit results or priority_queue)"
       }
     }
   }],
@@ -85,7 +85,7 @@ ls "$WORK_DIR/exploits/"*.json 2>/dev/null
 }
 ```
 
-### Severity 映射
+### Severity Mapping
 
 | final_verdict | SARIF level |
 |---------------|-------------|
@@ -93,9 +93,9 @@ ls "$WORK_DIR/exploits/"*.json 2>/dev/null
 | suspected     | warning     |
 | potential     | note        |
 
-### codeFlows 生成
+### codeFlows Generation
 
-如果 exploit 结果关联的 context_pack 存在调用链（source→sink），生成 codeFlows:
+If the context_pack associated with the exploit result contains a call chain (source→sink), generate codeFlows:
 
 ```json
 "codeFlows": [{
@@ -104,28 +104,28 @@ ls "$WORK_DIR/exploits/"*.json 2>/dev/null
       {
         "location": {
           "physicalLocation": {
-            "artifactLocation": { "uri": "source 文件" },
-            "region": { "startLine": "source 行号" }
+            "artifactLocation": { "uri": "source file" },
+            "region": { "startLine": "source line number" }
           },
-          "message": { "text": "用户输入源: $_GET/$_POST/..." }
+          "message": { "text": "User input source: $_GET/$_POST/..." }
         }
       },
       {
         "location": {
           "physicalLocation": {
-            "artifactLocation": { "uri": "中间函数文件" },
-            "region": { "startLine": "中间行号" }
+            "artifactLocation": { "uri": "intermediate function file" },
+            "region": { "startLine": "intermediate line number" }
           },
-          "message": { "text": "数据传递: 函数调用描述" }
+          "message": { "text": "Data propagation: function call description" }
         }
       },
       {
         "location": {
           "physicalLocation": {
-            "artifactLocation": { "uri": "sink 文件" },
-            "region": { "startLine": "sink 行号" }
+            "artifactLocation": { "uri": "sink file" },
+            "region": { "startLine": "sink line number" }
           },
-          "message": { "text": "危险 Sink: 函数名" }
+          "message": { "text": "Dangerous sink: function name" }
         }
       }
     ]
@@ -133,33 +133,33 @@ ls "$WORK_DIR/exploits/"*.json 2>/dev/null
 }]
 ```
 
-- 无 context_pack 关联时 → codeFlows 留空数组
+- When no context_pack is associated → leave codeFlows as an empty array
 
-### properties 扩展
+### properties Extension
 
-每条 result 的 `properties` 字段包含:
+Each result's `properties` field MUST contain:
 
 ```json
 "properties": {
-  "priority": "P0/P1/P2/P3（从 priority_queue.json 获取）",
-  "specialist": "执行验证的专家 Agent 名",
-  "cvss_score": "CVSS 3.1 分数（从 priority_queue.json 获取）",
+  "priority": "P0/P1/P2/P3 (from priority_queue.json)",
+  "specialist": "name of the specialist agent that performed verification",
+  "cvss_score": "CVSS 3.1 score (from priority_queue.json)",
   "confidence": "high/medium/low",
-  "sink_id": "关联的 sink_id",
-  "rounds_executed": "执行的测试轮数",
-  "evidence_summary": "关键证据摘要"
+  "sink_id": "associated sink_id",
+  "rounds_executed": "number of test rounds executed",
+  "evidence_summary": "key evidence summary"
 }
 ```
 
-### Rules 数组生成
+### Rules Array Generation
 
-为所有出现的漏洞类型生成 `driver.rules` 条目:
+Generate `driver.rules` entries for all encountered vulnerability types:
 
 ```json
 {
   "id": "sqli",
   "name": "SQL Injection",
-  "shortDescription": { "text": "SQL 注入漏洞" },
+  "shortDescription": { "text": "SQL Injection vulnerability" },
   "helpUri": "https://cwe.mitre.org/data/definitions/89.html",
   "properties": {
     "tags": ["security", "sql-injection"]
@@ -167,41 +167,41 @@ ls "$WORK_DIR/exploits/"*.json 2>/dev/null
 }
 ```
 
-## Step 3: 错误处理
+## Step 3: Error Handling
 
-| 场景 | 处理方式 |
-|------|---------|
-| exploits/ 目录不存在 | 警告 + 生成空 SARIF |
-| 单个 exploit JSON 解析失败 | 警告 + 跳过该文件，继续处理其他 |
-| correlation_report.json 不存在 | 警告 + 跳过关联增强，正常生成 |
-| priority_queue.json 不存在 | 警告 + properties 中优先级和 CVSS 留空 |
-| context_pack 文件缺失 | 警告 + codeFlows 留空 |
-| 文件路径无法解析 | 使用 "unknown" 作为 uri |
+| Scenario | Handling |
+|----------|---------|
+| exploits/ directory does not exist | Warn + generate empty SARIF |
+| Single exploit JSON parse failure | Warn + skip the file, continue processing others |
+| correlation_report.json does not exist | Warn + skip correlation enhancement, generate normally |
+| priority_queue.json does not exist | Warn + leave priority and CVSS empty in properties |
+| context_pack file missing | Warn + leave codeFlows empty |
+| File path cannot be resolved | Use "unknown" as the uri |
 
-所有警告记录到 SARIF 的 `invocations[0].toolExecutionNotifications` 中:
+All warnings MUST be recorded in the SARIF `invocations[0].toolExecutionNotifications`:
 
 ```json
 "toolExecutionNotifications": [{
   "level": "warning",
-  "message": { "text": "警告描述" }
+  "message": { "text": "warning description" }
 }]
 ```
 
-## Step 4: 输出验证
+## Step 4: Output Validation
 
-生成完毕后执行基础结构校验:
+After generation, perform basic structural validation:
 
-1. 顶层必须包含 `version: "2.1.0"` 和 `runs` 数组
-2. `runs[0].tool.driver.name` 必须为 `"php-audit"`
-3. 每条 result 必须包含 `ruleId`、`level`、`message`、`locations`
-4. `level` 值必须为 `error`、`warning` 或 `note`
-5. 所有 `physicalLocation.region.startLine` 必须为正整数
-6. 输出文件必须为合法 JSON
+1. Top level MUST contain `version: "2.1.0"` and a `runs` array
+2. `runs[0].tool.driver.name` MUST be `"php-audit"`
+3. Every result MUST contain `ruleId`, `level`, `message`, and `locations`
+4. `level` value MUST be `error`, `warning`, or `note`
+5. All `physicalLocation.region.startLine` values MUST be positive integers
+6. Output file MUST be valid JSON
 
-校验失败 → 修复后重新输出，不得输出非法 SARIF。
+If validation fails → fix and re-output. MUST NOT output invalid SARIF.
 
-## 输出
+## Output
 
-文件: `$WORK_DIR/报告/audit_report.sarif.json`
+File: `$WORK_DIR/报告/audit_report.sarif.json`
 
-确保输出为格式化的 JSON（缩进 2 空格），便于人工审阅。
+Ensure the output is formatted JSON (2-space indentation) for ease of manual review.

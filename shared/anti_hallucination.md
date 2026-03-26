@@ -1,148 +1,148 @@
-# 反幻觉规则（Anti-Hallucination Rules）
+# Anti-Hallucination Rules
 
-以下 17 条规则是所有 Agent 的硬性约束，违反任何一条将导致该 Agent 的输出被 QC 拒绝。
+The following 17 rules are hard constraints for all Agents. Violating any single rule will cause the Agent's output to be rejected by QC.
 
 ---
 
-## 规则 1: 禁止推测代码行为
+## Rule 1: MUST NOT Speculate on Code Behavior
 
-- 描述代码行为时，**必须引用具体文件路径 + 行号**
-- 格式: `文件路径:行号`，例如 `app/Http/Controllers/UserController.php:45`
-- 禁止使用"可能"、"大概"、"一般来说"等模糊描述来断言代码行为
-- 如果未读取过该文件，先用 Read 工具读取后再描述
+- When describing code behavior, **MUST cite the specific file path + line number**
+- Format: `file_path:line_number`, e.g., `app/Http/Controllers/UserController.php:45`
+- MUST NOT use vague assertions like "might", "probably", or "generally" to describe code behavior
+- If the file has not been read, use the Read tool to read it first before describing
 
-## 规则 2: 结论必须附带源码片段
+## Rule 2: Conclusions MUST Include Source Code Snippets
 
-- 每个分析结论**必须附带对应的源码片段**作为依据
-- 源码片段必须是从文件中实际读取的内容，不可手工编造
-- 格式要求: 包含文件路径、行号范围、实际代码
-- **结构化证据**: 每个结论必须引用 `shared/evidence_contract.md` 中定义的 EVID_* 证据点 ID，详见该文件
-- **Trace-Gate 硬门槛**: trace_status=UNRESOLVED/INCOMPLETE 的 Sink → 最高 "suspected"；无 trace 文件的 Sink → 最高 "unverified"。仅 trace_status=RESOLVED + 所有必填 EVID 齐备 → 才允许 "confirmed"
-- 例:
+- Every analysis conclusion **MUST include a corresponding source code snippet** as evidence
+- Source code snippets MUST be actual content read from the file; fabrication is MUST NOT
+- Format requirements: include file path, line number range, and actual code
+- **Structured evidence**: Every conclusion MUST reference EVID_* evidence point IDs defined in `shared/evidence_contract.md`; see that file for details
+- **Trace-Gate hard threshold**: Sinks with trace_status=UNRESOLVED/INCOMPLETE → maximum "suspected"; Sinks without a trace file → maximum "unverified". Only trace_status=RESOLVED + all required EVIDs present → "confirmed" is allowed
+- Example:
   ```
   // app/Service/CmdService.php:45-47
   public function execute($command) {
-      return system($command);  // Sink: 用户输入直接进入 system()
+      return system($command);  // Sink: user input flows directly into system()
   }
   ```
 
-## 规则 3: 不确定时标注"需验证"
+## Rule 3: Mark as "[Needs Verification]" When Uncertain
 
-- 当对某个结论**不确定**时，必须标注 `[需验证]`
-- 禁止将不确定的分析结果作为确定性结论输出
-- `[需验证]` 的条目将由后续 Agent 或 QC 环节复核
-- 确定性等级: 已确认 > 高度疑似 > 需验证
+- When **uncertain** about a conclusion, MUST mark it with `[Needs Verification]`
+- MUST NOT present uncertain analysis results as definitive conclusions
+- Items marked `[Needs Verification]` will be reviewed by subsequent Agents or QC
+- Certainty levels: Confirmed > Highly Suspected > Needs Verification
 
-## 规则 4: 调用链每环必须有代码支撑
+## Rule 4: Every Link in a Call Chain MUST Have Code Evidence
 
-- 描述 Source → Sink 调用链时，**每一环都必须有实际代码支撑**
-- 禁止跳步（如 "用户输入 → ... → system()"，中间的 ... 不可省略）
-- 每环需标注: 文件路径、函数名、行号、参数如何传递
-- 如果某一环无法确认，标注 `[断链:原因]`，不可假装连续
+- When describing a Source → Sink call chain, **every link MUST have actual code evidence**
+- MUST NOT skip steps (e.g., "user input → ... → system()" — the ... MUST NOT be omitted)
+- Each link MUST include: file path, function name, line number, how parameters are passed
+- If a link cannot be confirmed, mark it as `[Chain Break: reason]`; MUST NOT pretend continuity
 
-## 规则 5: Payload 结果基于实际响应判断
+## Rule 5: Payload Results MUST Be Judged from Actual Responses
 
-- 发送 Payload 后，**必须基于实际 HTTP 响应**判断结果
-- 禁止假设 "Payload 已成功执行" 而不检查响应
-- 必须记录: HTTP 状态码、响应 Body（关键部分）、响应时间
-- 时间盲注必须对比基线响应时间
+- After sending a Payload, **MUST judge results based on the actual HTTP response**
+- MUST NOT assume "Payload executed successfully" without checking the response
+- MUST record: HTTP status code, response body (key parts), response time
+- Time-based blind injection MUST compare against baseline response time
 
-## 规则 6: 预期 vs 实际响应不一致 = 失败
+## Rule 6: Expected vs Actual Response Mismatch = Failure
 
-- 当预期响应与实际响应**不一致**时，该次测试标记为**失败**
-- 禁止解释为 "虽然响应不符，但漏洞可能存在"
-- 失败的测试可以作为下一轮策略调整的依据
-- 只有实际响应明确证实漏洞存在时，才标记为成功
+- When expected and actual responses **do not match**, the test MUST be marked as **failed**
+- MUST NOT rationalize as "although the response doesn't match, the vulnerability may still exist"
+- Failed tests MAY serve as input for strategy adjustment in the next round
+- Only when the actual response clearly confirms the vulnerability's existence SHALL it be marked as success
 
-## 规则 7: 禁止凭记忆描述代码
+## Rule 7: MUST NOT Describe Code from Memory
 
-- 分析代码时，**必须重新读取文件**确认内容
-- 禁止凭之前读取的记忆描述代码（代码可能在分析过程中被修改）
-- 每次引用代码时，使用 Read 工具读取最新内容
-- 对于同一文件在同一分析步骤内的多次引用，可复用单次读取结果
+- When analyzing code, **MUST re-read the file** to confirm its content
+- MUST NOT describe code based on previously read memory (the code may have been modified during analysis)
+- Each time code is referenced, use the Read tool to read the latest content
+- For multiple references to the same file within the same analysis step, reusing a single read result is acceptable
 
-## 规则 8: 报告漏洞时分析"非漏洞可能性"
+## Rule 8: Analyze "Non-Vulnerability Possibility" When Reporting Vulnerabilities
 
-- 报告一个漏洞时，**必须同时给出"为什么这可能不是漏洞"的分析**
-- 需考虑的非漏洞因素:
-  - 全局中间件/WAF 是否已拦截
-  - 参数是否已被上游函数过滤/转义
-  - PHP 版本是否已修复该利用方式
-  - 框架是否内置了防护机制
-  - 该 Sink 是否只在管理员功能中调用
-- 综合评估后给出最终判定
+- When reporting a vulnerability, **MUST simultaneously provide an analysis of "why this might not be a vulnerability"**
+- Non-vulnerability factors to consider:
+  - Whether global middleware/WAF has already intercepted it
+  - Whether parameters have already been filtered/escaped by upstream functions
+  - Whether the PHP version has already patched this exploitation method
+  - Whether the framework has built-in protection mechanisms
+  - Whether the Sink is only called within admin-only functionality
+- Provide the final determination after comprehensive evaluation
 
-## 规则 9: 多 Agent 报告同一问题以物证为准
+## Rule 9: When Multiple Agents Report the Same Issue, Physical Evidence Takes Precedence
 
-- 当多个 Agent 对同一问题给出不同结论时:
-  - **有物证的结论 > 无物证的结论**
-  - 不以"投票"方式决定（3 个 Agent 说是漏洞 ≠ 就是漏洞）
-  - 物证标准: 实际 HTTP 请求/响应、容器内文件变化、数据库变化
-- 冲突的结论必须在报告中注明分歧
+- When multiple Agents provide different conclusions on the same issue:
+  - **Conclusions with physical evidence > conclusions without physical evidence**
+  - MUST NOT decide by "voting" (3 Agents saying it's a vulnerability ≠ it is a vulnerability)
+  - Evidence standards: actual HTTP requests/responses, file changes within the container, database changes
+- Conflicting conclusions MUST note the disagreement in the report
 
-## 规则 10: 已确认漏洞必须有完整复现材料
+## Rule 10: Confirmed Vulnerabilities MUST Have Complete Reproduction Materials
 
-- 标记为 ✅（已确认）的漏洞**必须提供**:
-  - 完整的 HTTP 请求（可直接在 Burp/curl 中重放）
-  - 完整的 HTTP 响应（证明漏洞被触发）
-  - 如涉及容器状态变化: docker exec 验证命令 + 输出
-- 缺少以上任何一项，降级为 ⚠️（高度疑似）
-- ⚠️ 和 ⚡ 级别的漏洞不要求完整复现材料，但需说明原因
+- Vulnerabilities marked as ✅ (confirmed) **MUST provide**:
+  - Complete HTTP request (directly replayable in Burp/curl)
+  - Complete HTTP response (proving the vulnerability was triggered)
+  - If container state changes are involved: docker exec verification command + output
+- Missing any of the above → downgrade to ⚠️ (Highly Suspected)
+- ⚠️ and ⚡ level vulnerabilities do not require complete reproduction materials, but the reason MUST be stated
 
-## 规则 11: 竞态条件测试必须统计显著
+## Rule 11: Race Condition Tests MUST Be Statistically Significant
 
-- 竞态条件漏洞**必须基于统计显著性**判定，不可凭单次请求断言
-- 最低要求: 至少 20 次并发测试中，成功率 > 30% 才可标记为"已确认"
-- 必须记录: 并发数、总请求数、成功次数、成功率、时间窗口
-- 单次偶发成功 = "需验证"，不可标记为"已确认"
-- 必须排除网络抖动和正常重试导致的误报
+- Race condition vulnerabilities **MUST be determined based on statistical significance**; MUST NOT assert from a single request
+- Minimum requirement: success rate > 30% across at least 20 concurrent tests to be marked as "confirmed"
+- MUST record: concurrency count, total requests, success count, success rate, time window
+- A single sporadic success = "Needs Verification"; MUST NOT be marked as "confirmed"
+- MUST rule out false positives caused by network jitter and normal retries
 
-## 规则 12: NoSQL/GraphQL 注入需区分查询语义
+## Rule 12: NoSQL/GraphQL Injection MUST Differentiate Query Semantics
 
-- NoSQL 注入必须**证明查询语义被改变**，不可仅凭操作符出现在响应中
-- MongoDB 操作符注入: 必须对比正常查询 vs 注入查询的返回结果差异
-- GraphQL 注入: 必须证明深度/批量/内省查询返回了**超出权限的数据**
-- 禁止将 GraphQL Schema 内省本身作为漏洞（除非内省暴露了敏感字段定义）
-- Redis CRLF 注入: 必须证明额外命令被执行（如通过 INFO 响应确认）
+- NoSQL injection MUST **prove that query semantics have been altered**; MUST NOT rely solely on operators appearing in the response
+- MongoDB operator injection: MUST compare result differences between normal queries vs injected queries
+- GraphQL injection: MUST prove that depth/batch/introspection queries returned **data beyond authorized scope**
+- MUST NOT treat GraphQL Schema introspection itself as a vulnerability (unless introspection exposes sensitive field definitions)
+- Redis CRLF injection: MUST prove that additional commands were executed (e.g., confirmed via INFO response)
 
-## 规则 13: 业务逻辑漏洞需完整业务上下文
+## Rule 13: Business Logic Vulnerabilities Require Complete Business Context
 
-- 业务逻辑漏洞**必须描述完整业务流程**及其被绕过的环节
-- 价格篡改: 必须证明篡改后的价格被**实际用于交易**（不仅是前端显示）
-- 流程跳过: 必须证明跳过中间步骤后**最终状态被持久化**
-- 禁止将"前端可修改参数"直接等同于"业务逻辑漏洞"（需验证后端是否校验）
-- 负值/溢出测试: 必须证明余额/库存等数据实际被异常修改
+- Business logic vulnerabilities **MUST describe the complete business flow** and the bypassed step
+- Price tampering: MUST prove that the tampered price was **actually used in a transaction** (not just frontend display)
+- Flow skipping: MUST prove that the **final state was persisted** after skipping intermediate steps
+- MUST NOT equate "frontend-modifiable parameters" directly with "business logic vulnerability" (backend validation MUST be verified)
+- Negative value/overflow tests: MUST prove that balance/inventory data was actually abnormally modified
 
-## 规则 14: 密码学漏洞需考虑实际利用难度
+## Rule 14: Cryptographic Vulnerabilities MUST Consider Practical Exploitability
 
-- 弱哈希算法（MD5/SHA1）仅在**用于密码存储或签名验证**时标记为漏洞
-- MD5 用于缓存键、文件校验等非安全场景 ≠ 密码学漏洞
-- 可预测随机数: 必须证明**预测窗口在实际攻击场景中可利用**
-- JWT 弱密钥: 必须**实际破解出密钥**或证明 `alg:none` 被接受，不可仅凭理论可能性
-- 时序攻击: 必须在**网络环境下**（非本地）证明时序差异可测量
+- Weak hashing algorithms (MD5/SHA1) SHOULD only be marked as vulnerabilities when **used for password storage or signature verification**
+- MD5 used for cache keys, file checksums, or other non-security contexts ≠ cryptographic vulnerability
+- Predictable random numbers: MUST prove that the **prediction window is exploitable in a realistic attack scenario**
+- JWT weak keys: MUST **actually crack the key** or prove `alg:none` is accepted; MUST NOT rely solely on theoretical possibility
+- Timing attacks: MUST prove timing differences are measurable **in a network environment** (not locally)
 
-## 规则 15: WordPress 审计需区分核心/插件/主题
+## Rule 15: WordPress Audits MUST Distinguish Core/Plugin/Theme
 
-- WordPress 漏洞必须**明确标注影响范围**: 核心、特定插件（含版本）、特定主题（含版本）
-- 插件/主题漏洞不等于 WordPress 核心漏洞
-- CVE 匹配必须验证**当前安装版本**是否在受影响范围内
-- Nonce 绕过必须证明**实际操作被执行**，不可仅凭 Nonce 可预测就断言 CSRF 成功
-- XML-RPC `system.multicall` 放大: 必须证明实际绕过了速率限制
+- WordPress vulnerabilities MUST **clearly indicate the affected scope**: core, specific plugin (with version), or specific theme (with version)
+- Plugin/theme vulnerabilities are not equivalent to WordPress core vulnerabilities
+- CVE matching MUST verify whether the **currently installed version** falls within the affected range
+- Nonce bypass MUST prove that the **actual operation was executed**; MUST NOT assert CSRF success merely because the Nonce is predictable
+- XML-RPC `system.multicall` amplification: MUST prove that rate limiting was actually bypassed
 
-## 规则 16: 工具调用失败时禁止虚构结果
+## Rule 16: MUST NOT Fabricate Results When Tool Calls Fail
 
-- 当 Bash/Read/Search 等工具**调用失败或超时**时，**禁止假装成功并编造输出**
-- 工具失败后必须:
-  1. 记录失败原因（错误信息、超时、权限不足等）
-  2. 标注该步骤为 `[工具失败:原因]`
-  3. 尝试替代方案（换命令/换路径/降级策略）
-  4. 如所有替代方案均失败，标注 `[无法验证]` 并跳过该 Sink
-- 禁止在工具失败后凭"经验"推断结果
+- When Bash/Read/Search or other tools **fail or time out**, **MUST NOT pretend success and fabricate output**
+- After a tool failure, MUST:
+  1. Record the failure reason (error message, timeout, insufficient permissions, etc.)
+  2. Mark the step as `[Tool Failure: reason]`
+  3. Attempt alternative approaches (different command/path/fallback strategy)
+  4. If all alternatives fail, mark as `[Cannot Verify]` and skip that Sink
+- MUST NOT infer results based on "experience" after tool failure
 
-## 规则 17: 输出内容必须控制在合理范围
+## Rule 17: Output Content MUST Be Kept Within Reasonable Limits
 
-- 单个 Agent 的 JSON 输出**不得超过 500KB**
-- 代码片段引用限制在**关键的 10 行以内**，禁止整文件粘贴
-- 调用链描述最多**10 层**，超过时折叠中间层并标注 `[...N 层中间调用省略...]`
-- HTTP 响应 Body 只保留**关键证据部分**（前 500 字符 + 关键匹配行），不可全文粘贴
-- 违反大小限制的输出将被 QC 截断并标记为 `[输出超限:需精简]`
+- A single Agent's JSON output **MUST NOT exceed 500KB**
+- Code snippet citations MUST be limited to **the essential 10 lines or fewer**; MUST NOT paste entire files
+- Call chain descriptions MUST NOT exceed **10 levels**; beyond that, collapse intermediate levels and mark as `[...N intermediate calls omitted...]`
+- HTTP response Body SHOULD retain only **key evidence portions** (first 500 characters + key matching lines); MUST NOT paste the full content
+- Output exceeding size limits will be truncated by QC and marked as `[Output Exceeded Limit: needs reduction]`

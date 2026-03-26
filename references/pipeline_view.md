@@ -1,26 +1,26 @@
-# 累积流水线视图模板
+# Cumulative Pipeline View Template
 
-每个 Phase 完成后，打印一次**完整的流水线视图**。已完成阶段从结果中取数据填充，未完成阶段展开显示所有子任务及依赖关系。
+After each Phase completes, print the **complete pipeline view** once. Completed phases MUST be populated with data from results; incomplete phases SHALL be expanded to show all subtasks and dependency relationships.
 
-## 状态标记规则
+## Status Marker Rules
 
-- `✅` = 已完成且通过
-- `⚠️` = 已完成但降级/部分通过
-- `❌` = 失败
-- `⚙️` = 运行中
-- `⏳` = 等待中（尚未开始）
-- `🔄` = 跳过（降级模式）
+- `✅` = completed and passed
+- `⚠️` = completed but degraded / partially passed
+- `❌` = failed
+- `⚙️` = running
+- `⏳` = waiting (not yet started)
+- `🔄` = skipped (degraded mode)
 
-## 渲染规则
+## Rendering Rules
 
-1. **头部**: 始终显示项目名 + 进度条 + 完成任务数/总数 + 总耗时
-2. **阶段头**: `Phase-N  阶段名称` 右侧显示阶段状态图标 + 完成计数 `x/y` + 阶段耗时
-3. **任务行**: 已完成任务显示 `→ {摘要}`，运行中显示 `⚙️ 运行中`，等待中显示 `⏳` + 依赖 `← #x,#y`
-4. **阶段连接**: 用居中的 `↓` 连接各阶段
-5. **未创建阶段**: 显示 `⏳ 待创建`，不展开子任务
-6. **进度条**: 用 `▓`（已完成）和 `░`（未完成）渲染，共 20 格
+1. **Header**: MUST always display project name + progress bar + completed task count / total + total elapsed time
+2. **Phase header**: `Phase-N  phase_name` with phase status icon + completion count `x/y` + phase elapsed time on the right
+3. **Task row**: Completed tasks display `→ {summary}`, running tasks display `⚙️ running`, waiting tasks display `⏳` + dependency `← #x,#y`
+4. **Phase connector**: Connect phases with a centered `↓`
+5. **Uncreated phases**: Display `⏳ pending creation`, do NOT expand subtasks
+6. **Progress bar**: Render with `▓` (completed) and `░` (incomplete), 20 cells total
 
-## 视图模板
+## View Template
 
 ```
 ╔══════════════════════════════════════════════════════════╗
@@ -28,73 +28,73 @@
 ║  {▓▓▓▓░░░░░░░░░░░░░░░░}  {done}/{total} ({pct}%)  ⏱ {total_elapsed}  ║
 ╚══════════════════════════════════════════════════════════╝
 
-Phase-1  环境智能识别与构建                  {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
-  ├─ #1  环境侦探            {✅}  → {framework} {version}
-  ├─ #2  表结构重建           {✅}  → {n} 张表
-  ├─ #3  Docker 构建          {✅}  → PHP {php_version} + {db_type}
-  └─ #4  质检：环境构建        {✅}  → routes: {A}A/{B}B/{C}C
+Phase-1  Intelligent Environment Detection & Build     {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
+  ├─ #1  Env Detective          {✅}  → {framework} {version}
+  ├─ #2  Schema Rebuild         {✅}  → {n} tables
+  ├─ #3  Docker Build           {✅}  → PHP {php_version} + {db_type}
+  └─ #4  QC: Env Build          {✅}  → routes: {A}A/{B}B/{C}C
                               ↓
-Phase-2  静态资产侦察                       {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
-  ├─ #5  工具扫描             {✅}  → Psalm + Progpilot
-  ├─ #6  路由映射             {✅}  → {n} 条路由
-  ├─ #7  鉴权审计             {✅}  → {n} 条规则
-  ├─ #8  组件扫描             {✅}  → {n} 个漏洞组件
-  ├─ #9  上下文抽取           {✅}  → {n} 处 Sink
-  ├─ #10 优先级定级           {✅}  → P0:{n} P1:{n} P2:{n} P3:{n}
-  └─ #11 质检：静态侦察      {✅}  → 覆盖率 {n}%
+Phase-2  Static Asset Reconnaissance                   {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
+  ├─ #5  Tool Scan              {✅}  → Psalm + Progpilot
+  ├─ #6  Route Mapping          {✅}  → {n} routes
+  ├─ #7  Auth Audit             {✅}  → {n} rules
+  ├─ #8  Component Scan         {✅}  → {n} vulnerable components
+  ├─ #9  Context Extraction     {✅}  → {n} Sinks
+  ├─ #10 Priority Rating        {✅}  → P0:{n} P1:{n} P2:{n} P3:{n}
+  └─ #11 QC: Static Recon      {✅}  → coverage {n}%
                               ↓
-Phase-3  鉴权模拟与动态追踪                  {✅/⚠️/⚙️/🔄/⏳} {done}/{total}  ⏱ {elapsed}
-  ├─ #12 鉴权模拟             {✅}  → {anonymous ✅ | auth ✅ | admin ❌}
-  ├─ #13 追踪调度与执行        {✅}  → {成功}/{总数} 条
-  └─ #14 质检：动态追踪      {✅}  → 断链 {n} 条
+Phase-3  Authentication Simulation & Dynamic Tracing    {✅/⚠️/⚙️/🔄/⏳} {done}/{total}  ⏱ {elapsed}
+  ├─ #12 Auth Simulation        {✅}  → {anonymous ✅ | auth ✅ | admin ❌}
+  ├─ #13 Trace Dispatch & Exec  {✅}  → {succeeded}/{total} traces
+  └─ #14 QC: Dynamic Tracing   {✅}  → broken chains {n}
                               ↓
-Phase-4   深度对抗审计                      {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
-  ├─ #15 {sink_type}专家      {✅}  → 确认 {n}
-  ├─ ... (动态生成)
-  └─ #N  质检：物理取证        {✅}  → {n} 条物证
+Phase-4   Deep Adversarial Audit                       {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
+  ├─ #15 {sink_type} Expert     {✅}  → confirmed {n}
+  ├─ ... (dynamically generated)
+  └─ #N  QC: Physical Evidence  {✅}  → {n} evidence items
                               ↓
-Phase-4.5 后渗透智能分析                    {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
-  ├─ #M   攻击图谱构建        {✅}  → {n} 条攻击路径
-  ├─ #M+1 关联分析            {✅}  → 升级 {n}, 二阶 {n}, 缺口 {n}
-  ├─ #M+2 修复 Patch          {✅}  → {n} 个 Patch
-  └─ #M+3 PoC 脚本            {✅}  → {n} 个 PoC
+Phase-4.5 Post-Exploitation Intelligent Analysis       {✅/⚠️/⚙️/⏳} {done}/{total}  ⏱ {elapsed}
+  ├─ #M   Attack Graph Build   {✅}  → {n} attack paths
+  ├─ #M+1 Correlation Analysis {✅}  → escalated {n}, 2nd-order {n}, gaps {n}
+  ├─ #M+2 Remediation Patch    {✅}  → {n} Patches
+  └─ #M+3 PoC Scripts          {✅}  → {n} PoCs
                               ↓
-Phase-5   清理与报告                        {✅/⏳} {done}/{total}  ⏱ {elapsed}
-  ├─ #N+1 环境清理            {✅}
-  ├─ #N+2 报告撰写            {✅}  → {path}
-  └─ #N+3 质检：最终报告            {✅}
+Phase-5   Cleanup and Reporting                        {✅/⏳} {done}/{total}  ⏱ {elapsed}
+  ├─ #N+1 Env Cleanup          {✅}
+  ├─ #N+2 Report Writing       {✅}  → {path}
+  └─ #N+3 QC: Final Report     {✅}
 
 ══════════════════════════════════════════════════════════
- 漏洞: 确认 {n} · 疑似 {n} · 潜在 {n}  |  总耗时: {total_elapsed}
+ Vulnerabilities: confirmed {n} · suspected {n} · potential {n}  |  Total elapsed: {total_elapsed}
 ══════════════════════════════════════════════════════════
 ```
 
-## 各状态下的任务行渲染示例
+## Task Row Rendering Examples by Status
 
 ```
-已完成:    ├─ #1  环境侦探            ✅  → Laravel 10.x
-运行中:    ├─ #6  路由映射            ⚙️ 运行中
-等待中:    ├─ #9  上下文抽取          ⏳  ← #5~#8
-降级:      ├─ #7  鉴权审计            ⚠️  → 部分规则缺失
-失败:      ├─ #3  Docker 构建         ❌  → 端口冲突
-跳过:      ├─ #12 鉴权模拟            🔄  跳过(无 Docker)
+Completed: ├─ #1  Env Detective          ✅  → Laravel 10.x
+Running:   ├─ #6  Route Mapping          ⚙️ running
+Waiting:   ├─ #9  Context Extraction     ⏳  ← #5~#8
+Degraded:  ├─ #7  Auth Audit             ⚠️  → partial rules missing
+Failed:    ├─ #3  Docker Build           ❌  → port conflict
+Skipped:   ├─ #12 Auth Simulation        🔄  skipped (no Docker)
 ```
 
-## 未创建阶段的渲染
+## Rendering of Uncreated Phases
 
-Phase-4/4.5/5 的任务在 Phase-2 完成后才动态创建。创建前显示:
+Tasks for Phase-4/4.5/5 are dynamically created only after Phase-2 completes. Before creation, display:
 
 ```
-Phase-4   深度对抗审计                      ⏳ 待创建
+Phase-4   Deep Adversarial Audit                       ⏳ pending creation
                               ↓
-Phase-4.5 后渗透智能分析                    ⏳ 待创建
+Phase-4.5 Post-Exploitation Intelligent Analysis       ⏳ pending creation
                               ↓
-Phase-5   清理与报告                        ⏳ 待创建
+Phase-5   Cleanup and Reporting                        ⏳ pending creation
 ```
 
-## 进度条渲染规则
+## Progress Bar Rendering Rules
 
-20 格宽，按 `已完成任务数 / 总任务数` 比例填充:
+20 cells wide, filled proportionally by `completed task count / total task count`:
 
 ```
  0%:  ░░░░░░░░░░░░░░░░░░░░
@@ -104,8 +104,8 @@ Phase-5   清理与报告                        ⏳ 待创建
 100%: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 ```
 
-## 实时性保障
+## Real-Time Guarantees
 
-- **阶段间**: 每个 Phase 所有 Agent 完成后立即打印更新的完整视图
-- **阶段内**: Claude Code 原生 Task UI 自动渲染（基于 Agent 的 TaskUpdate 状态变更 + activeForm 旋转指示器）
-- 两层配合: Task UI 显示当前阶段细粒度进度，流水线视图显示全局阶段进度
+- **Between phases**: MUST print the updated complete view immediately after all Agents in each Phase complete
+- **Within a phase**: Claude Code native Task UI renders automatically (based on Agent TaskUpdate state changes + activeForm spinner indicator)
+- Two-layer coordination: Task UI displays fine-grained progress for the current phase; pipeline view displays global phase progress

@@ -1,115 +1,115 @@
-# 数据合约（Data Contracts）
+# Data Contracts
 
-本文件定义所有 Agent 间通信的 JSON 数据格式。对应的 JSON Schema 文件在 `schemas/` 目录下。
+This document defines the JSON data formats for all inter-Agent communication. Corresponding JSON Schema files are in the `schemas/` directory.
 
 ---
 
-## 1. route_map.json — 路由表
+## 1. route_map.json — Route Map
 
 ```json
 {
   "routes": [{
-    "id": "string (唯一标识，格式: route_001)",
-    "url": "string (路由路径，如 /api/user/{id})",
+    "id": "string (unique identifier, format: route_001)",
+    "url": "string (route path, e.g., /api/user/{id})",
     "method": "string (GET/POST/PUT/DELETE/PATCH/ANY)",
-    "controller": "string (控制器类::方法，如 UserController::show)",
-    "file": "string (控制器文件路径，相对于项目根目录)",
-    "line": "number (方法定义的行号)",
-    "params": ["string (参数名列表)"],
-    "param_sources": ["string (参数来源: $_GET/$_POST/$_FILES/$_REQUEST/Request)"],
-    "middleware": ["string (中间件名列表)"],
+    "controller": "string (controller class::method, e.g., UserController::show)",
+    "file": "string (controller file path, relative to project root)",
+    "line": "number (line number of method definition)",
+    "params": ["string (parameter name list)"],
+    "param_sources": ["string (parameter source: $_GET/$_POST/$_FILES/$_REQUEST/Request)"],
+    "middleware": ["string (middleware name list)"],
     "auth_level": "string (anonymous/authenticated/admin)",
-    "route_type": "string (A=可访问/B=部分报错/C=完全不可访问)"
+    "route_type": "string (A=accessible/B=partial error/C=completely inaccessible)"
   }]
 }
 ```
 
-## 2. auth_matrix.json — 权限矩阵
+## 2. auth_matrix.json — Auth Matrix
 
 ```json
 {
   "matrix": [{
-    "route_id": "string (关联 route_map 的 id)",
-    "url": "string (路由路径)",
+    "route_id": "string (references route_map id)",
+    "url": "string (route path)",
     "auth_level": "string (anonymous/authenticated/admin)",
-    "auth_mechanism": "string (鉴权机制描述，如 session_check/jwt_verify/middleware:auth)",
-    "bypass_notes": "string|null (潜在绕过注记，如 '缺少 CSRF 校验')"
+    "auth_mechanism": "string (auth mechanism description, e.g., session_check/jwt_verify/middleware:auth)",
+    "bypass_notes": "string|null (potential bypass notes, e.g., 'missing CSRF validation')"
   }]
 }
 ```
 
-## 3. priority_queue.json — 优先级队列
+## 3. priority_queue.json — Priority Queue
 
 ```json
 [{
-  "id": "string (唯一标识，格式: sink_001)",
+  "id": "string (unique identifier, format: sink_001)",
   "priority": "string (P0/P1/P2/P3)",
-  "route_id": "string (关联 route_map 的 id)",
-  "route_url": "string (路由路径)",
-  "sink_function": "string (Sink 函数名)",
-  "sink_file": "string (Sink 所在文件路径)",
-  "sink_line": "number (Sink 所在行号)",
-  "auth_level": "string (该路由的鉴权等级)",
-  "reason": "string (定级理由)",
-  "source_count": "number (多少个数据源确认了此条)",
-  "sources": ["string (数据来源: psalm/progpilot/ast_sinks/context_extractor)"]
+  "route_id": "string (references route_map id)",
+  "route_url": "string (route path)",
+  "sink_function": "string (Sink function name)",
+  "sink_file": "string (Sink file path)",
+  "sink_line": "number (Sink line number)",
+  "auth_level": "string (auth level for this route)",
+  "reason": "string (classification rationale)",
+  "source_count": "number (how many data sources confirmed this entry)",
+  "sources": ["string (data source: psalm/progpilot/ast_sinks/context_extractor)"]
 }]
 ```
 
-### 定级规则
+### Classification Rules
 
-| 优先级 | 条件 |
+| Priority | Condition |
 |--------|------|
-| P0（紧急） | 无鉴权 + 高危 Sink（RCE/反序列化/文件包含） |
-| P1（高危） | 无鉴权 + 中危 Sink，或 低权限 + 高危 Sink |
-| P2（中危） | 有鉴权 + 中危 Sink，或 无鉴权 + 低危 Sink |
-| P3（低危） | 高权限 + 低危 Sink |
+| P0 (Critical) | No auth + high-risk Sink (RCE/deserialization/file inclusion) |
+| P1 (High) | No auth + medium-risk Sink, or low privilege + high-risk Sink |
+| P2 (Medium) | Auth required + medium-risk Sink, or no auth + low-risk Sink |
+| P3 (Low) | High privilege + low-risk Sink |
 
-## 4. context_pack.json — 上下文包（每个 Sink 一份）
+## 4. context_pack.json — Context Pack (one per Sink)
 
 ```json
 {
-  "sink_id": "string (关联 priority_queue 的 id)",
-  "sink_function": "string (Sink 函数名)",
+  "sink_id": "string (references priority_queue id)",
+  "sink_function": "string (Sink function name)",
   "priority": "string (P0/P1/P2/P3)",
-  "trace_depth": "number (追踪深度)",
+  "trace_depth": "number (trace depth)",
   "layers": [{
-    "layer": "number (层级，0=Sink层，越大越接近 Source)",
+    "layer": "number (layer level, 0=Sink layer, higher=closer to Source)",
     "role": "string (SINK/CALLER/ROUTE)",
-    "file": "string (文件路径)",
-    "function": "string (函数名)",
-    "lines": "string (起止行号，如 45-67)",
-    "code": "string (完整函数代码)",
+    "file": "string (file path)",
+    "function": "string (function name)",
+    "lines": "string (line range, e.g., 45-67)",
+    "code": "string (complete function code)",
     "analysis_notes": {
-      "source": "string|null (数据来源)",
-      "sink_arg": "string|null (传入 Sink 的参数)",
-      "filters": ["string (路径上的过滤函数)"],
-      "bypass_hint": "string|null (潜在绕过提示)"
+      "source": "string|null (data source)",
+      "sink_arg": "string|null (argument passed to Sink)",
+      "filters": ["string (filter functions on the path)"],
+      "bypass_hint": "string|null (potential bypass hint)"
     }
   }],
-  "data_flow_summary": "string (Source→...→Sink 单行摘要)",
+  "data_flow_summary": "string (Source→...→Sink one-line summary)",
   "filters_in_path": [{
-    "function": "string (过滤函数名)",
-    "effective": "boolean (是否有效)",
-    "reason": "string (有效/无效的原因)"
+    "function": "string (filter function name)",
+    "effective": "boolean (whether effective)",
+    "reason": "string (reason for effectiveness/ineffectiveness)"
   }],
   "global_filters": [{
     "type": "string (middleware/waf/function)",
-    "file": "string (文件路径)",
-    "code": "string (过滤代码)",
-    "affects": "string (影响范围描述)"
+    "file": "string (file path)",
+    "code": "string (filter code)",
+    "affects": "string (scope of effect description)"
   }]
 }
 ```
 
-## 5. credentials.json — 凭证池
+## 5. credentials.json — Credential Pool
 
 ```json
 {
   "anonymous": {},
   "authenticated": {
     "method": "string (cookie/jwt/session)",
-    "cookie": "string|null (Cookie 值)",
+    "cookie": "string|null (Cookie value)",
     "token": "string|null (JWT/Bearer Token)",
     "user_id": "number|null",
     "username": "string"
@@ -124,195 +124,195 @@
 }
 ```
 
-## 6. trace_record.json — 追踪记录（每条路由一份）
+## 6. trace_record.json — Trace Record (one per route)
 
 ```json
 {
-  "route_id": "string (关联 route_map 的 id)",
-  "route_url": "string (路由路径)",
-  "call_chain": ["string (函数调用描述，如 'index.php → Router::dispatch → UserController::show → DB::raw')"],
+  "route_id": "string (references route_map id)",
+  "route_url": "string (route path)",
+  "call_chain": ["string (function call description, e.g., 'index.php → Router::dispatch → UserController::show → DB::raw')"],
   "filters_encountered": [{
-    "function": "string (过滤函数名)",
+    "function": "string (filter function name)",
     "effective": "boolean",
     "reason": "string"
   }],
   "dynamic_bindings": [{
     "type": "string (call_user_func/variable_method/dynamic_include)",
-    "resolved": "string (实际解析结果)"
+    "resolved": "string (actual resolution result)"
   }],
-  "raw_request": "string (发送的完整 HTTP 请求)",
-  "raw_response_status": "number (HTTP 状态码)",
-  "error_point": "string|null (类型 B 路由: 报错在哪个函数)",
+  "raw_request": "string (complete HTTP request sent)",
+  "raw_response_status": "number (HTTP status code)",
+  "error_point": "string|null (Type B route: which function raised the error)",
   "error_vs_sink": "string|null (before_sink/after_sink)"
 }
 ```
 
-## 7. environment_status.json — 环境状态
+## 7. environment_status.json — Environment Status
 
 ```json
 {
-  "mode": "string (full=完整环境/partial=部分可用)",
+  "mode": "string (full=complete environment/partial=partially available)",
   "framework": "string (Laravel/ThinkPHP/Yii2/Symfony/CakePHP/CodeIgniter/Native)",
-  "framework_version": "string (如 8.1.0)",
-  "php_version": "string (如 7.4)",
+  "framework_version": "string (e.g., 8.1.0)",
+  "php_version": "string (e.g., 7.4)",
   "db_type": "string (mysql/pgsql/sqlite)",
-  "startup_rounds": "number (启动尝试轮次)",
-  "fixes_applied": ["string (修复记录，如 'composer require xxx')"],
-  "web_accessible": "boolean (Web 是否可访问)",
-  "routes_accessible": "number (类型 A 路由数量)",
-  "routes_error": "number (类型 B 路由数量)",
-  "routes_inaccessible": "number (类型 C 路由数量)",
+  "startup_rounds": "number (startup attempt rounds)",
+  "fixes_applied": ["string (fix records, e.g., 'composer require xxx')"],
+  "web_accessible": "boolean (whether Web is accessible)",
+  "routes_accessible": "number (Type A route count)",
+  "routes_error": "number (Type B route count)",
+  "routes_inaccessible": "number (Type C route count)",
   "routes_error_details": [{
-    "route": "string (路由路径)",
-    "error": "string (错误信息)",
-    "reason": "string (原因分析)",
-    "impact": "string (对审计的影响)"
+    "route": "string (route path)",
+    "error": "string (error message)",
+    "reason": "string (cause analysis)",
+    "impact": "string (impact on audit)"
   }],
   "xdebug_working": "boolean",
-  "db_tables_total": "number (数据库总表数)",
-  "db_tables_from_migration": "number (来自迁移文件的表数)",
-  "db_tables_from_inference": "number (来自推断的表数)",
-  "disabled_features": ["string (因缺依赖而禁用的功能)"],
-  "encrypted_files": ["string (ionCube/Zend Guard 加密的文件路径)"]
+  "db_tables_total": "number (total database tables)",
+  "db_tables_from_migration": "number (tables from migration files)",
+  "db_tables_from_inference": "number (tables from inference)",
+  "disabled_features": ["string (features disabled due to missing dependencies)"],
+  "encrypted_files": ["string (ionCube/Zend Guard encrypted file paths)"]
 }
 ```
 
-## 8. dep_risk.json — 组件风险
+## 8. dep_risk.json — Dependency Risk
 
 ```json
 [{
-  "package": "string (包名，如 laravel/framework)",
-  "installed_version": "string (安装版本)",
-  "cve": "string (CVE 编号)",
+  "package": "string (package name, e.g., laravel/framework)",
+  "installed_version": "string (installed version)",
+  "cve": "string (CVE identifier)",
   "severity": "string (CRITICAL/HIGH/MEDIUM/LOW)",
-  "type": "string (漏洞类型，如 RCE/SQLi/XSS)",
-  "description": "string (漏洞描述)",
-  "fixed_version": "string (修复版本)"
+  "type": "string (vulnerability type, e.g., RCE/SQLi/XSS)",
+  "description": "string (vulnerability description)",
+  "fixed_version": "string (fixed version)"
 }]
 ```
 
-## 9. exploit_result.json — 攻击结果（每个 Sink 一份）
+## 9. exploit_result.json — Exploit Result (one per Sink)
 
 ```json
 {
-  "sink_id": "string (关联 priority_queue 的 id，如 sink_001)",
-  "route_url": "string (路由路径)",
-  "sink_function": "string (Sink 函数名，如 DB::raw)",
-  "specialist": "string (执行攻击的专家 Agent 名，如 sqli_auditor)",
+  "sink_id": "string (references priority_queue id, e.g., sink_001)",
+  "route_url": "string (route path)",
+  "sink_function": "string (Sink function name, e.g., DB::raw)",
+  "specialist": "string (specialist agent name that executed the attack, e.g., sqli_auditor)",
   "route_type": "string (A/B/C)",
-  "rounds_executed": "number (实际执行的攻击轮数)",
-  "rounds_skipped": "number (智能跳过的轮数)",
-  "skip_reason": "string|null (跳过原因)",
+  "rounds_executed": "number (actual attack rounds executed)",
+  "rounds_skipped": "number (rounds intelligently skipped)",
+  "skip_reason": "string|null (reason for skipping)",
   "results": [{
-    "round": "number (轮次序号 1-8)",
-    "strategy": "string (策略名称，如 basic_union_select)",
-    "payload": "string (实际发送的 Payload)",
-    "injection_point": "string (注入点描述，如 POST body param 'name')",
-    "request": "string (完整 HTTP 请求)",
-    "response_status": "number (HTTP 状态码)",
-    "response_body_snippet": "string (响应体前 500 字符)",
-    "evidence_type": "string|null (证据类型: time_based/union_based/error_based/file_proof/blind 等)",
-    "evidence_detail": "string|null (证据详情)",
+    "round": "number (round number 1-8)",
+    "strategy": "string (strategy name, e.g., basic_union_select)",
+    "payload": "string (actual payload sent)",
+    "injection_point": "string (injection point description, e.g., POST body param 'name')",
+    "request": "string (complete HTTP request)",
+    "response_status": "number (HTTP status code)",
+    "response_body_snippet": "string (first 500 characters of response body)",
+    "evidence_type": "string|null (evidence type: time_based/union_based/error_based/file_proof/blind etc.)",
+    "evidence_detail": "string|null (evidence detail)",
     "result": "string (confirmed/suspected/failed)",
-    "failure_reason": "string|null (失败原因分析)"
+    "failure_reason": "string|null (failure reason analysis)"
   }],
   "race_condition_results": {
-    "tested": "boolean (是否测试了竞态条件)",
-    "concurrent_requests": "number (并发请求数)",
+    "tested": "boolean (whether race condition was tested)",
+    "concurrent_requests": "number (concurrent request count)",
     "result": "string|null (vulnerable/not_vulnerable)",
-    "detail": "string|null (竞态漏洞详情)"
+    "detail": "string|null (race condition vulnerability detail)"
   },
   "final_verdict": "string (confirmed/suspected/potential/not_vulnerable)",
   "confidence": "string (high/medium/low)"
 }
 ```
 
-## 9.5. exploit_plan.json — 攻击计划（Phase-4 阶段 1 输出，每个 Sink 一份）
+## 9.5. exploit_plan.json — Attack Plan (Phase-4 Stage 1 output, one per Sink)
 
 ```json
 {
-  "sink_id": "string (关联 priority_queue 的 id)",
-  "specialist": "string (专家 Agent 名)",
-  "analysis_summary": "string (静态分析摘要: 过滤机制、可绕过点、攻击面评估)",
-  "target_endpoint": "string (目标 URL)",
+  "sink_id": "string (references priority_queue id)",
+  "specialist": "string (specialist agent name)",
+  "analysis_summary": "string (static analysis summary: filter mechanisms, bypassable points, attack surface assessment)",
+  "target_endpoint": "string (target URL)",
   "injection_points": [{
-    "param_name": "string (参数名)",
+    "param_name": "string (parameter name)",
     "param_location": "string (query/body/header/cookie/path)",
     "data_type": "string (string/int/array/json)",
-    "current_filters": ["string (已识别的过滤函数)"],
-    "bypass_strategies": ["string (绕过策略)"]
+    "current_filters": ["string (identified filter functions)"],
+    "bypass_strategies": ["string (bypass strategies)"]
   }],
   "attack_rounds": [{
-    "round": "number (轮次 1-8)",
-    "strategy": "string (策略名称)",
-    "rationale": "string (为什么选择此策略)",
-    "payload_template": "string (Payload 模板)",
-    "expected_evidence": "string (预期证据类型)",
-    "fallback": "string|null (失败后备选策略)"
+    "round": "number (round 1-8)",
+    "strategy": "string (strategy name)",
+    "rationale": "string (why this strategy was chosen)",
+    "payload_template": "string (payload template)",
+    "expected_evidence": "string (expected evidence type)",
+    "fallback": "string|null (fallback strategy on failure)"
   }],
   "waf_detection": {
     "detected": "boolean",
-    "type": "string|null (ModSecurity/Cloudflare/Custom 等)",
+    "type": "string|null (ModSecurity/Cloudflare/Custom etc.)",
     "bypass_notes": "string|null"
   },
-  "shared_findings_consumed": ["string (已消费的 shared_findings 条目 key)"],
-  "estimated_rounds": "number (预计需要的攻击轮数)"
+  "shared_findings_consumed": ["string (consumed shared_findings entry keys)"],
+  "estimated_rounds": "number (estimated attack rounds needed)"
 }
 ```
 
-### 攻击结果摘要 — exploit_summary.json
+### Exploit Result Summary — exploit_summary.json
 
-由主调度器在 Phase-4 全部完成后汇总生成:
+Generated by the main orchestrator after all of Phase-4 is complete:
 
 ```json
 {
-  "total_sinks": "number (总 Sink 数)",
-  "type_a_tested": "number (Type A 实战测试数)",
-  "type_b_after_tested": "number (Type B after_sink 测试数)",
-  "type_b_before_static": "number (Type B before_sink 静态分析数)",
-  "type_c_static": "number (Type C 静态分析数)",
-  "vulnerabilities_confirmed": "number (已确认漏洞数)",
-  "vulnerabilities_suspected": "number (疑似漏洞数)",
-  "race_conditions_found": "number (竞态条件漏洞数)"
+  "total_sinks": "number (total Sink count)",
+  "type_a_tested": "number (Type A live-tested count)",
+  "type_b_after_tested": "number (Type B after_sink tested count)",
+  "type_b_before_static": "number (Type B before_sink static analysis count)",
+  "type_c_static": "number (Type C static analysis count)",
+  "vulnerabilities_confirmed": "number (confirmed vulnerability count)",
+  "vulnerabilities_suspected": "number (suspected vulnerability count)",
+  "race_conditions_found": "number (race condition vulnerability count)"
 }
 ```
 
 ---
 
-## 去重规则
+## Deduplication Rules
 
-漏洞去重以 **"文件路径 + 行号 + Sink 函数"** 为唯一键。多个来源指向同一点时，合并记录并标注来源数量（来源越多可信度越高）。
+Vulnerability deduplication uses **"file path + line number + Sink function"** as the unique key. When multiple sources point to the same location, records are merged and the source count is annotated (more sources = higher confidence).
 
 ---
 
-## 10. race_condition_result.json — 竞态条件测试结果
+## 10. race_condition_result.json — Race Condition Test Result
 
 ```json
 {
-  "sink_id": "string (关联 priority_queue 的 id)",
-  "route_url": "string (路由路径)",
+  "sink_id": "string (references priority_queue id)",
+  "route_url": "string (route path)",
   "specialist": "race_condition_auditor",
   "test_type": "string (TOCTOU/double_spend/token_replay/rate_limit/session_race/db_transaction)",
   "rounds_executed": "number",
   "results": [{
     "round": "number",
     "strategy": "string",
-    "concurrent_requests": "number (并发请求数)",
-    "total_attempts": "number (总尝试次数)",
-    "success_count": "number (成功触发次数)",
-    "success_rate": "number (成功率 0.0-1.0)",
-    "time_window_ms": "number (攻击时间窗口毫秒)",
+    "concurrent_requests": "number (concurrent request count)",
+    "total_attempts": "number (total attempt count)",
+    "success_count": "number (successful trigger count)",
+    "success_rate": "number (success rate 0.0-1.0)",
+    "time_window_ms": "number (attack time window in milliseconds)",
     "payload": "string",
     "evidence_detail": "string|null",
     "result": "string (confirmed/suspected/failed)",
-    "baseline_comparison": "string (对比正常请求的差异描述)"
+    "baseline_comparison": "string (difference description compared to normal requests)"
   }],
   "final_verdict": "string (confirmed/suspected/potential/not_vulnerable)",
   "confidence": "string (high/medium/low)"
 }
 ```
 
-## 11. crypto_audit_result.json — 密码学审计结果
+## 11. crypto_audit_result.json — Cryptographic Audit Result
 
 ```json
 {
@@ -323,12 +323,12 @@
   "results": [{
     "round": "number",
     "strategy": "string",
-    "target_function": "string (被审计的密码学函数)",
-    "target_file": "string (文件路径)",
+    "target_function": "string (audited cryptographic function)",
+    "target_file": "string (file path)",
     "target_line": "number",
-    "weakness": "string (弱点描述)",
-    "evidence": "string (证据: 可预测输出/弱密钥/算法降级等)",
-    "exploitability": "string (直接可利用/需要条件/理论可能)",
+    "weakness": "string (weakness description)",
+    "evidence": "string (evidence: predictable output/weak key/algorithm downgrade etc.)",
+    "exploitability": "string (directly exploitable/requires conditions/theoretically possible)",
     "result": "string (confirmed/suspected/failed)"
   }],
   "final_verdict": "string",
@@ -336,7 +336,7 @@
 }
 ```
 
-## 12. nosql_result.json — NoSQL 注入测试结果
+## 12. nosql_result.json — NoSQL Injection Test Result
 
 ```json
 {
@@ -353,7 +353,7 @@
     "request": "string",
     "response_status": "number",
     "response_body_snippet": "string",
-    "query_semantic_change": "boolean (查询语义是否被改变)",
+    "query_semantic_change": "boolean (whether query semantics were altered)",
     "evidence_detail": "string|null",
     "result": "string (confirmed/suspected/failed)"
   }],
@@ -362,14 +362,14 @@
 }
 ```
 
-## 13. wordpress_result.json — WordPress 审计结果
+## 13. wordpress_result.json — WordPress Audit Result
 
 ```json
 {
   "sink_id": "string",
   "specialist": "wordpress_auditor",
   "scope": "string (core/plugin/theme)",
-  "component_name": "string (WordPress 核心 / 插件名 / 主题名)",
+  "component_name": "string (WordPress core / plugin name / theme name)",
   "component_version": "string",
   "rounds_executed": "number",
   "results": [{
@@ -378,7 +378,7 @@
     "endpoint": "string",
     "payload": "string",
     "evidence_detail": "string|null",
-    "cve_id": "string|null (关联的 CVE 编号)",
+    "cve_id": "string|null (associated CVE identifier)",
     "result": "string (confirmed/suspected/failed)"
   }],
   "final_verdict": "string",
@@ -386,23 +386,23 @@
 }
 ```
 
-## 14. business_logic_result.json — 业务逻辑审计结果
+## 14. business_logic_result.json — Business Logic Audit Result
 
 ```json
 {
   "sink_id": "string",
   "route_url": "string",
   "specialist": "business_logic_auditor",
-  "business_flow": "string (受影响的业务流程描述)",
+  "business_flow": "string (affected business flow description)",
   "rounds_executed": "number",
   "results": [{
     "round": "number",
     "strategy": "string (price_tamper/coupon_abuse/payment_bypass/flow_skip/negative_value/sms_bomb/state_machine)",
     "payload": "string",
-    "business_impact": "string (业务影响描述: 资金损失/数据泄露/流程绕过等)",
-    "state_before": "string (操作前状态)",
-    "state_after": "string (操作后状态)",
-    "persisted": "boolean (异常状态是否被持久化)",
+    "business_impact": "string (business impact description: financial loss/data leak/flow bypass etc.)",
+    "state_before": "string (state before operation)",
+    "state_after": "string (state after operation)",
+    "persisted": "boolean (whether anomalous state is persisted)",
     "evidence_detail": "string|null",
     "result": "string (confirmed/suspected/failed)"
   }],
@@ -411,15 +411,15 @@
 }
 ```
 
-## 15. credentials.json 扩展字段
+## 15. credentials.json Extended Fields
 
-在原有 anonymous/authenticated/admin 基础上，新增以下可选字段:
+In addition to the existing anonymous/authenticated/admin fields, the following optional fields are added:
 
 ```json
 {
   "anonymous": {},
-  "authenticated": { "...原有字段..." },
-  "admin": { "...原有字段..." },
+  "authenticated": { "...existing fields..." },
+  "admin": { "...existing fields..." },
   "oauth2": {
     "access_token": "string",
     "refresh_token": "string|null",
@@ -431,28 +431,28 @@
   },
   "api_key": {
     "key": "string",
-    "header_name": "string (如 X-API-Key)",
+    "header_name": "string (e.g., X-API-Key)",
     "location": "string (header/query/cookie)"
   },
   "multi_tenant": [{
     "tenant_id": "string",
     "tenant_name": "string",
-    "credentials": { "...同 authenticated 结构..." }
+    "credentials": { "...same structure as authenticated..." }
   }],
   "websocket": {
     "url": "string (ws://...)",
-    "auth_message": "string|null (连接后发送的认证消息)"
+    "auth_message": "string|null (auth message sent after connection)"
   }
 }
 ```
 
-## 16. CVSS 3.1 评分附加字段
+## 16. CVSS 3.1 Scoring Additional Fields
 
-在 priority_queue.json 的每条记录中可附加:
+MAY be appended to each record in priority_queue.json:
 
 ```json
 {
-  "...原有字段...",
+  "...existing fields...",
   "cvss": {
     "score": "number (0.0-10.0)",
     "vector": "string (CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H)",
@@ -466,66 +466,66 @@
     "integrity": "string (None/Low/High)",
     "availability": "string (None/Low/High)"
   },
-  "attack_surface_score": "number (0-100, 攻击面量化评分)",
+  "attack_surface_score": "number (0-100, attack surface quantitative score)",
   "business_impact": ["string (financial/pii_exposure/auth_bypass/service_disruption)"]
 }
 ```
 
 ---
 
-## 17. attack_graph.json — 攻击图谱
+## 17. attack_graph.json — Attack Graph
 
 ```json
 {
   "generated_at": "string (ISO-8601)",
-  "total_nodes": "number (漏洞节点总数)",
-  "total_edges": "number (关联边总数)",
-  "total_paths": "number (攻击路径总数)",
+  "total_nodes": "number (total vulnerability node count)",
+  "total_edges": "number (total edge count)",
+  "total_paths": "number (total attack path count)",
   "nodes": [{
-    "node_id": "string (V-001 格式)",
+    "node_id": "string (V-001 format)",
     "vuln_type": "string",
     "sub_type": "string",
     "endpoint": "string",
     "confidence": "string (confirmed/highly_suspected/potential_risk)",
-    "output_data": "string (此漏洞产出的数据/能力)",
+    "output_data": "string (data/capability produced by this vulnerability)",
     "required_access": "string (anonymous/authenticated/admin)",
-    "grants_access": "string (获得的访问级别)",
+    "grants_access": "string (access level gained)",
     "severity": "string (Critical/High/Medium/Low/Info)"
   }],
   "edges": [{
-    "from": "string (起点 node_id)",
-    "to": "string (终点 node_id)",
+    "from": "string (source node_id)",
+    "to": "string (target node_id)",
     "relationship": "string (credential_reuse/token_forge/privilege_escalation/data_extraction/lateral_movement)",
     "description": "string"
   }],
   "paths": [{
-    "path_id": "string (P-001 格式)",
-    "score": "number (路径评分)",
+    "path_id": "string (P-001 format)",
+    "score": "number (path score)",
     "confidence": "string (high/medium/low)",
-    "nodes": ["string (有序 node_id 列表)"],
+    "nodes": ["string (ordered node_id list)"],
     "entry_point": "string",
     "final_impact": "string",
-    "narrative": "string (攻击叙事)",
+    "narrative": "string (attack narrative)",
     "remediation_priority": "string (P0/P1/P2)"
   }],
   "escalation_patterns": [{
     "pattern_name": "string",
-    "involved_vulns": ["string (node_id 列表)"],
+    "involved_vulns": ["string (node_id list)"],
     "individual_severity": "string",
     "combined_severity": "string",
     "explanation": "string"
   }],
-  "mermaid_diagram": "string (完整 Mermaid 图谱代码)"
+  "mermaid_diagram": "string (complete Mermaid diagram code)"
 }
 ```
 
-## 18. correlation_report.json — 跨审计员关联报告
+## 18. correlation_report.json — Cross-Auditor Correlation Report
 
 ```json
 {
   "generated_at": "string (ISO-8601)",
   "escalations": [{
-    "pattern_name": "string (风险升级模式名)",
+    "pattern_name": "string (risk escalation pattern name)",
     "condition_a": {
       "finding_id": "string",
       "vuln_type": "string",
@@ -567,60 +567,60 @@
   "potential_false_positives": [{
     "finding_id": "string",
     "reason": "string",
-    "matched_pattern": "string (如 FP-SQL-001)"
+    "matched_pattern": "string (e.g., FP-SQL-001)"
   }]
 }
 ```
 
-## 19. audit_session.db → shared_findings — 实时共享发现（SQLite）
+## 19. audit_session.db → shared_findings — Realtime Shared Findings (SQLite)
 
-每条记录结构:
+Record structure per entry:
 
 ```json
 {
   "timestamp": "string (ISO-8601)",
-  "source_agent": "string (写入方 Agent 名)",
+  "source_agent": "string (writing agent name)",
   "finding_type": "string (credential|internal_url|secret_key|endpoint|bypass_method|config_value)",
   "priority": "string (critical|high|medium)",
   "data": {
-    "key": "string (发现的名称/标识)",
-    "value": "string (发现的值)",
-    "context": "string (发现的上下文描述)",
-    "source_location": "string (发现来源)"
+    "key": "string (finding name/identifier)",
+    "value": "string (finding value)",
+    "context": "string (finding context description)",
+    "source_location": "string (finding source)"
   },
-  "target_agents": ["string (建议的消费方 Agent 名)"],
-  "consumed_by": ["string (已消费的 Agent 名)"]
+  "target_agents": ["string (suggested consumer agent names)"],
+  "consumed_by": ["string (agent names that have consumed this)"]
 }
 ```
 
-## 20. second_order 追踪文件
+## 20. second_order Tracking Files
 
-### store_points.jsonl — 存入点记录
+### store_points.jsonl — Storage Point Records
 
 ```json
 {
-  "store_id": "string (STORE-001 格式)",
-  "endpoint": "string (写入端点)",
-  "param": "string (参数名)",
+  "store_id": "string (STORE-001 format)",
+  "endpoint": "string (write endpoint)",
+  "param": "string (parameter name)",
   "storage": "string (database/file/cache/session)",
-  "table": "string (表名，数据库存储时)",
-  "column": "string (列名)",
+  "table": "string (table name, for database storage)",
+  "column": "string (column name)",
   "sanitization": "string (none/partial/full)",
   "sanitization_detail": "string",
-  "recorded_by": "string (记录方 Agent 名)"
+  "recorded_by": "string (recording agent name)"
 }
 ```
 
-### use_points.jsonl — 使用点记录
+### use_points.jsonl — Usage Point Records
 
 ```json
 {
-  "use_id": "string (USE-001 格式)",
-  "endpoint": "string (使用端点)",
+  "use_id": "string (USE-001 format)",
+  "endpoint": "string (usage endpoint)",
   "source_table": "string",
   "source_column": "string",
-  "usage_sink": "string (Sink 函数名)",
-  "usage_file": "string (文件路径)",
+  "usage_sink": "string (Sink function name)",
+  "usage_file": "string (file path)",
   "usage_line": "number",
   "output_sanitization": "string (none/partial/full)",
   "output_sanitization_detail": "string",
@@ -628,7 +628,7 @@
 }
 ```
 
-### correlations.json — 关联结果
+### correlations.json — Correlation Results
 
 ```json
 {
@@ -645,7 +645,7 @@
 }
 ```
 
-## 21. remediation_summary.json — 修复摘要
+## 21. remediation_summary.json — Remediation Summary
 
 ```json
 {
@@ -657,16 +657,16 @@
   "patches": [{
     "sink_id": "string",
     "vuln_type": "string",
-    "file": "string (修改的源文件路径)",
-    "patch_file": "string (Patch 文件路径)",
-    "fix_strategy": "string (修复策略描述)",
+    "file": "string (modified source file path)",
+    "patch_file": "string (patch file path)",
+    "fix_strategy": "string (fix strategy description)",
     "breaking_change": "boolean",
-    "verification": "string (验证建议)"
+    "verification": "string (verification recommendation)"
   }]
 }
 ```
 
-## 22. poc_summary.json — PoC 脚本摘要
+## 22. poc_summary.json — PoC Script Summary
 
 ```json
 {
@@ -677,30 +677,30 @@
   "scripts": [{
     "sink_id": "string",
     "vuln_type": "string",
-    "file": "string (PoC 脚本文件名)",
+    "file": "string (PoC script filename)",
     "endpoint": "string",
     "auth_required": "boolean",
-    "curl_command": "string (等效 curl 命令)"
+    "curl_command": "string (equivalent curl command)"
   }]
 }
 ```
 
-## 23. evidence_quality 扩展字段
+## 23. evidence_quality Extended Fields
 
-在 team4_progress.json 的每个 finding 中附加:
+Appended to each finding in team4_progress.json:
 
 ```json
 {
-  "...原有字段...",
-  "evidence_quality": "number (0-10, 证据质量评分)",
+  "...existing fields...",
+  "evidence_quality": "number (0-10, evidence quality score)",
   "cross_validation": {
-    "variant_payload": "string (变体 Payload)",
+    "variant_payload": "string (variant payload)",
     "variant_result": "string (success/failed)",
     "independent_reproduction": "boolean"
   },
   "false_positive_check": {
     "checked": "boolean",
-    "matched_patterns": ["string (匹配的误报模式 ID)"],
+    "matched_patterns": ["string (matched false positive pattern IDs)"],
     "conclusion": "string (not_false_positive/false_positive/uncertain)",
     "reason": "string"
   }
@@ -709,7 +709,7 @@
 
 ## 24. auth_gap_report.json
 
-路由安全差距报告（Phase-2 route_mapper 输出 → Phase-3 auth_simulator 输入）。
+Route security gap report (Phase-2 route_mapper output → Phase-3 auth_simulator input).
 
 ```json
 {
@@ -717,9 +717,9 @@
   "total_routes": "number",
   "unprotected_routes": [
     {
-      "path": "string (路由路径)",
-      "method": "string (HTTP 方法)",
-      "controller": "string (控制器#方法)",
+      "path": "string (route path)",
+      "method": "string (HTTP method)",
+      "controller": "string (controller#method)",
       "missing_middleware": ["string"],
       "risk_level": "high | medium | low"
     }
@@ -733,19 +733,19 @@
 
 ## 25. auth_credentials.json
 
-认证凭证与角色矩阵（Phase-3 auth_simulator 内部生成及消费）。
+Authentication credentials and role matrix (generated and consumed internally by Phase-3 auth_simulator).
 
 ```json
 {
   "generated_by": "auth_simulator",
   "credentials": [
     {
-      "role": "string (角色名: admin/editor/subscriber/anonymous)",
+      "role": "string (role name: admin/editor/subscriber/anonymous)",
       "username": "string",
       "password": "string",
-      "token": "string (可选, JWT/session)",
+      "token": "string (optional, JWT/session)",
       "auth_method": "cookie | bearer | basic | api_key",
-      "permissions": ["string (已知权限列表)"]
+      "permissions": ["string (known permission list)"]
     }
   ],
   "role_hierarchy": {
@@ -755,49 +755,49 @@
   },
   "test_matrix": [
     {
-      "action": "string (测试的操作描述)",
-      "endpoint": "string (API 端点)",
-      "expected_roles": ["string (应有权限的角色)"],
-      "test_with_roles": ["string (实际测试的角色)"]
+      "action": "string (test operation description)",
+      "endpoint": "string (API endpoint)",
+      "expected_roles": ["string (roles that should have permission)"],
+      "test_with_roles": ["string (roles actually tested)"]
     }
   ]
 }
 ```
 
-## 26. severity_score 扩展字段（三维严重度评分）
+## 26. severity_score Extended Fields (Three-Dimensional Severity Scoring)
 
-在每个 exploit_result 的 `severity_score` 字段中附加:
+Appended to the `severity_score` field in each exploit_result:
 
 ```json
 {
   "severity_score": {
-    "reachability": "number (0-10, 可达性: anonymous=10, authenticated=7, admin=4, internal_only=2)",
-    "impact": "number (0-10, 影响: RCE=10, SQLi_data=9, file_write=8, XSS_stored=7, info_leak=5, config=4)",
-    "complexity": "number (0-10, 利用复杂度反转: trivial=10, low=8, medium=5, high=3, theoretical=1)",
+    "reachability": "number (0-10, reachability: anonymous=10, authenticated=7, admin=4, internal_only=2)",
+    "impact": "number (0-10, impact: RCE=10, SQLi_data=9, file_write=8, XSS_stored=7, info_leak=5, config=4)",
+    "complexity": "number (0-10, exploitation complexity inverted: trivial=10, low=8, medium=5, high=3, theoretical=1)",
     "weighted_score": "number (= R×0.40 + I×0.35 + C×0.25)",
-    "cvss_estimate": "number (≈ weighted_score, 0-10 范围)"
+    "cvss_estimate": "number (≈ weighted_score, 0-10 range)"
   }
 }
 ```
 
-评分指引:
-- **Reachability (R)**: 基于 auth_level — anonymous 路由得分最高
-- **Impact (I)**: 基于漏洞类型 — RCE > SQLi > 文件写入 > XSS > 信息泄露 > 配置问题
-- **Complexity (C)**: 越容易利用分越高 — 直接可利用=10, 需多步骤=5, 仅理论可行=1
+Scoring guidelines:
+- **Reachability (R)**: Based on auth_level — anonymous routes score highest
+- **Impact (I)**: Based on vulnerability type — RCE > SQLi > file write > XSS > information leak > config issues
+- **Complexity (C)**: Easier to exploit = higher score — directly exploitable=10, multi-step=5, theoretical only=1
 - **Weighted Score**: `Score = R × 0.40 + I × 0.35 + C × 0.25`
-- **CVSS Estimate**: 直接使用 weighted_score 作为 CVSS 近似值
+- **CVSS Estimate**: Use weighted_score directly as CVSS approximation
 
-## 27. evidence 扩展字段（EVID 证据引用）
+## 27. evidence Extended Fields (EVID Evidence References)
 
-在每个 exploit_result 的 `evidence` 字段中附加:
+Appended to the `evidence` field in each exploit_result:
 
 ```json
 {
   "evidence": {
-    "EVID_XXX_YYY": "string (证据描述: file:line + 关键信息)",
-    "EVID_XXX_ZZZ": "[未获取:原因]"
+    "EVID_XXX_YYY": "string (evidence description: file:line + key information)",
+    "EVID_XXX_ZZZ": "[not obtained: reason]"
   }
 }
 ```
 
-引用规范见 `shared/evidence_contract.md`。
+Reference specification: see `shared/evidence_contract.md`.

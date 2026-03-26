@@ -1,209 +1,209 @@
-# Quality Check Dispatcher（质检调度协议）
+# Quality Check Dispatcher
 
-> 本文件定义负责人（SKILL.md 主调度器）如何调度质检员池。嵌入到 SKILL.md 的调度逻辑中。
+> This file defines how the lead (SKILL.md main dispatcher) dispatches the quality checker pool. Embedded into the dispatch logic of SKILL.md.
 
 ---
 
-## 核心原则：完成一个、校验一个
+## Core Principle: Verify Each as It Completes
 
-每个 Agent 完成任务后，负责人**立即** spawn 一个质检员校验其输出。不等待同阶段其他 Agent。
+After each Agent completes its task, the lead MUST **immediately** spawn a quality checker to verify its output. Do not wait for other Agents in the same phase.
 
-## 质检员池管理
+## Quality Checker Pool Management
 
-### 命名规则
+### Naming Convention
 - `quality-checker-1`, `quality-checker-2`, ..., `quality-checker-N`
-- 序号全局递增，不重置
+- Sequence numbers are globally incrementing, never reset
 
-### 生命周期
+### Lifecycle
 ```
-Agent 完成 → 负责人检查有无空闲质检员 → 
-  有 → 分配给空闲质检员
-  无 → spawn 新质检员
-→ 质检员校验 → 报告结果 → 
-  通过 → 质检员标记为空闲，等待下一个任务
-  不通过 → 负责人通知被校验 Agent 重做 → 重做后再次分配质检员
+Agent completes → Lead checks for idle quality checker →
+  Available → Assign to idle quality checker
+  None available → Spawn new quality checker
+→ Quality checker verifies → Reports result →
+  Pass → Quality checker marked idle, awaits next task
+  Fail → Lead notifies the verified Agent to redo → After redo, assign quality checker again
 ```
 
-### 并发上限
-- Phase 1/2/3: 最多 **3** 个质检员并发
-- Phase 4（auditor 级别）: 最多 **5** 个质检员并发
-- Phase 4.5/5: 最多 **2** 个质检员并发
+### Concurrency Limits
+- Phase 1/2/3: Maximum **3** concurrent quality checkers
+- Phase 4 (auditor level): Maximum **5** concurrent quality checkers
+- Phase 4.5/5: Maximum **2** concurrent quality checkers
 
-### 回收策略
-- 当前阶段所有校验完成后，关闭该阶段全部质检员
-- 下一阶段按需重新 spawn
+### Reclaim Strategy
+- Once all verifications for the current phase are complete, shut down all quality checkers for that phase
+- Spawn new ones as needed for the next phase
 
 ---
 
-## 各阶段调度方案
+## Per-Phase Dispatch Plan
 
-### Phase 1 环境构建
-
-```
-docker_builder 完成 → spawn quality-checker-1
-  校验模板: 阶段 1：环境构建校验
-  输出文件: environment_status.json
-  → 通过 → 关闭 quality-checker-1，写 GATE-1 checkpoint
-  → 不通过 → 通知 docker_builder 按修复要求重做（最多 3 次）
-```
-
-### Phase 2 静态侦察
+### Phase 1 Environment Setup
 
 ```
-Team-2 全体 Agent 完成 → spawn quality-checker-1
-  校验模板: 阶段 2：静态侦察校验
-  输出文件: route_map.json, auth_matrix.json, ast_sinks.json, priority_queue.json, context_packs/, dep_risk.json
-  → 通过 → 关闭 quality-checker-1，写 GATE-2 checkpoint
-  → 不通过 → 通知对应 Agent 补充（根据不通过项定位责任 Agent）
+docker_builder completes → spawn quality-checker-1
+  Verification template: Phase 1: Environment Setup Verification
+  Output files: environment_status.json
+  → Pass → Close quality-checker-1, write GATE-1 checkpoint
+  → Fail → Notify docker_builder to redo per fix requirements (max 3 attempts)
 ```
 
-**Phase 2 不通过项的责任映射:**
-| 不通过项 | 责任 Agent |
+### Phase 2 Static Reconnaissance
+
+```
+Team-2 all Agents complete → spawn quality-checker-1
+  Verification template: Phase 2: Static Reconnaissance Verification
+  Output files: route_map.json, auth_matrix.json, ast_sinks.json, priority_queue.json, context_packs/, dep_risk.json
+  → Pass → Close quality-checker-1, write GATE-2 checkpoint
+  → Fail → Notify responsible Agent to supplement (locate responsible Agent based on failed items)
+```
+
+**Phase 2 Failed Item Responsibility Mapping:**
+| Failed Item | Responsible Agent |
 |---------|-----------|
-| route_map 相关 | route_mapper |
-| auth_matrix 相关 | auth_auditor |
-| ast_sinks 相关 | tool_runner (AST 扫描) |
-| context_packs 相关 | context_builder |
-| priority_queue 相关 | priority_ranker |
-| dep_risk 相关 | dep_scanner |
+| route_map related | route_mapper |
+| auth_matrix related | auth_auditor |
+| ast_sinks related | tool_runner (AST scan) |
+| context_packs related | context_builder |
+| priority_queue related | priority_ranker |
+| dep_risk related | dep_scanner |
 
-### Phase 3 动态追踪
-
-```
-Team-3 全体 Agent 完成 → spawn quality-checker-1
-  校验模板: 阶段 3：动态追踪校验
-  输出文件: credentials.json, traces/*.json
-  → 通过 → 关闭 quality-checker-1，写 GATE-3 checkpoint
-  → 不通过 → 通知对应 Agent 补充
-```
-
-### Phase 4 漏洞利用（核心：Auditor 级别校验）
-
-**阶段 1（分析阶段）完成后不校验，等攻击阶段完成才校验。**
+### Phase 3 Dynamic Tracing
 
 ```
-每个 Auditor 的攻击阶段完成 → 分配给空闲质检员（或 spawn 新的）
-  校验模板: 阶段 4：单个 Auditor 校验
-  输出文件: exploits/{sink_id}.json（该 Auditor 的所有 exploit）
-  → 通过 → 该 Auditor 关闭，质检员标记空闲
-  → 不通过 → 通知该 Auditor 补充物证/修正（最多 2 次）
-
-全部 Auditor 校验通过 → 分配一个质检员做综合校验
-  校验模板: 阶段 4：物理取证综合校验
-  输出文件: team4_progress.json + exploits/
-  → 通过 → 写 GATE-4 checkpoint
-  → 不通过 → 定位具体 Auditor 补充
+Team-3 all Agents complete → spawn quality-checker-1
+  Verification template: Phase 3: Dynamic Tracing Verification
+  Output files: credentials.json, traces/*.json
+  → Pass → Close quality-checker-1, write GATE-3 checkpoint
+  → Fail → Notify responsible Agent to supplement
 ```
 
-**Phase 4 调度示例（假设 6 个 Auditor 被调度）:**
-```
-sqli_auditor 完成    → quality-checker-1 校验
-rce_auditor 完成     → quality-checker-2 校验
-xss_ssti_auditor 完成 → quality-checker-3 校验（或复用已空闲的 1/2）
-lfi_auditor 完成     → quality-checker-4 校验
-xxe_auditor 完成     → 复用空闲质检员
-ssrf_auditor 完成    → 复用空闲质检员
-全部通过             → 任一质检员做综合校验
-```
+### Phase 4 Exploit Development (Core: Auditor-Level Verification)
 
-### Phase 4.5 关联分析
+**Do NOT verify after Stage 1 (analysis stage) completes; wait until the attack stage completes before verifying.**
 
 ```
-Team-4.5 完成 → spawn quality-checker-1
-  校验模板: 阶段 4.5：关联分析校验
-  输出文件: attack_graph.json, correlation_report.json, patches/*.patch
-  → 通过 → 写 GATE-4.5 checkpoint
-  → 不通过 → 通知 correlation_engine/attack_graph_builder 补充
+Each Auditor's attack stage completes → Assign to idle quality checker (or spawn new one)
+  Verification template: Phase 4: Individual Auditor Verification
+  Output files: exploits/{sink_id}.json (all exploits from that Auditor)
+  → Pass → That Auditor closes, quality checker marked idle
+  → Fail → Notify that Auditor to supplement evidence/correct (max 2 attempts)
+
+All Auditors pass verification → Assign one quality checker for comprehensive verification
+  Verification template: Phase 4: Physical Forensics Comprehensive Verification
+  Output files: team4_progress.json + exploits/
+  → Pass → Write GATE-4 checkpoint
+  → Fail → Locate specific Auditor to supplement
 ```
 
-### Phase 5 报告生成
+**Phase 4 Dispatch Example (assuming 6 Auditors dispatched):**
+```
+sqli_auditor completes    → quality-checker-1 verifies
+rce_auditor completes     → quality-checker-2 verifies
+xss_ssti_auditor completes → quality-checker-3 verifies (or reuse idle 1/2)
+lfi_auditor completes     → quality-checker-4 verifies
+xxe_auditor completes     → Reuse idle quality checker
+ssrf_auditor completes    → Reuse idle quality checker
+All pass                  → Any quality checker performs comprehensive verification
+```
+
+### Phase 4.5 Correlation Analysis
 
 ```
-report_writer + sarif_exporter 完成 → spawn quality-checker-1
-  校验模板: 阶段 5：报告生成校验
-  输出文件: audit_report.md, audit_report.sarif.json, poc/*.py, poc/run_all.sh
-  → 通过 → 质检员生成 quality_report.md → 流程结束
-  → 不通过 → 通知 report_writer 修正（最多 2 轮）
+Team-4.5 completes → spawn quality-checker-1
+  Verification template: Phase 4.5: Correlation Analysis Verification
+  Output files: attack_graph.json, correlation_report.json, patches/*.patch
+  → Pass → Write GATE-4.5 checkpoint
+  → Fail → Notify correlation_engine/attack_graph_builder to supplement
+```
+
+### Phase 5 Report Generation
+
+```
+report_writer + sarif_exporter complete → spawn quality-checker-1
+  Verification template: Phase 5: Report Generation Verification
+  Output files: audit_report.md, audit_report.sarif.json, poc/*.py, poc/run_all.sh
+  → Pass → Quality checker generates quality_report.md → Process ends
+  → Fail → Notify report_writer to correct (max 2 rounds)
 ```
 
 ---
 
-## Agent 状态同步（checkpoint.json）
+## Agent State Synchronization (checkpoint.json)
 
-每次质检完成后，负责人（主调度器）必须同步更新 `checkpoint.json` 的 `agent_states`:
+After each quality check completes, the lead (main dispatcher) MUST synchronize the `agent_states` in `checkpoint.json`:
 
-### 状态更新时机
+### State Update Timing
 
-| 事件 | agent_states 更新 |
+| Event | agent_states Update |
 |------|-------------------|
 | Agent spawn | `{status: "spawned", spawned_at: now()}` |
-| Stage-1 分析开始 | `{status: "analyzing"}` |
-| Stage-2 攻击开始 | `{status: "attacking"}` |
-| Agent 完成输出 | `{status: "completed", completed_at: now()}` |
+| Stage-1 analysis starts | `{status: "analyzing"}` |
+| Stage-2 attack starts | `{status: "attacking"}` |
+| Agent completes output | `{status: "completed", completed_at: now()}` |
 | QC verdict=pass | `{status: "passed", qc_verdict: "pass"}` |
 | QC verdict=fail | `{status: "failed", qc_verdict: "fail", redo_count: +1}` |
-| Agent 重做完成 | `{status: "completed"}` (等待再次 QC) |
-| Agent 超时 | `{status: "timeout", completed_at: now()}` |
-| Pivot 触发 | `{pivot_triggered: true, pivot_target: "..."}` |
+| Agent redo completes | `{status: "completed"}` (awaiting QC again) |
+| Agent timeout | `{status: "timeout", completed_at: now()}` |
+| Pivot triggered | `{pivot_triggered: true, pivot_target: "..."}` |
 
-### 同步命令
+### Sync Command
 
 ```bash
-# 更新单个 agent 状态（由主调度器在每个状态转换点执行）
+# Update single agent status (executed by main dispatcher at each state transition point)
 jq --arg agent "$AGENT_NAME" --arg status "$NEW_STATUS" \
   '.agent_states[$agent].status = $status' \
   "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" && \
   mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
 ```
 
-### GATE 失败时的状态查询
+### State Query on GATE Failure
 
 ```bash
-# 查询所有非 passed 状态的 agent（用于 GATE FAIL 诊断）
+# Query all agents with non-passed status (for GATE FAIL diagnosis)
 jq '.agent_states | to_entries[] | select(.value.status != "passed") | {agent: .key, status: .value.status, redo: .value.redo_count}' "$WORK_DIR/checkpoint.json"
 ```
 
 ---
 
-## 重做闭环
+## Redo Closed Loop
 
-### 重做次数追踪
-每个被校验 Agent 的重做次数记录在 SQLite 中：
+### Redo Count Tracking
+Each verified Agent's redo count is recorded in SQLite:
 ```bash
 bash tools/audit_db.sh qc-write "$WORK_DIR" '{"agent":"xxx", "redo_count": N, ...}'
 ```
 
-### 重做上限
-| 阶段 | 最大重做次数 | 超限处理 |
+### Redo Limits
+| Phase | Max Redo Count | Over-Limit Handling |
 |------|:----------:|---------|
-| Phase 1 | 3 | 降级为 partial 模式 |
-| Phase 2 | 2 | 标记降级，用已有数据继续 |
-| Phase 3 | 2 | 断链路由退回 context_pack |
-| Phase 4 (单个 Auditor) | 2 | 标注物证不足，降级可信度 |
-| Phase 4.5 | 1 | 用 team4_progress.json 直接进报告 |
-| Phase 5 | 2 | 强制生成（标注 WARN） |
+| Phase 1 | 3 | Degrade to partial mode |
+| Phase 2 | 2 | Mark as degraded, continue with available data |
+| Phase 3 | 2 | Broken chain route falls back to context_pack |
+| Phase 4 (individual Auditor) | 2 | Mark insufficient evidence, degrade confidence level |
+| Phase 4.5 | 1 | Use team4_progress.json to proceed directly to report |
+| Phase 5 | 2 | Force generation (mark with WARN) |
 
-### 重做信息传递
-不通过时，负责人将以下信息发送给被校验 Agent：
+### Redo Information Delivery
+On failure, the lead SHALL send the following information to the verified Agent:
 ```
-你的输出未通过质检。以下是不通过项和修复要求：
+Your output did not pass quality check. Below are the failed items and fix requirements:
 
-[粘贴质检员的 failed_items 列表]
+[Paste the quality checker's failed_items list]
 
-请按照修复要求逐项补充后重新提交。
+Please address each fix requirement and resubmit.
 ```
 
 ---
 
-## 最终质量报告生成
+## Final Quality Report Generation
 
-全部阶段校验通过后，负责人将生成任务分配给最后一个质检员：
+After all phases pass verification, the lead SHALL assign the report generation task to the last quality checker:
 
-1. 读取 `references/quality_check_templates.md` 末尾的「最终质量报告模板」
-2. 从 SQLite 读取所有 QC 记录：
+1. Read the "Final Quality Report Template" at the end of `references/quality_check_templates.md`
+2. Read all QC records from SQLite:
    ```bash
    bash tools/audit_db.sh qc-read "$WORK_DIR"
    ```
-3. 整合所有阶段校验结果
-4. 生成 `$WORK_DIR/quality_report.md`
-5. 关闭所有质检员，完成整个审计流程
+3. Consolidate verification results from all phases
+4. Generate `$WORK_DIR/quality_report.md`
+5. Close all quality checkers, completing the entire audit process

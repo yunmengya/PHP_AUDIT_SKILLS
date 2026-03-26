@@ -1,50 +1,50 @@
-# 关系型攻击记忆（Attack Memory Graph）
+# Relational Attack Memory (Attack Memory Graph)
 
-在 `attack_memory.md` 的平面记录基础上，增加实体关系型记忆层，记录漏洞之间的**语义关系**，使 correlation_engine 和后续审计能发现跨 Sink 的攻击链。
+On top of the flat records in `attack_memory.md`, a relational memory layer is added to record **semantic relationships** between vulnerabilities, enabling correlation_engine and subsequent audits to discover cross-Sink attack chains.
 
 ---
 
-## 设计原理
+## Design Principles
 
-借鉴 PentAGI 的 Graphiti 知识图谱思路，使用 SQLite 关系表模拟图结构（零依赖，无需 Neo4j）:
+Inspired by PentAGI's Graphiti knowledge graph approach, uses SQLite relational tables to simulate graph structures (zero dependencies, no Neo4j required):
 
-- **节点（Node）**: 每个发现的漏洞/弱点/配置问题
-- **边（Edge）**: 漏洞之间的利用关系（数据流、权限提升、组合攻击）
-- **属性（Property）**: 节点和边的元数据（严重度、可达性、前置条件）
+- **Node**: Each discovered vulnerability/weakness/configuration issue
+- **Edge**: Exploitation relationships between vulnerabilities (data flow, privilege escalation, combined attacks)
+- **Property**: Metadata for nodes and edges (severity, reachability, prerequisites)
 
-## 数据结构
+## Data Structure
 
-### 节点表: `memory_nodes`
+### Node Table: `memory_nodes`
 
 ```sql
 CREATE TABLE IF NOT EXISTS memory_nodes (
-    node_id     TEXT PRIMARY KEY,     -- 格式: {project_hash}_{sink_id}
+    node_id     TEXT PRIMARY KEY,     -- Format: {project_hash}_{sink_id}
     vuln_type   TEXT NOT NULL,        -- sqli/rce/xss/ssrf/lfi/authz/config/...
-    sink_id     TEXT NOT NULL,        -- 对应的 sink_id
-    route       TEXT,                 -- 关联路由路径
+    sink_id     TEXT NOT NULL,        -- Corresponding sink_id
+    route       TEXT,                 -- Associated route path
     severity    TEXT,                 -- critical/high/medium/low/info
     status      TEXT,                 -- confirmed/suspected/potential
     framework   TEXT,                 -- Laravel/ThinkPHP/...
-    data_object TEXT,                 -- 涉及的数据对象（如 users 表, session cookie）
-    summary     TEXT,                 -- 一句话描述
+    data_object TEXT,                 -- Involved data object (e.g., users table, session cookie)
+    summary     TEXT,                 -- One-line description
     created_at  TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX idx_nodes_type ON memory_nodes(vuln_type);
 CREATE INDEX idx_nodes_data ON memory_nodes(data_object);
 ```
 
-### 边表: `memory_edges`
+### Edge Table: `memory_edges`
 
 ```sql
 CREATE TABLE IF NOT EXISTS memory_edges (
     edge_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     source_node TEXT NOT NULL REFERENCES memory_nodes(node_id),
     target_node TEXT NOT NULL REFERENCES memory_nodes(node_id),
-    relation    TEXT NOT NULL,         -- 关系类型（见下方枚举）
+    relation    TEXT NOT NULL,         -- Relation type (see enumeration below)
     direction   TEXT DEFAULT 'forward', -- forward/bidirectional
     confidence  TEXT DEFAULT 'probable', -- confirmed/probable/speculative
-    evidence    TEXT,                  -- 关系证据描述
-    combined_severity TEXT,           -- 组合后的严重度（升级后）
+    evidence    TEXT,                  -- Relationship evidence description
+    combined_severity TEXT,           -- Combined severity after escalation
     created_at  TEXT DEFAULT (datetime('now')),
     UNIQUE(source_node, target_node, relation)
 );
@@ -52,23 +52,23 @@ CREATE INDEX idx_edges_relation ON memory_edges(relation);
 CREATE INDEX idx_edges_source ON memory_edges(source_node);
 ```
 
-### 关系类型枚举
+### Relation Type Enumeration
 
-| relation 值 | 含义 | 示例 |
-|-------------|------|------|
-| `data_flows_to` | A 的输出数据流入 B 的输入 | SQLi 写入 DB → Stored XSS 读取 DB |
-| `enables` | A 的利用是 B 的前置条件 | Config 泄露 .env → 获取密钥 → 伪造 Token |
-| `escalates_to` | A + B 组合后严重度升级 | SSRF(Medium) + Docker API(Info) → Host RCE(Critical) |
-| `shares_data_object` | A 和 B 操作同一数据对象 | 注册 Mass Assignment + 导出 IDOR 共享 users 表 |
-| `same_entry_point` | A 和 B 共享同一入口路由 | 同一端点同时存在 SQLi 和 XSS |
-| `auth_chain` | A 的认证绕过使 B 可达 | Auth Bypass → 访问管理面板 → RCE |
-| `pivot_from` | A 失败后 pivot 到 B | RCE disable_functions → 反序列化 RCE |
+| relation Value | Meaning | Example |
+|----------------|---------|---------|
+| `data_flows_to` | A's output data flows into B's input | SQLi writes to DB → Stored XSS reads from DB |
+| `enables` | Exploiting A is a prerequisite for B | Config leaks .env → obtain key → forge Token |
+| `escalates_to` | A + B combined escalates severity | SSRF(Medium) + Docker API(Info) → Host RCE(Critical) |
+| `shares_data_object` | A and B operate on the same data object | Registration Mass Assignment + Export IDOR share users table |
+| `same_entry_point` | A and B share the same entry route | Same endpoint has both SQLi and XSS |
+| `auth_chain` | A's auth bypass makes B reachable | Auth Bypass → access admin panel → RCE |
+| `pivot_from` | After A fails, pivot to B | RCE disable_functions → Deserialization RCE |
 
-## 写入协议
+## Write Protocol
 
-### 时机 1: Phase-4 Auditor 攻击完成后
+### Timing 1: After Phase-4 Auditor Attack Completion
 
-每个 Auditor 在写入 `attack_memory.db` 的同时，写入节点:
+Each Auditor writes a node when writing to `attack_memory.db`:
 
 ```bash
 bash tools/audit_db.sh graph-node-write '{
@@ -80,13 +80,13 @@ bash tools/audit_db.sh graph-node-write '{
   "status": "confirmed",
   "framework": "Laravel",
   "data_object": "users",
-  "summary": "ORDER BY 注入，可 UNION SELECT 读取任意表"
+  "summary": "ORDER BY injection, can UNION SELECT to read arbitrary tables"
 }'
 ```
 
-### 时机 2: Phase-4 Auditor 发现跨 Sink 关系时
+### Timing 2: When Phase-4 Auditor Discovers Cross-Sink Relationships
 
-当 Auditor 在分析或攻击中发现与其他 Sink 的关联时，写入边:
+When an Auditor discovers associations with other Sinks during analysis or attack, write an edge:
 
 ```bash
 bash tools/audit_db.sh graph-edge-write '{
@@ -94,13 +94,13 @@ bash tools/audit_db.sh graph-edge-write '{
   "target_node": "a1b2c3_sink_045",
   "relation": "data_flows_to",
   "confidence": "probable",
-  "evidence": "sink_012 的 SQLi 可写入 users.bio 字段，sink_045 的模板渲染未转义读取 users.bio"
+  "evidence": "sink_012 SQLi can write to users.bio field; sink_045 template rendering reads users.bio without escaping"
 }'
 ```
 
-### 时机 3: Phase-4.5 Correlation Engine 关联分析后
+### Timing 3: After Phase-4.5 Correlation Engine Completes Association Analysis
 
-Correlation Engine 在执行跨审计员关联时，将发现的攻击链写入:
+The Correlation Engine writes discovered attack chains when performing cross-auditor correlation:
 
 ```bash
 bash tools/audit_db.sh graph-edge-write '{
@@ -108,54 +108,54 @@ bash tools/audit_db.sh graph-edge-write '{
   "target_node": "a1b2c3_sink_045",
   "relation": "escalates_to",
   "confidence": "confirmed",
-  "evidence": "SQLi(High) + SSTI(Medium) 组合 → RCE(Critical)，已通过 PoC 验证",
+  "evidence": "SQLi(High) + SSTI(Medium) combined → RCE(Critical), verified through PoC",
   "combined_severity": "critical"
 }'
 ```
 
-## 读取协议
+## Read Protocol
 
-### 查询 1: 获取某个节点的所有关联（供 Auditor 参考）
+### Query 1: Get All Associations for a Node (For Auditor Reference)
 
 ```bash
-# 查询与 sink_012 关联的所有节点和边
+# Query all nodes and edges associated with sink_012
 bash tools/audit_db.sh graph-neighbors "a1b2c3_sink_012"
 ```
 
-返回: 该节点的所有入边和出边 + 关联节点摘要
+Returns: all incoming and outgoing edges for that node + associated node summaries
 
-### 查询 2: 获取某个数据对象的完整攻击面（供 Correlation Engine 使用）
+### Query 2: Get Complete Attack Surface for a Data Object (For Correlation Engine)
 
 ```bash
-# 查询操作 users 表的所有漏洞节点
+# Query all vulnerability nodes operating on the users table
 bash tools/audit_db.sh graph-by-data-object "users"
 ```
 
-返回: 所有 `data_object = "users"` 的节点 + 它们之间的边
+Returns: all nodes with `data_object = "users"` + edges between them
 
-### 查询 3: 获取完整攻击图（供 Report Writer 使用）
+### Query 3: Get Complete Attack Graph (For Report Writer)
 
 ```bash
-# 导出完整图结构为 JSON
+# Export complete graph structure as JSON
 bash tools/audit_db.sh graph-export "$WORK_DIR"
 ```
 
-返回: 全部节点 + 全部边的 JSON，用于生成攻击图谱可视化
+Returns: all nodes + all edges as JSON, for generating attack graph visualization
 
-## 与现有系统的集成
+## Integration with Existing Systems
 
-| 系统 | 集成方式 |
-|------|----------|
-| `attack_memory.md` (平面记忆) | 图节点是平面记录的扩展，每个 confirmed/failed 记录同时生成节点 |
-| `correlation_engine.md` | Step 2/3 执行完毕后，将 escalations 和 second_order 结果写入图的边 |
-| `attack_graph_builder.md` | 读取图的 `escalates_to` 和 `auth_chain` 边，直接用于攻击图谱构建 |
-| `shared_findings` (SQLite) | 单次审计内的实时共享，图记忆是持久化的跨审计关系 |
-| `report_writer.md` | 读取 graph-export 生成"漏洞关系图"章节 |
+| System | Integration Method |
+|--------|-------------------|
+| `attack_memory.md` (flat memory) | Graph nodes are extensions of flat records; each confirmed/failed record simultaneously generates a node |
+| `correlation_engine.md` | After Step 2/3 execution, writes escalations and second_order results as graph edges |
+| `attack_graph_builder.md` | Reads `escalates_to` and `auth_chain` edges from the graph; directly used for attack graph construction |
+| `shared_findings` (SQLite) | Real-time sharing within a single audit; graph memory is persistent cross-audit relationships |
+| `report_writer.md` | Reads graph-export to generate the "Vulnerability Relationship Graph" section |
 
-## 约束
+## Constraints
 
-- 节点 ID 必须包含项目 hash 前缀，避免跨项目冲突
-- 边的 confidence 必须有 evidence 支撑，不得凭空推测关系
-- `combined_severity` 仅在 `escalates_to` 关系中填写
-- 图记忆与平面记忆（attack_memory 表）共存于同一 SQLite 文件 `attack_memory.db`
-- 容量控制: 节点超过 5000 条时，按 created_at 清理最老的 speculative 节点
+- Node IDs MUST include project hash prefix to avoid cross-project conflicts
+- Edge confidence MUST have evidence support; relationships MUST NOT be speculated without basis
+- `combined_severity` SHALL only be filled for `escalates_to` relationships
+- Graph memory coexists with flat memory (attack_memory table) in the same SQLite file `attack_memory.db`
+- Capacity control: when nodes exceed 5000, the oldest speculative nodes are cleaned up by created_at

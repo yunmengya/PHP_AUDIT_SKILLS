@@ -1,168 +1,168 @@
-# Phase 4：深度对抗审计（攻击逻辑 + 质检调度）
+# Phase 4: Deep Adversarial Audit (Attack Logic + Quality Check Orchestration)
 
-> 本文件由 SKILL.md 提取，主调度器通过引用加载。
+> This file is extracted from SKILL.md and loaded by reference by the main orchestrator.
 
-### Phase-4: 深度对抗审计（并行分析 + 串行攻击）
+### Phase-4: Deep Adversarial Audit (Parallel Analysis + Sequential Attack)
 
-**⚠️ 此 Phase 是 Burp 复现包和物理证据的唯一来源，绝对不可跳过。**
+**⚠️ This Phase is the sole source of Burp reproduction packages and physical evidence; it MUST NOT under any circumstances be skipped.**
 
-**容器冲突规避策略**: 多个专家不能同时操作同一个 Docker 容器。
-采用**两阶段模式**: 先并行做静态分析（读文件，不碰容器），再串行做动态攻击（独占容器）。
+**Container Conflict Avoidance Strategy**: Multiple specialists MUST NOT operate on the same Docker container simultaneously.
+Use a **two-phase model**: first perform parallel static analysis (read files, no container interaction), then perform sequential dynamic attacks (exclusive container access).
 
-每个专家 Agent 的 prompt 中注入以下指令:
+Inject the following instructions into each specialist Agent's prompt:
 ```
-你的工作分两阶段:
+Your work is divided into two stages:
 
-阶段 1（分析阶段）: 读取 context_packs、traces、源码，分析过滤机制，规划攻击策略，
-  生成每轮的 Payload 和注入点。此阶段不发送任何 HTTP 请求、不操作 Docker 容器。
-  将分析结果和攻击计划写入 $WORK_DIR/exploits/{sink_id}_plan.json。
+Stage 1 (Analysis Stage): Read context_packs, traces, and source code; analyze filtering mechanisms; plan attack strategy;
+  generate Payloads and injection points for each round. In this stage, MUST NOT send any HTTP requests or operate Docker containers.
+  Write analysis results and attack plan to $WORK_DIR/exploits/{sink_id}_plan.json.
 
-阶段 2（攻击阶段）: 读取 $WORK_DIR/exploits/{sink_id}_plan.json，
-  按计划逐轮执行攻击、采集证据、快照回滚。
-  将最终结果写入 $WORK_DIR/exploits/{sink_id}.json。
+Stage 2 (Attack Stage): Read $WORK_DIR/exploits/{sink_id}_plan.json,
+  execute attacks round by round per plan, collect evidence, snapshot and rollback.
+  Write final results to $WORK_DIR/exploits/{sink_id}.json.
 
-在两个阶段中，发现关键信息时写入 $WORK_DIR/audit_session.db 的 shared_findings 表（参考 shared/realtime_sharing.md）。
-攻击阶段开始前先读取共享发现库获取其他审计员的发现。
-记录存入点和使用点到 $WORK_DIR/second_order/（参考 shared/second_order.md）。
+In both stages, write critical findings to the shared_findings table in $WORK_DIR/audit_session.db (refer to shared/realtime_sharing.md).
+Before starting the attack stage, read the shared findings store to obtain other auditors' discoveries.
+Record storage points and usage points to $WORK_DIR/second_order/ (refer to shared/second_order.md).
 
-当你收到 "START_ATTACK" 信号时才进入阶段 2。在此之前只做阶段 1。
+Enter Stage 2 only when you receive the "START_ATTACK" signal. Until then, only perform Stage 1.
 ```
 
-> **攻击记忆**: Phase-4 专家启动攻击阶段前，自动查询 `~/.php_audit/attack_memory.db` 中匹配 (sink_type + framework + PHP版本段) 的历史记录，优先使用历史成功 payload，跳过已知无效策略。攻击完成后将经验写入记忆库。详见 `shared/attack_memory.md`。
+> **Attack Memory**: Before a Phase-4 specialist starts the attack stage, it automatically queries `~/.php_audit/attack_memory.db` for historical records matching (sink_type + framework + PHP version range), prioritizes historically successful payloads, and skips known ineffective strategies. After completing the attack, it writes experience to the memory store. See `shared/attack_memory.md` for details.
 
-── Step 1: 并行分析（所有专家同时工作，不碰容器）──
+── Step 1: Parallel Analysis (All specialists work simultaneously, no container interaction) ──
 
-同时 spawn 所有专家 Agent（background 模式）:
+Spawn all specialist Agents simultaneously (background mode):
 
-  例如（按需 spawn，无对应 sink 则不启动，但框架强制项必须启动）:
+  For example (spawn on demand — skip if no corresponding sink exists, but framework-mandatory items MUST be started):
 
   Agent(name="rce_auditor", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
-    → prompt: Task #{id} 指令（阶段1模式）+ teams/team4/rce_auditor.md + shared/docker_snapshot.md
+    → prompt: Task #{id} instructions (Stage 1 mode) + teams/team4/rce_auditor.md + shared/docker_snapshot.md
             + shared/payload_templates.md + shared/waf_bypass.md + shared/framework_patterns.md
-            + 共享资源 + 对应 sink 的 context_packs + traces + credentials
-            + tools/payload_encoder.php（告知路径和用法）+ tools/waf_detector.php（告知路径和用法）
+            + shared resources + corresponding sink's context_packs + traces + credentials
+            + tools/payload_encoder.php (provide path and usage) + tools/waf_detector.php (provide path and usage)
             + TARGET_PATH + WORK_DIR
 
-  **增强上下文注入**（每个专家 Agent 均适用）:
-  从 context_pack 中提取增强字段，注入到 Agent prompt 尾部:
+  **Enhanced Context Injection** (applies to every specialist Agent):
+  Extract enhanced fields from context_pack and inject at the end of the Agent prompt:
   ```
-  --- 增强上下文 ---
-  路由优先级: {context_pack.route_priority}（P0=最高危 P3=低风险）
-  鉴权绕过摘要: auth_type={auth_bypass_summary.auth_type}, bypass_possibility={auth_bypass_summary.bypass_possibility}
-    可用绕过方法: {auth_bypass_summary.bypass_methods}
-  过滤强度评分: {filter_strength_score}/100
-    → ≤30: 防御薄弱，优先尝试直接注入
-    → 31-60: 存在过滤但可能绕过，优先尝试编码/变形 payload
-    → 61-90: 过滤较严，优先尝试逻辑绕过或上下文切换
-    → ≥91: 几乎无法绕过，记录防御有效并尝试 pivot
-  版本预判: {version_alerts 中与本 Auditor 匹配的 CVE 列表，如有则优先利用}
+  --- Enhanced Context ---
+  Route Priority: {context_pack.route_priority} (P0=Highest Risk, P3=Low Risk)
+  Authentication Bypass Summary: auth_type={auth_bypass_summary.auth_type}, bypass_possibility={auth_bypass_summary.bypass_possibility}
+    Available Bypass Methods: {auth_bypass_summary.bypass_methods}
+  Filter Strength Score: {filter_strength_score}/100
+    → ≤30: Weak defenses, prioritize direct injection attempts
+    → 31-60: Filtering exists but may be bypassable, prioritize encoded/mutated payloads
+    → 61-90: Strict filtering, prioritize logic bypass or context switching
+    → ≥91: Nearly impossible to bypass, document effective defenses and attempt pivot
+  Version Pre-assessment: {CVE list from version_alerts matching this Auditor; prioritize exploitation if available}
   ```
 
-  **策略选择规则**:
-  - `filter_strength_score ≤ 30` → 直接攻击模式（标准 payload 起步）
-  - `filter_strength_score 31-60` → 编码绕过模式（base64/hex/double-url 编码优先）
-  - `filter_strength_score ≥ 61` → 逻辑绕过模式（类型混淆/二阶注入/上下文切换优先）
-  - `auth_bypass_summary.bypass_possibility = "none"` → 必须使用合法凭证（从 credentials.json 获取）
-  - `version_alert_priority = true` → 将已知 CVE 利用方案置于攻击计划首位
+  **Strategy Selection Rules**:
+  - `filter_strength_score ≤ 30` → Direct Attack mode (start with standard payloads)
+  - `filter_strength_score 31-60` → Encoding Bypass mode (prioritize base64/hex/double-url encoding)
+  - `filter_strength_score ≥ 61` → Logic Bypass mode (prioritize type confusion/second-order injection/context switching)
+  - `auth_bypass_summary.bypass_possibility = "none"` → MUST use legitimate credentials (obtain from credentials.json)
+  - `version_alert_priority = true` → Place known CVE exploitation plan first in attack plan
 
-  Agent(name="sqli_auditor", ...) 等其他专家...（所有专家均使用 mode="bypassPermissions"）
-  （所有 Phase-4 专家 Agent 均需注入: shared/payload_templates.md + shared/waf_bypass.md
+  Agent(name="sqli_auditor", ...) and other specialists... (all specialists use mode="bypassPermissions")
+  (All Phase-4 specialist Agents MUST be injected with: shared/payload_templates.md + shared/waf_bypass.md
     + shared/framework_patterns.md + shared/php_specific_patterns.md + shared/known_cves.md
-    + tools/payload_encoder.php + tools/waf_detector.php）
+    + tools/payload_encoder.php + tools/waf_detector.php)
 
-等待全部分析完成
-── Step 2: 串行攻击（逐个专家独占容器执行）──
+Wait for all analyses to complete
+── Step 2: Sequential Attack (Specialists take exclusive container access one at a time) ──
 
-按优先级排序专家（P0 sink 对应的专家优先）:
+Sort specialists by priority (specialists corresponding to P0 sinks first):
 
-  遍历每个已完成分析的专家:
+  Iterate over each specialist that has completed analysis:
 
     Agent(name="{type}-auditor-attack", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
-      → prompt: "START_ATTACK 信号 + 你已完成阶段1分析，现在执行阶段2。
-                读取 $WORK_DIR/exploits/{sink_id}_plan.json，按计划逐轮攻击。"
+      → prompt: "START_ATTACK signal + You have completed Stage 1 analysis, now execute Stage 2.
+                Read $WORK_DIR/exploits/{sink_id}_plan.json and attack round by round per plan."
               + teams/team4/{type}_auditor.md + shared/docker_snapshot.md
               + shared/payload_templates.md + shared/waf_bypass.md + shared/framework_patterns.md
-              + 共享资源 + tools/payload_encoder.php（告知路径和用法）+ tools/waf_detector.php（告知路径和用法）
+              + shared resources + tools/payload_encoder.php (provide path and usage) + tools/waf_detector.php (provide path and usage)
               + TARGET_PATH + WORK_DIR
 
-    完成 → 下一个专家
+    Completed → Next specialist
 
-    **异常处理**: 如果专家 Agent 非正常退出（crash/超时/错误）:
-    1. 记录异常信息到 `$WORK_DIR/exploits/{sink_id}_error.json`:
+    **Exception Handling**: If a specialist Agent exits abnormally (crash/timeout/error):
+    1. Log exception information to `$WORK_DIR/exploits/{sink_id}_error.json`:
        ```json
-       {"sink_id": "...", "specialist": "...", "error": "Agent 异常退出", "partial_results": true}
+       {"sink_id": "...", "specialist": "...", "error": "Agent exited abnormally", "partial_results": true}
        ```
-    2. 检查 `$WORK_DIR/exploits/{sink_id}_plan.json` 是否存在（保留阶段 1 分析结果）
-    3. 在流水线视图中标注 ⚠️
-    4. **继续下一个专家**（不中断整体流程）
+    2. Check if `$WORK_DIR/exploits/{sink_id}_plan.json` exists (preserve Stage 1 analysis results)
+    3. Mark ⚠️ in pipeline view
+    4. **Continue to next specialist** (do not interrupt overall flow)
 
-── Step 3: Pivot When Stuck（卡住时自动转向）──
+── Step 3: Pivot When Stuck (Auto-Redirect When Stuck) ──
 
-#### Pivot 预判（环境预过滤）
+#### Pivot Pre-assessment (Environment Pre-filtering)
 
-在 Stage-1 分析阶段，每个 Auditor 根据 `environment_status.json` 预判哪些 Pivot 路径不可用，避免攻击阶段无效尝试:
+During Stage 1 analysis, each Auditor pre-assesses which Pivot paths are unavailable based on `environment_status.json`, to avoid ineffective attempts during the attack stage:
 
-| 环境条件 | 不可用 Pivot | 原因 |
+| Environment Condition | Unavailable Pivot | Reason |
 |----------|-------------|------|
-| `allow_url_include = Off` | php://filter chain RCE | 无法通过 include 加载远程流 |
-| `disable_functions` 含 `mail` | mail() 头注入 pivot | mail() 被禁用 |
-| 无 `unserialize()` 入口且无 phar:// | 反序列化 RCE pivot | 无反序列化触发点 |
-| 非 MySQL 或无宽字节编码 | 宽字节 SQLi pivot | 宽字节绕过仅适用于 GBK/GB2312 编码的 MySQL |
-| PHP ≥ 8.0 | Type Juggling `0e` hash | PHP 8.0 严格化了字符串/数字比较 |
-| 无 LDAP 扩展 | LDAP 认证绕过 pivot | 目标无 LDAP 依赖 |
-| 框架 CSRF 中间件覆盖所有路由 | CSRF except 路由 pivot | 无排除路由可利用 |
+| `allow_url_include = Off` | php://filter chain RCE | Cannot load remote streams via include |
+| `disable_functions` contains `mail` | mail() header injection pivot | mail() is disabled |
+| No `unserialize()` entry point and no phar:// | Deserialization RCE pivot | No deserialization trigger point |
+| Not MySQL or no wide-byte encoding | Wide-byte SQLi pivot | Wide-byte bypass only applies to MySQL with GBK/GB2312 encoding |
+| PHP ≥ 8.0 | Type Juggling `0e` hash | PHP 8.0 made string/number comparisons strict |
+| No LDAP extension | LDAP authentication bypass pivot | Target has no LDAP dependency |
+| Framework CSRF middleware covers all routes | CSRF except-route pivot | No excluded routes to exploit |
 
-**预判输出**: 每个 Auditor 在 `{sink_id}_plan.json` 中增加 `available_pivots` 和 `excluded_pivots` 字段:
+**Pre-assessment Output**: Each Auditor adds `available_pivots` and `excluded_pivots` fields in `{sink_id}_plan.json`:
 ```json
 {
   "available_pivots": ["second_order_sqli", "blind_sqli_oob"],
   "excluded_pivots": [
-    {"pivot": "widechar_sqli", "reason": "DB 编码为 utf8mb4，非宽字节"}
+    {"pivot": "widechar_sqli", "reason": "DB encoding is utf8mb4, not wide-byte"}
   ]
 }
 ```
 
-当某个专家 Agent 在阶段 2 攻击中持续失败，触发以下 pivot 规则自动切换审计策略:
+When a specialist Agent continuously fails during Stage 2 attacks, the following pivot rules automatically switch audit strategy:
 
-| 触发条件 (Trigger) | 切换目标 (Switch To) | 额外资源 (Additional Resources) |
+| Trigger Condition | Switch To | Additional Resources |
 |---|---|---|
-| **sqli_auditor 连续 8 轮 Payload 全部失败**（无报错差异、无时间差异、无回显差异） | 切换到 **二阶 SQLi 审计**: 让 context-extractor 追踪数据从 DB 取出后的使用点（存储→读取→拼接 SQL），重新构造 payload 打存入点 | `shared/second_order.md` + context-extractor 的 data-flow 输出; 需要回溯 INSERT/UPDATE 语句对应的 SELECT 消费路径 |
-| **xss_ssti_auditor 被 WAF/htmlspecialchars 完全阻断**（所有 XSS vector 均被过滤，无法绕过） | 自动尝试 **SSTI 审计**: 同一注入点可能是模板引擎渲染入口（Twig/Blade/Smarty），用 `{{7*7}}` / `${7*7}` 探测 | `teams/team4/xss_ssti_auditor.md` 中 SSTI 部分; 需要 `shared/framework_patterns.md` 确认模板引擎类型 |
-| **lfi_auditor 路径遍历被过滤**（`../` 被 replace、realpath 限制、open_basedir 阻断） | pivot 到 **php://filter chain** 攻击: 不使用文件系统路径，通过 `php://filter/convert.base64-encode/resource=` 或 filter chain RCE 绕过 | `shared/payload_templates.md` 中 LFI filter chain 模板; 需要确认 `allow_url_include` 状态 |
-| **rce_auditor 危险函数被 disable_functions 禁用**（system/exec/passthru/shell_exec 全部在 disabled list） | pivot 到 **反序列化 RCE**: 寻找 `unserialize()` 入口，通过 POP chain 触发 `__destruct`/`__wakeup` 实现代码执行 | `teams/team4/deserial_auditor.md` + `shared/payload_templates.md` 反序列化部分; 需要 Composer 依赖列表构造 gadget chain |
-| **ssrf_auditor 内网地址不可达**（目标服务器网络隔离，127.0.0.1/内网段被过滤或无法回连） | pivot 到 **DNS Rebinding**: 使用可控 DNS 记录（TTL=0）让目标先解析到外部 IP 通过校验，再 rebind 到内网地址 | 需要 DNS rebinding 服务（如 rbndr.us 或自建）; `shared/payload_templates.md` 中 SSRF DNS rebinding 模板 |
-| **crlf_auditor PHP ≥7.0 header() 内置防护无法绕过**（原生 header() 检测到 `\r\n` 直接抛 Warning） | pivot 到 **mail() 头注入**: 转向 `mail()` 的 `additional_headers` 参数（不受 header() 保护），或审查框架响应头封装方法是否绕过原生检查 | `shared/payload_templates.md` 中 CRLF 模板; 检查框架版本对 header 封装的处理方式 |
-| **csrf_auditor Token 验证严格无法绕过**（框架 CSRF 中间件正确实现，Token 不可复用/预测） | pivot 到 **JSON CSRF + CORS 审查**: 检查 API 端点是否存在宽松 CORS 配置 (`Access-Control-Allow-Origin: *`) 允许跨域携带凭证，或找出被 `$except` 排除的路由 | `teams/team4/config_auditor.md` 的 CORS 审查结果; 检查 `VerifyCsrfToken::$except` 和 API 路由中间件组 |
-| **session_auditor Session 管理均已加固**（strict_mode=1, regenerate_id 正确, HttpOnly/Secure 均设置） | pivot 到 **Session 序列化注入**: 检查 `session.serialize_handler` 不一致（php vs php_serialize）导致的反序列化注入，或 Session 存储后端（Redis/Memcached）的认证缺失 | `teams/team4/deserial_auditor.md` 反序列化知识; `shared/framework_patterns.md` Session 驱动配置 |
-| **ldap_auditor LDAP 过滤器已正确转义**（使用 `ldap_escape()` 或参数化查询） | pivot 到 **LDAP 认证绕过**: 检查 `ldap_bind()` 空密码/匿名绑定、DN 组件注入、LDAP 引用跟随（referral following）配置 | 无额外资源; 关注 LDAP 服务器配置而非代码层面 |
-| **logging_auditor 日志记录安全无注入**（日志内容已转义、无敏感数据） | pivot 到 **日志文件包含链**: 检查日志文件路径是否与 LFI 审计的包含路径重叠，构造"日志注入 PHP 代码 → LFI 包含日志文件"攻击链 | `teams/team4/lfi_auditor.md` LFI 知识; 需确认日志文件路径和 LFI 可控路径的交集 |
+| **sqli_auditor fails 8 consecutive rounds of Payload** (no error differences, no time differences, no response differences) | Switch to **Second-Order SQLi audit**: Have context-extractor trace data usage points after retrieval from DB (store→read→concatenate SQL), reconstruct payload targeting the storage point | `shared/second_order.md` + context-extractor's data-flow output; need to trace back INSERT/UPDATE statements to corresponding SELECT consumption paths |
+| **xss_ssti_auditor fully blocked by WAF/htmlspecialchars** (all XSS vectors filtered, no bypass possible) | Auto-attempt **SSTI audit**: The same injection point may be a template engine rendering entry (Twig/Blade/Smarty), probe with `{{7*7}}` / `${7*7}` | `teams/team4/xss_ssti_auditor.md` SSTI section; requires `shared/framework_patterns.md` to confirm template engine type |
+| **lfi_auditor path traversal filtered** (`../` replaced, realpath restricted, open_basedir blocked) | Pivot to **php://filter chain** attack: Bypass filesystem paths using `php://filter/convert.base64-encode/resource=` or filter chain RCE | `shared/payload_templates.md` LFI filter chain templates; need to confirm `allow_url_include` status |
+| **rce_auditor dangerous functions disabled by disable_functions** (system/exec/passthru/shell_exec all in disabled list) | Pivot to **Deserialization RCE**: Find `unserialize()` entry points, trigger code execution via POP chain through `__destruct`/`__wakeup` | `teams/team4/deserial_auditor.md` + `shared/payload_templates.md` deserialization section; need Composer dependency list to construct gadget chain |
+| **ssrf_auditor internal addresses unreachable** (target server network-isolated, 127.0.0.1/internal ranges filtered or no callback possible) | Pivot to **DNS Rebinding**: Use controllable DNS records (TTL=0) to let target first resolve to external IP for validation, then rebind to internal address | Requires DNS rebinding service (e.g., rbndr.us or self-hosted); `shared/payload_templates.md` SSRF DNS rebinding templates |
+| **crlf_auditor PHP ≥7.0 header() built-in protection cannot be bypassed** (native header() detects `\r\n` and throws Warning) | Pivot to **mail() header injection**: Target `mail()` `additional_headers` parameter (not protected by header()), or audit framework response header wrapper methods for native check bypasses | `shared/payload_templates.md` CRLF templates; check framework version's handling of header wrapping |
+| **csrf_auditor Token validation strict and cannot be bypassed** (framework CSRF middleware correctly implemented, Token not reusable/predictable) | Pivot to **JSON CSRF + CORS audit**: Check if API endpoints have permissive CORS configuration (`Access-Control-Allow-Origin: *`) allowing cross-origin credentialed requests, or find routes excluded by `$except` | `teams/team4/config_auditor.md` CORS audit results; check `VerifyCsrfToken::$except` and API route middleware groups |
+| **session_auditor Session management fully hardened** (strict_mode=1, regenerate_id correct, HttpOnly/Secure both set) | Pivot to **Session serialization injection**: Check `session.serialize_handler` inconsistency (php vs php_serialize) leading to deserialization injection, or missing authentication on Session storage backend (Redis/Memcached) | `teams/team4/deserial_auditor.md` deserialization knowledge; `shared/framework_patterns.md` Session driver configuration |
+| **ldap_auditor LDAP filter properly escaped** (using `ldap_escape()` or parameterized queries) | Pivot to **LDAP authentication bypass**: Check `ldap_bind()` empty password/anonymous bind, DN component injection, LDAP referral following configuration | No additional resources; focus on LDAP server configuration rather than code level |
+| **logging_auditor log recording is secure with no injection** (log content escaped, no sensitive data) | Pivot to **Log file inclusion chain**: Check if log file paths overlap with LFI audit inclusion paths, construct "inject PHP code into log → LFI include log file" attack chain | `teams/team4/lfi_auditor.md` LFI knowledge; need to confirm intersection of log file paths and LFI-controllable paths |
 
-> **智能 Pivot（v2）**: 上述静态映射为基础策略。当连续 3 轮失败且静态映射不匹配时，触发智能 Pivot 子流程（详见 `shared/pivot_strategy.md`）：先执行 Mini-Researcher 重新侦察目标代码 → 查阅 shared_findings 交叉情报 → 按失败模式决策树选择新攻击方向。若 Pivot 后仍无法突破，提前终止并给出人工审查建议。
+> **Smart Pivot (v2)**: The above static mapping serves as the base strategy. When 3 consecutive rounds fail and no static mapping matches, trigger the Smart Pivot subprocess (see `shared/pivot_strategy.md`): first execute Mini-Researcher to re-reconnoiter target code → consult shared_findings for cross-intelligence → select new attack direction via failure-pattern decision tree. If breakthrough remains impossible after Pivot, terminate early and provide manual review recommendations.
 
-── Mini-Researcher 委派机制（按需触发）──
+── Mini-Researcher Delegation Mechanism (Triggered on Demand) ──
 
-> 详见 `teams/team4/mini_researcher.md` — 完整的研究员 Agent 定义。
+> See `teams/team4/mini_researcher.md` for the complete researcher Agent definition.
 
-**设计原则**: 借鉴 PentAGI 的 Expert Delegation 模式 — 当 Auditor 遇到超出其知识范围的问题时，不应盲目尝试，而应委派专门的研究员 Agent 获取情报后再行动。
+**Design Principle**: Inspired by PentAGI's Expert Delegation pattern — when an Auditor encounters a problem beyond its knowledge scope, it SHOULD NOT blindly attempt solutions, but instead delegate to a specialized researcher Agent to gather intelligence before proceeding.
 
-**触发条件**（满足任一即由主调度器 spawn Mini-Researcher）:
+**Trigger Conditions** (any one met triggers main orchestrator to spawn Mini-Researcher):
 
-| 编号 | 触发场景 | 判断标准 | 委派内容 |
+| ID | Trigger Scenario | Judgment Criteria | Delegation Content |
 |------|----------|----------|----------|
-| MR-1 | Auditor 遇到未知第三方组件 | `dep_scanner` 输出中存在不在 `framework_patterns.md` 中的组件 | 搜索该组件的已知 CVE + 利用方法 |
-| MR-2 | version_alerts 有 Critical CVE 但缺利用细节 | `version_alerts[].severity = "critical"` 且 `known_cves.md` 中无对应 PoC | 搜索具体 CVE 的利用链 + 前置条件 |
-| MR-3 | Auditor 连续 5 轮失败且 filter_strength_score ≥ 61 | 攻击日志中连续 5 个 round 的 verdict 均为 failed | 研究目标过滤机制的已知绕过技术 |
-| MR-4 | Pivot 后仍失败（二次卡死） | pivot_triggered = true 后又连续 3 轮失败 | 全面搜索目标环境下的替代攻击面 |
-| MR-5 | 发现非标准框架特性 | Auditor 在分析阶段遇到无法识别的安全中间件/过滤器 | 该特性的安全影响 + 绕过方法 |
+| MR-1 | Auditor encounters unknown third-party component | `dep_scanner` output contains a component not in `framework_patterns.md` | Search for known CVEs + exploitation methods for that component |
+| MR-2 | version_alerts has Critical CVE but lacks exploitation details | `version_alerts[].severity = "critical"` and `known_cves.md` has no corresponding PoC | Search for specific CVE exploitation chain + prerequisites |
+| MR-3 | Auditor fails 5 consecutive rounds with filter_strength_score ≥ 61 | Attack log shows 5 consecutive rounds with verdict = failed | Research known bypass techniques for the target filtering mechanism |
+| MR-4 | Still failing after Pivot (secondary deadlock) | pivot_triggered = true followed by another 3 consecutive failed rounds | Comprehensive search for alternative attack surfaces in the target environment |
+| MR-5 | Non-standard framework feature discovered | Auditor encounters unrecognizable security middleware/filter during analysis stage | Security implications + bypass methods for that feature |
 
-**委派流程**:
+**Delegation Flow**:
 
-1. **主调度器检测触发条件**: 在 Step 2 串行攻击循环中，每个 Auditor 的每轮攻击后检查上述 5 个条件
-2. **构造研究请求**:
+1. **Main orchestrator detects trigger conditions**: During Step 2 sequential attack loop, check the above 5 conditions after each Auditor's attack round
+2. **Construct research request**:
    ```json
    {
-     "research_query": "Laravel Sanctum 2.x 的 token 验证是否存在时间竞争绕过",
-     "context": "authz_auditor 在 /api/admin/* 路由连续 5 轮失败，所有 token 伪造尝试被正确拒绝",
+     "research_query": "Does Laravel Sanctum 2.x token validation have a time-of-check-to-time-of-use race condition bypass",
+     "context": "authz_auditor failed 5 consecutive rounds on /api/admin/* routes, all token forgery attempts correctly rejected",
      "target_component": "laravel/sanctum@2.15.1"
    }
    ```
@@ -173,103 +173,103 @@
              + RESEARCH_QUERY + CONTEXT + TARGET_COMPONENT
              + WORK_DIR + SKILL_DIR
    ```
-4. **注入研究结果**: 研究员输出 `$WORK_DIR/research/{research_id}.json` 后，主调度器将结果摘要注入请求研究的 Auditor 的下一轮攻击 prompt 中:
+4. **Inject research results**: After the researcher outputs `$WORK_DIR/research/{research_id}.json`, the main orchestrator injects the result summary into the requesting Auditor's next attack round prompt:
    ```
-   ## 研究员情报（自动注入）
-   针对你的问题: "{research_query}"
-   研究员发现: {findings 摘要}
-   建议尝试: {recommendations}
-   置信度: {confidence} | 来源: {sources}
+   ## Researcher Intelligence (Auto-injected)
+   Regarding your query: "{research_query}"
+   Researcher findings: {findings summary}
+   Suggested attempts: {recommendations}
+   Confidence: {confidence} | Sources: {sources}
    ```
-5. **Auditor 继续攻击**: 收到研究结果后，Auditor 根据情报调整策略，继续剩余攻击轮次
+5. **Auditor continues attack**: After receiving research results, the Auditor adjusts strategy based on intelligence and continues remaining attack rounds
 
-**约束**:
-- 每次审计最多触发 **10 次**研究委派（全局计数器 `research_count`，超限则跳过）
-- 每次研究限时 **3 分钟**，超时返回已有部分结果
-- Mini-Researcher 只研究不攻击（不发送 HTTP 请求、不操作容器）
-- 研究结果必须标注来源和置信度，Auditor 不得将 `low` 置信度的情报作为唯一依据
+**Constraints**:
+- Each audit triggers at most **10** research delegations (global counter `research_count`; skip if limit exceeded)
+- Each research is limited to **3 minutes**; return partial results on timeout
+- Mini-Researcher MUST only research, not attack (MUST NOT send HTTP requests or operate containers)
+- Research results MUST include source attribution and confidence level; Auditor MUST NOT use `low` confidence intelligence as sole basis
 
-**pivot 执行流程**:
-1. 专家 Agent 在攻击日志中标记 `pivot_triggered: true` + 原因
-2. 主调度器检测到 pivot 标记后，spawn 对应的新专家（或复用同一专家的不同模式）
-3. 新专家继承原专家的 context_packs 和已收集的信息，避免重复侦察
-4. pivot 结果写入 `$WORK_DIR/exploits/{sink_id}_pivot.json`，与原结果合并
+**Pivot Execution Flow**:
+1. Specialist Agent marks `pivot_triggered: true` + reason in attack log
+2. Main orchestrator detects pivot marker and spawns the corresponding new specialist (or reuses the same specialist in a different mode)
+3. New specialist inherits original specialist's context_packs and collected information, avoiding redundant reconnaissance
+4. Pivot results are written to `$WORK_DIR/exploits/{sink_id}_pivot.json` and merged with original results
 
-── Step 4: 每个 Auditor 攻击完成后立即质检（"完成一个、校验一个"）──
+── Step 4: Quality check immediately after each Auditor completes attack ("verify each upon completion") ──
 
-  **质检员池管理:** 维护一个 quality-checker 池，最大并发 min(活跃 Auditor 数, 5)。
-  优先复用空闲质检员，不足时 spawn 新实例。池中质检员在 Phase 4 结束前不关闭。
+  **Quality Checker Pool Management:** Maintain a quality-checker pool with max concurrency of min(active Auditor count, 5).
+  Prioritize reusing idle quality checkers; spawn new instances when insufficient. Pool quality checkers SHALL NOT be closed until Phase 4 ends.
 
-  每个 Auditor 攻击阶段完成后:
+  After each Auditor completes the attack stage:
 
-  1. 检查质检员池中是否有空闲质检员:
-     - 有 → 复用该质检员（write_agent 发送新任务）
-     - 无且未达上限 → spawn 新质检员
-     - 无且已达上限 → 等待最先完成的质检员
+  1. Check if there is an idle quality checker in the pool:
+     - Yes → Reuse that quality checker (send new task via write_agent)
+     - No and limit not reached → Spawn new quality checker
+     - No and limit reached → Wait for the first quality checker to complete
 
-  2. 分配质检任务（通用 9 项 + 专项校验）:
+  2. Assign quality check task (9 general items + specialized checks):
 
   Agent(name="quality-checker-N", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: teams/qc/quality_checker.md
-            + references/quality_check_templates.md（阶段 4：单个 Auditor 校验 + 对应 Auditor 专项校验）
+            + references/quality_check_templates.md (Phase 4: Individual Auditor verification + corresponding Auditor specialized checks)
             + shared/output_standard.md + shared/evidence_contract.md
             + PHASE=4-auditor, TARGET_AGENT={auditor_name}, OUTPUT_FILES=exploits/{sink_id}.json
             + WORK_DIR
 
-  **专项校验分配:** 质检员根据 TARGET_AGENT 类型，在 quality_check_templates.md 中定位对应专项表格:
-  - rce_auditor → "rce_auditor 专项" 5 项
-  - sqli_auditor → "sqli_auditor 专项" 5 项
-  - xss_ssti_auditor → "xss_ssti_auditor 专项" 5 项
-  - ... 共 21 种 Auditor 各有专项校验（每种 5 项）
+  **Specialized Check Assignment:** Quality checker locates the corresponding specialized table in quality_check_templates.md based on TARGET_AGENT type:
+  - rce_auditor → "rce_auditor specialized" 5 items
+  - sqli_auditor → "sqli_auditor specialized" 5 items
+  - xss_ssti_auditor → "xss_ssti_auditor specialized" 5 items
+  - ... 21 Auditor types total, each with specialized checks (5 items each)
 
-  质检员必须同时填写: 通用 9 项表格 + 对应专项 5 项表格 = 总计 14 项校验。
+  Quality checker MUST complete both: 9 general items table + corresponding 5 specialized items table = 14 total checks.
 
-  3. 处理质检结果:
-  - verdict=pass → 关闭该 Auditor，质检员标记空闲可复用
-  - verdict=fail → 将 failed_items(含专项不通过项) 发回该 Auditor 补充:
-    * 第 1 次重做: Auditor 按修复要求补充物证
-    * 第 2 次重做: 仍不通过 → 降级该 Auditor 的 confidence（confirmed → suspected），不再重做
-  - 所有 redo 记录写入 SQLite: `bash tools/audit_db.sh qc-write "$WORK_DIR" '{...}'`
+  3. Handle quality check results:
+  - verdict=pass → Close that Auditor, mark quality checker as idle for reuse
+  - verdict=fail → Send failed_items (including specialized failures) back to that Auditor for remediation:
+    * 1st redo: Auditor supplements physical evidence per fix requirements
+    * 2nd redo: Still failing → Downgrade that Auditor's confidence (confirmed → suspected), no further redo
+  - All redo records written to SQLite: `bash tools/audit_db.sh qc-write "$WORK_DIR" '{...}'`
 
-  **并行质检示例:** 若 sqli_auditor、rce_auditor、xss_ssti_auditor 依次完成攻击:
+  **Parallel QC Example:** If sqli_auditor, rce_auditor, xss_ssti_auditor complete attacks in sequence:
   ```
-  sqli_auditor 完成 → spawn quality-checker-1（校验 sqli 通用+专项）
-  rce_auditor 完成  → spawn quality-checker-2（校验 rce 通用+专项）
-  xss_ssti_auditor 完成 → quality-checker-1 空闲 → 复用（校验 xss 通用+专项）
+  sqli_auditor completed → spawn quality-checker-1 (verify sqli general + specialized)
+  rce_auditor completed  → spawn quality-checker-2 (verify rce general + specialized)
+  xss_ssti_auditor completed → quality-checker-1 idle → reuse (verify xss general + specialized)
   ```
 
-── Step 5: Phase 4 综合校验 + 跨阶段一致性校验 ──
+── Step 5: Phase 4 Comprehensive Verification + Cross-phase Consistency Verification ──
 
-  全部 Auditor 单独校验通过后，spawn 一个质检员做综合校验:
+  After all Auditors pass individual verification, spawn one quality checker for comprehensive verification:
 
   Agent(name="quality-checker-final-phase4", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: teams/qc/quality_checker.md
-            + references/quality_check_templates.md（阶段 4：物理取证综合校验 + 跨阶段数据一致性校验）
+            + references/quality_check_templates.md (Phase 4: Physical Evidence Comprehensive Verification + Cross-phase Data Consistency Verification)
             + shared/output_standard.md + shared/evidence_contract.md + shared/false_positive_patterns.md
             + PHASE=4, TARGET_AGENT=team4, OUTPUT_FILES=team4_progress.json,exploits/,priority_queue.json,auth_matrix.json,credentials.json
             + WORK_DIR
 
-  综合质检员执行两部分:
-  (a) 物理取证综合校验（8 项）— team4_progress.json + exploits/*.json 完整性
-  (b) 跨阶段数据一致性校验（18 项）— P0覆盖/auth一致/Sink映射/过滤绕过/凭证深度/EVID完整
+  Comprehensive quality checker performs two parts:
+  (a) Physical Evidence Comprehensive Verification (8 items) — team4_progress.json + exploits/*.json completeness
+  (b) Cross-phase Data Consistency Verification (18 items) — P0 coverage/auth consistency/Sink mapping/filter bypass/credential depth/EVID completeness
 
   verdict=fail:
-  - 综合校验不通过 → 定位具体 Auditor 补充（不启动新 redo 计数器，属 Phase 4 整体流程）
-  - 跨阶段一致性 MUST-PASS(C1-C4,C16-C18) 不通过 → 强制修复
-  - 跨阶段一致性 SHOULD-PASS(C5-C15) 允许 ≤2 项 WARN → 标注降级继续
+  - Comprehensive verification failure → Locate specific Auditor for remediation (no new redo counter; part of Phase 4 overall flow)
+  - Cross-phase consistency MUST-PASS (C1-C4, C16-C18) failure → Mandatory fix
+  - Cross-phase consistency SHOULD-PASS (C5-C15) allows ≤2 WARN items → Mark as degraded and continue
 
-完成
-解析综合质检结果，关闭 Phase 4 质检员池中所有质检员
+Completed
+Parse comprehensive quality check results, close all quality checkers in Phase 4 quality checker pool
 
-**Phase-4 Gate 验证**（必须执行）:
+**Phase-4 Gate Verification** (MUST execute):
 ```bash
 test -d "$WORK_DIR/exploits" && ls "$WORK_DIR/exploits/"*.json >/dev/null 2>&1 && echo "GATE-4 PASS" || echo "GATE-4 FAIL: exploits/ 不存在或为空，report-writer 将无法生成 Burp 复现包"
 ```
-GATE-4 PASS → 写入 checkpoint.json: {"completed": ["env", "scan", "trace", "exploit"], "current": "report"}
+GATE-4 PASS → Write to checkpoint.json: {"completed": ["env", "scan", "trace", "exploit"], "current": "report"}
 
-**生成漏洞汇总**: GATE-4 PASS 后立即执行:
+**Generate Vulnerability Summary**: Execute immediately after GATE-4 PASS:
 ```bash
-# 汇总所有 exploit 结果生成 exploit_summary.json
+# Aggregate all exploit results to generate exploit_summary.json
 CONFIRMED=$(cat "$WORK_DIR/exploits/"*.json 2>/dev/null | jq -s '[.[] | select(.final_verdict=="confirmed")] | length')
 SUSPECTED=$(cat "$WORK_DIR/exploits/"*.json 2>/dev/null | jq -s '[.[] | select(.final_verdict=="suspected")] | length')
 TOTAL=$(ls "$WORK_DIR/exploits/"*.json 2>/dev/null | wc -l)
@@ -284,7 +284,7 @@ cat > "$WORK_DIR/exploit_summary.json" << EOF
 EOF
 ```
 
-GATE-4 FAIL → **不写入 checkpoint**。检查 Phase-4 专家 Agent 是否实际被 spawn。如果未 spawn，立即回到 Phase-4 Step 1 执行。
+GATE-4 FAIL → **Do NOT write to checkpoint**. Check whether Phase-4 specialist Agents were actually spawned. If not spawned, immediately return to Phase-4 Step 1 and execute.
 
-打印流水线视图
+Print pipeline view
 

@@ -1,63 +1,63 @@
-# 框架安全模式速查
+# Framework Security Pattern Quick Reference
 
-各框架的安全/不安全用法速查表，供所有 Agent 参考。
+Quick reference table of secure/insecure usage patterns for each framework, for all Agents to reference.
 
 ---
 
 ## Laravel
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | `DB::table('users')->where('id', $id)->first()` |
-| 模板输出 | `{{ $variable }}` (自动 htmlspecialchars) |
-| 文件上传 | `$request->file('photo')->store('photos')` |
-| 密码哈希 | `Hash::make($password)` |
-| CSRF 保护 | `@csrf` 在表单中 |
-| 授权 | `$this->authorize('update', $post)` / Gate/Policy |
-| 加密 | `Crypt::encryptString($data)` |
-| Token 作用域 | `$token = $user->createToken('name', ['read']);` (Sanctum 限定 scope) |
-| Queue Job | 使用 `ShouldBeEncrypted` 接口保护序列化 payload |
+| SQL query | `DB::table('users')->where('id', $id)->first()` |
+| Template output | `{{ $variable }}` (automatic htmlspecialchars) |
+| File upload | `$request->file('photo')->store('photos')` |
+| Password hashing | `Hash::make($password)` |
+| CSRF protection | `@csrf` in forms |
+| Authorization | `$this->authorize('update', $post)` / Gate/Policy |
+| Encryption | `Crypt::encryptString($data)` |
+| Token scoping | `$token = $user->createToken('name', ['read']);` (Sanctum scoped) |
+| Queue Job | Use `ShouldBeEncrypted` interface to protect serialized payload |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `DB::raw("WHERE id=$input")` | SQLi |
-| SQL 注入 | `->whereRaw("status = '$input'")` | SQLi |
+| SQL injection | `DB::raw("WHERE id=$input")` | SQLi |
+| SQL injection | `->whereRaw("status = '$input'")` | SQLi |
 | XSS | `{!! $userInput !!}` | XSS |
-| 批量赋值 | `$guarded = []` + `Model::create($request->all())` | Mass Assignment |
-| 反序列化 | `unserialize($cookie)` | RCE |
-| 命令注入 | `exec("convert $filename")` | RCE |
+| Mass assignment | `$guarded = []` + `Model::create($request->all())` | Mass Assignment |
+| Deserialization | `unserialize($cookie)` | RCE |
+| Command injection | `exec("convert $filename")` | RCE |
 | SSRF | `file_get_contents($userUrl)` | SSRF |
-| 弱比较 | `if ($token == $stored)` | AuthZ Bypass |
-| Token 无过期 | `'expiration' => null` in sanctum config | Token 滥用 |
-| Debugbar 泄露 | 生产环境启用 `barryvdh/laravel-debugbar` | 信息泄露 |
+| Weak comparison | `if ($token == $stored)` | AuthZ Bypass |
+| Token no expiry | `'expiration' => null` in sanctum config | Token abuse |
+| Debugbar leak | `barryvdh/laravel-debugbar` enabled in production | Information leak |
 
-### 常见陷阱
-- `APP_DEBUG=true` 在生产环境 → 堆栈跟踪泄露
-- `APP_KEY` 泄露 → Cookie 伪造 / 反序列化 RCE
-- Telescope/Horizon 未设鉴权 → 信息泄露
-- `VerifyCsrfToken::$except` 过多 → CSRF
+### Common Pitfalls
+- `APP_DEBUG=true` in production → stack trace leak
+- `APP_KEY` leak → Cookie forgery / deserialization RCE
+- Telescope/Horizon without auth → information leak
+- `VerifyCsrfToken::$except` with too many entries → CSRF
 
-### Telescope / Horizon 未鉴权访问检测
+### Telescope / Horizon Unauthenticated Access Detection
 
-Telescope 和 Horizon 默认在 `local` 环境可访问，但很多开发者部署到生产时忘记配置 Gate：
+Telescope and Horizon are accessible by default in `local` environment, but many developers forget to configure the Gate when deploying to production:
 
 ```php
-// 危险: TelescopeServiceProvider 中未限制访问
+// DANGEROUS: No access restriction in TelescopeServiceProvider
 Gate::define('viewTelescope', function ($user) {
-    return true;  // 任何已登录用户均可访问
+    return true;  // Any logged-in user can access
 });
 ```
 
-**检测要点**:
-- 检查 `TelescopeServiceProvider::gate()` 是否存在且限制了邮箱/角色
-- 检查 `HorizonServiceProvider::gate()` 同理
-- 搜索路由 `/telescope`、`/horizon` 是否可公开访问（无中间件）
-- 如果 `APP_ENV=production` 但 Telescope/Horizon 注册在 `AppServiceProvider` 而非仅 `local` → 高危
+**Detection points**:
+- Check whether `TelescopeServiceProvider::gate()` exists and restricts by email/role
+- Check `HorizonServiceProvider::gate()` similarly
+- Search for routes `/telescope`, `/horizon` that are publicly accessible (no middleware)
+- If `APP_ENV=production` but Telescope/Horizon is registered in `AppServiceProvider` rather than `local` only → high risk
 
 ```php
-// 安全: 限制到特定管理员邮箱
+// SECURE: Restricted to specific admin emails
 Gate::define('viewTelescope', function ($user) {
     return in_array($user->email, [
         'admin@example.com',
@@ -65,56 +65,56 @@ Gate::define('viewTelescope', function ($user) {
 });
 ```
 
-### Sanctum / Passport Token 安全审计
+### Sanctum / Passport Token Security Audit
 
-**Token 过期**:
-- Sanctum 默认 Token **永不过期**，必须在 `config/sanctum.php` 设置 `'expiration' => 60 * 24`
-- Passport 的 `tokensExpireIn()` / `refreshTokensExpireIn()` 需在 `AuthServiceProvider` 中显式配置
-- 搜索 `createToken(` 调用，确认是否传入了 scope 参数
+**Token expiration**:
+- Sanctum tokens **never expire** by default; `'expiration' => 60 * 24` MUST be set in `config/sanctum.php`
+- Passport's `tokensExpireIn()` / `refreshTokensExpireIn()` MUST be explicitly configured in `AuthServiceProvider`
+- Search for `createToken(` calls and verify whether scope parameter is passed
 
-**Token Scope 审计**:
+**Token Scope audit**:
 ```php
-// 危险: 无 scope 限制，获得全部权限
+// DANGEROUS: No scope restriction, gets full permissions
 $token = $user->createToken('api-token');
 
-// 安全: 最小权限原则
+// SECURE: Least privilege principle
 $token = $user->createToken('api-token', ['read', 'orders:view']);
 ```
 
-**Token 吊销**:
-- 检查是否有 Token 吊销逻辑 (`$user->tokens()->delete()`, `$token->revoke()`)
-- 用户修改密码后是否清除旧 Token
-- 搜索 `personalAccessTokens` 是否有未清理的过期 Token
+**Token revocation**:
+- Check whether token revocation logic exists (`$user->tokens()->delete()`, `$token->revoke()`)
+- Check whether old tokens are cleared after password change
+- Search `personalAccessTokens` for uncleaned expired tokens
 
-### Queue Worker 反序列化风险 (SerializesModels)
+### Queue Worker Deserialization Risk (SerializesModels)
 
-Laravel Queue Job 使用 `SerializesModels` trait 时，对象会被序列化存入 Redis/DB：
+When Laravel Queue Job uses the `SerializesModels` trait, objects are serialized into Redis/DB:
 
 ```php
-// 潜在风险: Job payload 中包含序列化的 Eloquent Model
+// Potential risk: Job payload contains serialized Eloquent Model
 class ProcessOrder implements ShouldQueue
 {
     use SerializesModels;
-    public $order; // 序列化存储 → 若 Redis 被攻击者控制可注入恶意 payload
+    public $order; // Serialized for storage → if Redis is attacker-controlled, malicious payload can be injected
 }
 ```
 
-**检测要点**:
-- Redis 是否暴露在公网且无密码 (`redis://0.0.0.0:6379`)
-- Queue driver 为 `database` 时，`jobs` 表中的 `payload` 字段是否可被篡改
-- 搜索 `unserialize(` 与 `Queue::` 的组合使用
-- 建议使用 `ShouldBeEncrypted` 接口加密 Job payload (Laravel 8+)
+**Detection points**:
+- Whether Redis is exposed publicly without a password (`redis://0.0.0.0:6379`)
+- When Queue driver is `database`, whether the `payload` field in `jobs` table can be tampered with
+- Search for combined usage of `unserialize(` and `Queue::`
+- Recommend using `ShouldBeEncrypted` interface to encrypt Job payload (Laravel 8+)
 
-### Livewire 组件注入
+### Livewire Component Injection
 
-Livewire 组件的公有属性可被前端篡改：
+Livewire component public properties can be tampered with from the frontend:
 
 ```php
-// 危险: 公有属性直接绑定到敏感字段
+// DANGEROUS: Public properties directly bound to sensitive fields
 class EditProfile extends Component
 {
-    public $userId;   // 攻击者可通过 wire:model 篡改 userId
-    public $role;     // 攻击者可提升角色
+    public $userId;   // Attacker can tamper userId via wire:model
+    public $role;     // Attacker can escalate role
 
     public function save()
     {
@@ -123,200 +123,200 @@ class EditProfile extends Component
 }
 ```
 
-**安全做法**: 使用 `#[Locked]` 属性 (Livewire v3) 或在 `save()` 中强制使用 `auth()->id()`
+**Secure approach**: Use `#[Locked]` attribute (Livewire v3) or force `auth()->id()` in `save()`
 
-### Laravel Debugbar 生产环境泄露
+### Laravel Debugbar Production Leak
 
-`barryvdh/laravel-debugbar` 在生产环境启用会泄露：
-- 所有 SQL 查询及绑定参数（含密码等敏感数据）
-- Session 内容、Request 参数
-- 环境变量 (可能包含 API Key)
-- 路由列表和中间件配置
+`barryvdh/laravel-debugbar` enabled in production leaks:
+- All SQL queries and binding parameters (including sensitive data like passwords)
+- Session contents, Request parameters
+- Environment variables (may include API Keys)
+- Route list and middleware configuration
 
-**检测**: 搜索 `composer.json` 中 `require`（非 `require-dev`）是否包含 `debugbar`；检查 `DEBUGBAR_ENABLED` 环境变量
+**Detection**: Search `composer.json` for `require` (not `require-dev`) containing `debugbar`; check `DEBUGBAR_ENABLED` environment variable
 
 ---
 
 ## ThinkPHP
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | `Db::name('user')->where('id', $id)->find()` |
-| 参数获取 | `input('get.id/d')` (带类型过滤) |
-| 模板输出 | `{$var|htmlspecialchars}` |
-| 路由定义 | 显式注册路由，关闭自动路由 |
+| SQL query | `Db::name('user')->where('id', $id)->find()` |
+| Parameter retrieval | `input('get.id/d')` (with type filtering) |
+| Template output | `{$var|htmlspecialchars}` |
+| Route definition | Explicitly register routes, disable auto-routing |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `Db::query("SELECT * FROM user WHERE id=$id")` | SQLi |
-| SQL 注入 | `->where('id', 'exp', $input)` | SQLi (exp 表达式) |
-| 变量覆盖 | `extract($_GET)` | 变量覆盖 |
-| RCE | `think\App::invokeMethod()` 路由控制 | RCE |
-| 路由暴露 | `'url_route_must' => false` (允许自动路由) | 未授权访问 |
+| SQL injection | `Db::query("SELECT * FROM user WHERE id=$id")` | SQLi |
+| SQL injection | `->where('id', 'exp', $input)` | SQLi (exp expression) |
+| Variable overwrite | `extract($_GET)` | Variable Overwrite |
+| RCE | `think\App::invokeMethod()` route control | RCE |
+| Route exposure | `'url_route_must' => false` (allows auto-routing) | Unauthorized access |
 
-### 历史高危漏洞
+### Historical High-Risk Vulnerabilities
 
 - ThinkPHP 5.0.x RCE (invokeFunction)
-- ThinkPHP 5.1.x SQL 注入 (where/exp)
-- ThinkPHP 6.x Session 反序列化
+- ThinkPHP 5.1.x SQL injection (where/exp)
+- ThinkPHP 6.x Session deserialization
 
-### 版本特定 RCE 检测指纹
+### Version-Specific RCE Detection Signatures
 
 #### ThinkPHP 5.0.x — invokeFunction RCE
 
-漏洞原理: 控制器/方法未过滤，可直接调用任意函数。
+Vulnerability principle: Controller/method not filtered, allows direct invocation of arbitrary functions.
 
 ```
-# 攻击 payload 指纹（在日志或 WAF 中检测）:
+# Attack payload signatures (detect in logs or WAF):
 /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=system&vars[1][]=whoami
 /index.php?s=index/think\app/invokefunction&function=call_user_func_array
 ```
 
-**代码检测**: 搜索 `thinkphp` 版本号 `5.0.0` ~ `5.0.23`，检查 `App::invokeFunction` 是否被 patch。
+**Code detection**: Search for `thinkphp` version `5.0.0` ~ `5.0.23`; check whether `App::invokeFunction` has been patched.
 
-#### ThinkPHP 5.1.x — where('exp') SQL 注入
+#### ThinkPHP 5.1.x — where('exp') SQL Injection
 
 ```php
-// 危险: exp 表达式允许原始 SQL
+// DANGEROUS: exp expression allows raw SQL
 $result = Db::name('user')->where('id', 'exp', $userInput)->find();
-// 攻击者传入: "= 1 UNION SELECT password FROM admin--"
+// Attacker passes: "= 1 UNION SELECT password FROM admin--"
 ```
 
-**检测**: 全局搜索 `'exp'` 作为 `where()` 第二参数；检查 ThinkPHP 版本是否 < 5.1.23。
+**Detection**: Global search for `'exp'` as the second argument to `where()`; check whether ThinkPHP version is < 5.1.23.
 
-#### ThinkPHP 6.x — Session 反序列化
+#### ThinkPHP 6.x — Session Deserialization
 
-当 Session 驱动为文件存储且 Session ID 可控时，攻击者可写入恶意序列化数据：
+When the Session driver uses file storage and the Session ID is controllable, an attacker can write malicious serialized data:
 
-**检测要点**:
-- `session.type` 配置是否为 `file`
-- Session ID 是否从用户输入获取且未校验格式
-- 搜索 `session(` 函数调用，检查是否存储了用户可控对象
+**Detection points**:
+- Whether `session.type` config is `file`
+- Whether Session ID is obtained from user input without format validation
+- Search for `session(` function calls; check whether user-controllable objects are stored
 
-### 路由安全: 自动路由模式暴露
+### Route Security: Auto-Route Mode Exposure
 
-ThinkPHP 的自动路由 (auto-route) 模式会将所有 Controller 的 public 方法自动映射为 URL：
+ThinkPHP's auto-route mode automatically maps all Controller public methods to URLs:
 
 ```php
-// config/route.php 或 config/app.php
-'url_route_must' => false,  // 危险: 允许通过 URL 直接访问任意控制器方法
+// config/route.php or config/app.php
+'url_route_must' => false,  // DANGEROUS: Allows direct URL access to any controller method
 ```
 
-**风险**:
-- 内部管理方法（如 `AdminController::resetPassword()`）可被直接访问
-- 测试方法、调试方法意外暴露
-- 绕过中间件和路由级权限检查
+**Risks**:
+- Internal management methods (e.g., `AdminController::resetPassword()`) become directly accessible
+- Test methods, debug methods accidentally exposed
+- Bypasses middleware and route-level permission checks
 
-**检测**: 搜索 `url_route_must` 配置项；如果为 `false` 或未设置，标记为高危。
+**Detection**: Search for `url_route_must` config item; if `false` or unset, flag as high risk.
 
-**安全做法**: 设置 `'url_route_must' => true`，强制所有访问通过显式定义的路由。
+**Secure approach**: Set `'url_route_must' => true` to force all access through explicitly defined routes.
 
 ---
 
 ## Yii2
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | `User::find()->where(['id' => $id])->one()` |
-| XSS 防护 | `Html::encode($text)` |
-| CSRF | `\yii\filters\Csrf` 行为 |
+| SQL query | `User::find()->where(['id' => $id])->one()` |
+| XSS protection | `Html::encode($text)` |
+| CSRF | `\yii\filters\Csrf` behavior |
 | RBAC | `Yii::$app->user->can('updatePost')` |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `Model::findBySql("SELECT * WHERE id=$id")` | SQLi |
-| SQL 注入 | `->orderBy($userInput)` | SQLi |
-| XSS | `<?= $userInput ?>` 无 encode | XSS |
+| SQL injection | `Model::findBySql("SELECT * WHERE id=$id")` | SQLi |
+| SQL injection | `->orderBy($userInput)` | SQLi |
+| XSS | `<?= $userInput ?>` without encode | XSS |
 
 ---
 
 ## WordPress
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | `$wpdb->prepare("SELECT * FROM %s WHERE id = %d", $table, $id)` |
-| 输出转义 | `esc_html($text)`, `esc_attr($attr)`, `esc_url($url)` |
-| Nonce 验证 | `wp_verify_nonce($_POST['_wpnonce'], 'action')` |
-| 权限检查 | `current_user_can('manage_options')` |
-| 数据清理 | `sanitize_text_field($input)`, `absint($id)` |
-| REST API 权限 | `'permission_callback' => function() { return current_user_can('edit_posts'); }` |
-| 安全数据库操作 | `$wpdb->insert($table, $data, $format)` / `$wpdb->update(...)` |
+| SQL query | `$wpdb->prepare("SELECT * FROM %s WHERE id = %d", $table, $id)` |
+| Output escaping | `esc_html($text)`, `esc_attr($attr)`, `esc_url($url)` |
+| Nonce verification | `wp_verify_nonce($_POST['_wpnonce'], 'action')` |
+| Permission check | `current_user_can('manage_options')` |
+| Data sanitization | `sanitize_text_field($input)`, `absint($id)` |
+| REST API permission | `'permission_callback' => function() { return current_user_can('edit_posts'); }` |
+| Secure DB operation | `$wpdb->insert($table, $data, $format)` / `$wpdb->update(...)` |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `$wpdb->query("SELECT * WHERE id=$input")` | SQLi |
-| SQL 注入 | `$wpdb->query("DELETE FROM $table WHERE id=" . $_GET['id'])` | SQLi |
+| SQL injection | `$wpdb->query("SELECT * WHERE id=$input")` | SQLi |
+| SQL injection | `$wpdb->query("DELETE FROM $table WHERE id=" . $_GET['id'])` | SQLi |
 | XSS | `echo $_GET['param']` | XSS |
-| 权限误用 | `if (is_admin()) { /* 敏感操作 */ }` | 权限绕过 |
-| CSRF | 缺少 `wp_verify_nonce()` | CSRF |
-| 文件上传 | 未检查 MIME + 扩展名 | 文件上传 |
-| REST 无权限 | `register_rest_route` 无 `permission_callback` | 未授权访问 |
-| Hook 注入 | `do_action($_GET['hook_name'])` | 任意代码执行 |
+| Permission misuse | `if (is_admin()) { /* sensitive operation */ }` | AuthZ Bypass |
+| CSRF | Missing `wp_verify_nonce()` | CSRF |
+| File upload | No MIME + extension check | File upload |
+| REST no permission | `register_rest_route` without `permission_callback` | Unauthorized access |
+| Hook injection | `do_action($_GET['hook_name'])` | Arbitrary code execution |
 
-### 关键函数
-- `is_admin()` — 仅检查是否在后台页面，**不是**权限检查
-- `current_user_can()` — **真正的**权限检查
-- `wp_nonce_field()` / `wp_verify_nonce()` — CSRF 保护
-- `esc_sql()` — 仅转义引号，不如 `$wpdb->prepare()` 安全
+### Key Functions
+- `is_admin()` — Only checks whether on admin page, is **NOT** a permission check
+- `current_user_can()` — The **actual** permission check
+- `wp_nonce_field()` / `wp_verify_nonce()` — CSRF protection
+- `esc_sql()` — Only escapes quotes, less secure than `$wpdb->prepare()`
 
-### REST API permission_callback 缺失检测
+### REST API permission_callback Missing Detection
 
-WordPress 5.5+ 要求 `register_rest_route` 必须包含 `permission_callback`，否则会触发 `_doing_it_wrong` 警告。但旧插件/主题可能缺失：
+WordPress 5.5+ requires `register_rest_route` to include `permission_callback`, otherwise a `_doing_it_wrong` warning is triggered. But older plugins/themes may be missing it:
 
 ```php
-// 危险: 任何人（包括未登录用户）均可访问
+// DANGEROUS: Anyone (including unauthenticated users) can access
 register_rest_route('myplugin/v1', '/users', [
     'methods'  => 'GET',
     'callback' => 'get_all_users',
-    // 缺少 permission_callback → 默认允许所有人访问
+    // Missing permission_callback → defaults to allowing everyone
 ]);
 
-// 危险: 显式设为公开但开发者可能未意识到
+// DANGEROUS: Explicitly set to public but developer may not realize
 register_rest_route('myplugin/v1', '/delete-user', [
     'methods'  => 'DELETE',
     'callback' => 'delete_user_handler',
-    'permission_callback' => '__return_true',  // 危险写法！破坏性操作无权限校验
+    'permission_callback' => '__return_true',  // DANGEROUS! Destructive operation without permission check
 ]);
 ```
 
-**检测**: 全局搜索 `register_rest_route`，逐一检查是否包含 `permission_callback`，以及 callback 内容是否为 `__return_true`（对敏感操作不安全）。
+**Detection**: Global search for `register_rest_route`, check each one for `permission_callback`, and whether the callback content is `__return_true` (unsafe for sensitive operations).
 
-### Action / Filter Hook 注入
+### Action / Filter Hook Injection
 
-WordPress 的 Hook 系统（`do_action` / `apply_filters`）若 hook 名称或参数来自用户输入，可能导致意外行为：
+WordPress's Hook system (`do_action` / `apply_filters`) can cause unexpected behavior if hook names or arguments come from user input:
 
 ```php
-// 危险: hook 名称来自用户输入
+// DANGEROUS: Hook name comes from user input
 $action = $_GET['action_type'];
 do_action("process_{$action}");
-// 攻击者传入 action_type=admin_init → 触发管理员初始化流程
+// Attacker passes action_type=admin_init → triggers admin initialization flow
 
-// 危险: 用户输入直接传入 hook 参数
+// DANGEROUS: User input passed directly as hook argument
 do_action('user_profile_update', $_POST['data']);
-// 所有挂载该 hook 的回调都会收到未过滤的数据
+// All callbacks hooked to this action receive unfiltered data
 ```
 
-**检测要点**:
-- 搜索 `do_action(` 和 `apply_filters(`，检查参数是否包含 `$_GET`、`$_POST`、`$_REQUEST`
-- 检查 hook 名称是否由变量拼接且变量来源为用户输入
-- 特别注意 `wp_ajax_nopriv_` 前缀的 hook（对未登录用户开放）
+**Detection points**:
+- Search for `do_action(` and `apply_filters(`, check whether arguments contain `$_GET`, `$_POST`, `$_REQUEST`
+- Check whether hook names are constructed from variables sourced from user input
+- Pay special attention to `wp_ajax_nopriv_` prefixed hooks (open to unauthenticated users)
 
-### wpdb 用法审计: query() 直拼 vs prepare()
+### wpdb Usage Audit: query() Direct Concatenation vs prepare()
 
-`$wpdb->query()` 接受原始 SQL，是 WordPress 中 SQL 注入的首要来源：
+`$wpdb->query()` accepts raw SQL and is the primary source of SQL injection in WordPress:
 
 ```php
-// 危险: 直接字符串拼接
+// DANGEROUS: Direct string concatenation
 $wpdb->query("UPDATE wp_users SET status='active' WHERE id=" . $_GET['uid']);
 $wpdb->query("SELECT * FROM wp_posts WHERE post_title LIKE '%" . $_POST['search'] . "%'");
 
-// 安全: 使用 prepare() 参数绑定
+// SECURE: Using prepare() parameter binding
 $wpdb->query($wpdb->prepare(
     "UPDATE wp_users SET status='active' WHERE id = %d", absint($_GET['uid'])
 ));
@@ -325,28 +325,28 @@ $wpdb->query($wpdb->prepare(
 ));
 ```
 
-**审计规则**: 搜索 `$wpdb->query(` 后面直接跟引号（而非 `$wpdb->prepare`）的用法，全部标记为疑似 SQLi。同样检查 `$wpdb->get_results(`、`$wpdb->get_var(`、`$wpdb->get_row(` 的参数。
+**Audit rule**: Search for `$wpdb->query(` followed directly by a quote (rather than `$wpdb->prepare`); flag all as suspected SQLi. Also check arguments of `$wpdb->get_results(`, `$wpdb->get_var(`, `$wpdb->get_row(`.
 
-### XML-RPC 攻击面
+### XML-RPC Attack Surface
 
-`xmlrpc.php` 是 WordPress 的远程调用接口，常被利用进行暴力破解和 DDoS：
+`xmlrpc.php` is WordPress's remote call interface, commonly exploited for brute force attacks and DDoS:
 
-**攻击方式**:
-- `system.multicall` — 单个请求中封装数百次 `wp.getUsersBlogs` 调用，进行批量密码暴力破解
-- `pingback.ping` — 利用 WordPress 作为 SSRF 跳板或 DDoS 反射器
-- 用户枚举 — 通过 `wp.getAuthors` 获取用户名列表
+**Attack methods**:
+- `system.multicall` — Encapsulates hundreds of `wp.getUsersBlogs` calls in a single request for bulk password brute forcing
+- `pingback.ping` — Uses WordPress as SSRF proxy or DDoS reflector
+- User enumeration — Retrieves username list via `wp.getAuthors`
 
-**检测要点**:
-- 检查 `xmlrpc.php` 是否可访问（未被 Web Server 屏蔽）
-- 搜索是否有 `add_filter('xmlrpc_enabled', '__return_false')` 来禁用
-- 检查 `.htaccess` 或 Nginx 配置是否屏蔽了 `xmlrpc.php`
-- 如果必须保留 XML-RPC，检查是否禁用了 `system.multicall`
+**Detection points**:
+- Check whether `xmlrpc.php` is accessible (not blocked by web server)
+- Search for `add_filter('xmlrpc_enabled', '__return_false')` to disable it
+- Check `.htaccess` or Nginx config for blocking of `xmlrpc.php`
+- If XML-RPC must be retained, check whether `system.multicall` is disabled
 
 ```php
-// 推荐: 完全禁用 XML-RPC
+// Recommended: Completely disable XML-RPC
 add_filter('xmlrpc_enabled', '__return_false');
 
-// 或仅禁用 system.multicall
+// Or disable only system.multicall
 add_filter('xmlrpc_methods', function($methods) {
     unset($methods['system.multicall']);
     return $methods;
@@ -357,157 +357,157 @@ add_filter('xmlrpc_methods', function($methods) {
 
 ## Symfony
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | `$qb->setParameter('id', $id)` (QueryBuilder 参数绑定) |
-| 模板输出 | `{{ variable }}` (Twig 自动转义) |
-| 表单验证 | `$form->isValid()` + Validator 约束 |
-| 授权 | `#[IsGranted('ROLE_ADMIN')]` |
+| SQL query | `$qb->setParameter('id', $id)` (QueryBuilder parameter binding) |
+| Template output | `{{ variable }}` (Twig auto-escaping) |
+| Form validation | `$form->isValid()` + Validator constraints |
+| Authorization | `#[IsGranted('ROLE_ADMIN')]` |
 | CSRF | `csrf_token('authenticate')` |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `$conn->query("SELECT * WHERE id=$id")` | SQLi |
+| SQL injection | `$conn->query("SELECT * WHERE id=$id")` | SQLi |
 | SSTI | `$twig->createTemplate($userInput)->render()` | SSTI/RCE |
 | XSS | `{{ variable|raw }}` | XSS |
-| 反序列化 | `unserialize($request->get('data'))` | RCE |
+| Deserialization | `unserialize($request->get('data'))` | RCE |
 
 ---
 
 ## CodeIgniter
 
-CodeIgniter 分为 CI3 (3.x) 和 CI4 (4.x) 两个大版本，安全模型差异较大。
+CodeIgniter is split into CI3 (3.x) and CI4 (4.x) as two major versions with significantly different security models.
 
-### 安全用法 ✓
-| 场景 | 安全写法 | 适用版本 |
+### Secure Usage ✓
+| Scenario | Secure Pattern | Applicable Version |
 |------|---------|---------|
-| SQL 查询 | `$this->db->where('id', $id)->get('users')` | CI3 |
-| SQL 查询 | `$builder->where('id', $id)->get()` | CI4 |
-| 参数绑定 | `$this->db->query("SELECT * FROM users WHERE id = ?", [$id])` | CI3/CI4 |
-| XSS 过滤 | `$this->security->xss_clean($input)` | CI3 |
-| XSS 转义 | `esc($text)` | CI4 |
-| CSRF | `$this->security->csrf_verify()` / 表单 hidden token | CI3 |
-| CSRF | `csrf_field()` 在表单中 + `CSRFFilter` | CI4 |
-| 输出转义 | `<?= esc($variable) ?>` | CI4 |
+| SQL query | `$this->db->where('id', $id)->get('users')` | CI3 |
+| SQL query | `$builder->where('id', $id)->get()` | CI4 |
+| Parameter binding | `$this->db->query("SELECT * FROM users WHERE id = ?", [$id])` | CI3/CI4 |
+| XSS filtering | `$this->security->xss_clean($input)` | CI3 |
+| XSS escaping | `esc($text)` | CI4 |
+| CSRF | `$this->security->csrf_verify()` / form hidden token | CI3 |
+| CSRF | `csrf_field()` in forms + `CSRFFilter` | CI4 |
+| Output escaping | `<?= esc($variable) ?>` | CI4 |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `$this->db->query("SELECT * FROM users WHERE id=$id")` | SQLi |
-| SQL 注入 | `$this->db->where("id = $id")->get('users')` | SQLi |
-| XSS | `echo $this->input->get('name')` (CI3 无自动 XSS 过滤) | XSS |
-| XSS | `<?= $userInput ?>` 无 `esc()` | XSS |
-| 文件包含 | `$this->load->view($_GET['page'])` | LFI |
+| SQL injection | `$this->db->query("SELECT * FROM users WHERE id=$id")` | SQLi |
+| SQL injection | `$this->db->where("id = $id")->get('users')` | SQLi |
+| XSS | `echo $this->input->get('name')` (CI3 has no auto XSS filtering) | XSS |
+| XSS | `<?= $userInput ?>` without `esc()` | XSS |
+| File inclusion | `$this->load->view($_GET['page'])` | LFI |
 
-### 常见陷阱
+### Common Pitfalls
 
-**CI3 `$this->input->get()` 无自动 XSS 过滤**:
-CI3 的 `$this->input->get()` 和 `$this->input->post()` 默认**不做** XSS 过滤（除非全局配置 `$config['global_xss_filtering'] = TRUE`，但此配置已被官方废弃）。必须手动调用 `$this->security->xss_clean()` 或在输出时转义。
+**CI3 `$this->input->get()` has no automatic XSS filtering**:
+CI3's `$this->input->get()` and `$this->input->post()` do **NOT** perform XSS filtering by default (unless global config `$config['global_xss_filtering'] = TRUE` is set, but this config has been officially deprecated). You MUST manually call `$this->security->xss_clean()` or escape on output.
 
 ```php
-// 危险: 直接输出用户输入
+// DANGEROUS: Direct output of user input
 echo $this->input->get('search');
 
-// 安全: 输出时转义
+// SECURE: Escape on output
 echo htmlspecialchars($this->input->get('search'), ENT_QUOTES, 'UTF-8');
 ```
 
-**Query Builder 绕过**:
-CI3 的 Query Builder 在某些方法中仍然允许原始 SQL 片段：
+**Query Builder bypass**:
+CI3's Query Builder still allows raw SQL fragments in certain methods:
 ```php
-// 看起来安全但实际危险
+// Appears safe but is actually dangerous
 $this->db->where("status = 'active' AND role = " . $input)->get('users');
-// where() 接受完整字符串时不会参数化
+// where() does not parameterize when accepting a full string
 ```
 
-**CI4 环境配置泄露**:
-- `.env` 文件放在 web root 且未被 server 屏蔽
-- `CI_ENVIRONMENT = development` 在生产环境 → 详细错误输出
+**CI4 environment config leak**:
+- `.env` file placed in web root and not blocked by server
+- `CI_ENVIRONMENT = development` in production → verbose error output
 
 ---
 
 ## CakePHP
 
-CakePHP 提供了较完善的 ORM 和安全组件，但误用仍可导致漏洞。
+CakePHP provides a fairly comprehensive ORM and security components, but misuse can still lead to vulnerabilities.
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | `$query->where(['id' => $id])` (ORM 自动参数绑定) |
-| SQL 查询 | `$query->where(['status' => $status, 'role' => $role])` |
-| XSS 防护 | `h($text)` (等同于 `htmlspecialchars`) |
-| XSS (模板) | `<?= h($variable) ?>` |
-| CSRF | `$this->loadComponent('Csrf')` 或中间件 `CsrfProtectionMiddleware` |
-| 表单防篡改 | `$this->loadComponent('Security')` (Form Tampering 保护) |
-| 密码哈希 | `(new DefaultPasswordHasher())->hash($password)` |
-| 输入验证 | `$validator->requirePresence('email')->add('email', 'validFormat', [...])` |
+| SQL query | `$query->where(['id' => $id])` (ORM automatic parameter binding) |
+| SQL query | `$query->where(['status' => $status, 'role' => $role])` |
+| XSS protection | `h($text)` (equivalent to `htmlspecialchars`) |
+| XSS (template) | `<?= h($variable) ?>` |
+| CSRF | `$this->loadComponent('Csrf')` or middleware `CsrfProtectionMiddleware` |
+| Form tampering protection | `$this->loadComponent('Security')` (Form Tampering protection) |
+| Password hashing | `(new DefaultPasswordHasher())->hash($password)` |
+| Input validation | `$validator->requirePresence('email')->add('email', 'validFormat', [...])` |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `$query->where("id = $id")` | SQLi |
-| SQL 注入 | `$conn->execute("SELECT * FROM users WHERE name='$name'")` | SQLi |
-| XSS | `echo $variable` 无 `h()` 调用 | XSS |
-| XSS | `<?= $this->request->getQuery('q') ?>` 直接输出 | XSS |
-| 批量赋值 | `$entity = $table->patchEntity($entity, $this->request->getData())` 无 `$fields` 限制 | Mass Assignment |
+| SQL injection | `$query->where("id = $id")` | SQLi |
+| SQL injection | `$conn->execute("SELECT * FROM users WHERE name='$name'")` | SQLi |
+| XSS | `echo $variable` without `h()` call | XSS |
+| XSS | `<?= $this->request->getQuery('q') ?>` direct output | XSS |
+| Mass assignment | `$entity = $table->patchEntity($entity, $this->request->getData())` without `$fields` restriction | Mass Assignment |
 
-### 常见陷阱
+### Common Pitfalls
 
-**`h()` helper 遗漏**:
-CakePHP 模板 (`.ctp` / `.php`) 不像 Twig/Blade 那样自动转义，所有用户数据输出必须手动用 `h()` 包裹：
+**`h()` helper omission**:
+CakePHP templates (`.ctp` / `.php`) do not auto-escape like Twig/Blade; all user data output MUST be manually wrapped with `h()`:
 ```php
-// 危险
+// DANGEROUS
 <td><?= $user->name ?></td>
 
-// 安全
+// SECURE
 <td><?= h($user->name) ?></td>
 ```
 
-**patchEntity 批量赋值**:
+**patchEntity mass assignment**:
 ```php
-// 危险: 允许所有字段被修改（包括 role, is_admin 等）
+// DANGEROUS: Allows all fields to be modified (including role, is_admin etc.)
 $entity = $table->patchEntity($entity, $this->request->getData());
 
-// 安全: 白名单限制可赋值字段
+// SECURE: Whitelist restricts assignable fields
 $entity = $table->patchEntity($entity, $this->request->getData(), [
     'fields' => ['name', 'email', 'bio']
 ]);
 ```
 
-**调试模式**: `config/app.php` 中 `'debug' => true` 在生产环境 → 泄露完整堆栈和查询
+**Debug mode**: `'debug' => true` in `config/app.php` in production → leaks full stack traces and queries
 
 ---
 
 ## Slim Framework
 
-Slim 是 PHP 微框架，**不内置 ORM、模板引擎、CSRF 保护**，安全性完全依赖开发者选用的第三方库。
+Slim is a PHP micro-framework that **does not include built-in ORM, template engine, or CSRF protection**; security relies entirely on third-party libraries chosen by the developer.
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | 配合 Eloquent/Doctrine: `$db->prepare("SELECT * FROM users WHERE id = ?")` |
-| 模板输出 | 配合 Twig: `{{ variable }}` (自动转义) |
-| CSRF | 使用 `slim/csrf` 中间件 |
-| 输入获取 | `$params = $request->getQueryParams()` + 手动验证/过滤 |
-| 路由中间件 | 在路由组上添加认证中间件 |
+| SQL query | With Eloquent/Doctrine: `$db->prepare("SELECT * FROM users WHERE id = ?")` |
+| Template output | With Twig: `{{ variable }}` (auto-escaping) |
+| CSRF | Use `slim/csrf` middleware |
+| Input retrieval | `$params = $request->getQueryParams()` + manual validation/filtering |
+| Route middleware | Add auth middleware to route groups |
 
-### 不安全用法 ✗
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| SQL 注入 | `$db->query("SELECT * FROM users WHERE id=" . $args['id'])` | SQLi |
+| SQL injection | `$db->query("SELECT * FROM users WHERE id=" . $args['id'])` | SQLi |
 | XSS | `$response->getBody()->write("Hello " . $request->getQueryParams()['name'])` | XSS |
-| 无 CSRF | 未引入 `slim/csrf` 中间件 | CSRF |
-| 无认证 | 路由未添加 Auth 中间件 | 未授权访问 |
-| 反序列化 | `unserialize($request->getParsedBody()['data'])` | RCE |
+| No CSRF | `slim/csrf` middleware not included | CSRF |
+| No auth | Route has no Auth middleware | Unauthorized access |
+| Deserialization | `unserialize($request->getParsedBody()['data'])` | RCE |
 
-### 常见陷阱
+### Common Pitfalls
 
-**`getQueryParams()` 和 `getParsedBody()` 返回原始数据**:
-Slim 的 PSR-7 Request 对象不做任何过滤或验证，所有参数均为原始用户输入：
+**`getQueryParams()` and `getParsedBody()` return raw data**:
+Slim's PSR-7 Request object does not perform any filtering or validation; all parameters are raw user input:
 ```php
-// 危险: 直接使用，无任何过滤
+// DANGEROUS: Direct use, no filtering
 $app->get('/search', function ($request, $response) {
     $q = $request->getQueryParams()['q'];
     $response->getBody()->write("<p>Results for: $q</p>");  // XSS
@@ -515,146 +515,146 @@ $app->get('/search', function ($request, $response) {
 });
 ```
 
-**缺乏默认安全组件**:
-- 无内置 ORM → 开发者可能直接拼接 SQL
-- 无内置模板引擎 → 可能直接 `echo`/`write` 用户输入
-- 无内置 CSRF → 如果忘记引入 `slim/csrf`，表单完全不受保护
-- 无内置验证器 → 输入验证依赖 `respect/validation` 等第三方库
+**Lack of default security components**:
+- No built-in ORM → developers may directly concatenate SQL
+- No built-in template engine → may directly `echo`/`write` user input
+- No built-in CSRF → if `slim/csrf` is forgotten, forms are completely unprotected
+- No built-in validator → input validation depends on `respect/validation` or other third-party libraries
 
-**审计重点**: 检查 `composer.json`，确认是否引入了:
-- ORM 库 (Eloquent / Doctrine)
-- 模板引擎 (Twig / Plates)
-- CSRF 中间件 (`slim/csrf`)
-- 验证库
+**Audit focus**: Check `composer.json` to confirm whether the following are included:
+- ORM library (Eloquent / Doctrine)
+- Template engine (Twig / Plates)
+- CSRF middleware (`slim/csrf`)
+- Validation library
 
-若缺少以上任意组件，对应安全风险极高。
+If any of the above components are missing, the corresponding security risk is extremely high.
 
 ---
 
-## Native PHP (无框架)
+## Native PHP (No Framework)
 
-**风险等级: 极高** — Native PHP 项目没有框架提供的安全抽象层，Sink 密度在所有 PHP 项目中最高。
+**Risk level: Extremely High** — Native PHP projects lack the security abstraction layer provided by frameworks; Sink density is the highest among all PHP project types.
 
-### 安全用法 ✓
-| 场景 | 安全写法 |
+### Secure Usage ✓
+| Scenario | Secure Pattern |
 |------|---------|
-| SQL 查询 | `$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?"); $stmt->execute([$id]);` |
-| XSS 防护 | `echo htmlspecialchars($input, ENT_QUOTES, 'UTF-8')` |
-| 密码哈希 | `password_hash($password, PASSWORD_DEFAULT)` |
-| 密码验证 | `password_verify($input, $hash)` |
-| Session 安全 | `session_regenerate_id(true)` 在登录后 |
-| CSRF | 手动生成 `bin2hex(random_bytes(32))` 存入 Session 并在表单中校验 |
-| 文件上传 | 白名单扩展名 + `finfo_file()` 检查 MIME + 重命名 + 存储到 web root 外 |
+| SQL query | `$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?"); $stmt->execute([$id]);` |
+| XSS protection | `echo htmlspecialchars($input, ENT_QUOTES, 'UTF-8')` |
+| Password hashing | `password_hash($password, PASSWORD_DEFAULT)` |
+| Password verification | `password_verify($input, $hash)` |
+| Session security | `session_regenerate_id(true)` after login |
+| CSRF | Manually generate `bin2hex(random_bytes(32))`, store in Session and validate in forms |
+| File upload | Extension whitelist + `finfo_file()` MIME check + rename + store outside web root |
 
-### 不安全用法 ✗ (高危模式)
-| 场景 | 不安全写法 | 漏洞类型 |
+### Insecure Usage ✗ (High-Risk Patterns)
+| Scenario | Insecure Pattern | Vulnerability Type |
 |------|-----------|---------|
-| 变量覆盖 | `extract($_GET)` / `extract($_POST)` | Variable Overwrite |
-| 变量覆盖 | `foreach($_GET as $key => $val) { $$key = $val; }` | Variable Overwrite |
-| 文件包含 | `include $_GET['page']` / `include $_GET['page'] . '.php'` | LFI / RFI |
-| SQL 注入 | `mysql_query("SELECT * FROM users WHERE id='$_GET[id]'")` | SQLi |
-| SQL 注入 | `mysqli_query($conn, "SELECT * WHERE name='" . $_POST['name'] . "'")` | SQLi |
-| XSS | `echo $_GET['search']` / `echo $username` (未转义) | XSS |
-| 命令注入 | `system("ping " . $_GET['host'])` | RCE |
-| 命令注入 | `exec("convert " . $_FILES['img']['name'] . " output.png")` | RCE |
-| 反序列化 | `unserialize($_COOKIE['data'])` | RCE |
+| Variable overwrite | `extract($_GET)` / `extract($_POST)` | Variable Overwrite |
+| Variable overwrite | `foreach($_GET as $key => $val) { $$key = $val; }` | Variable Overwrite |
+| File inclusion | `include $_GET['page']` / `include $_GET['page'] . '.php'` | LFI / RFI |
+| SQL injection | `mysql_query("SELECT * FROM users WHERE id='$_GET[id]'")` | SQLi |
+| SQL injection | `mysqli_query($conn, "SELECT * WHERE name='" . $_POST['name'] . "'")` | SQLi |
+| XSS | `echo $_GET['search']` / `echo $username` (unescaped) | XSS |
+| Command injection | `system("ping " . $_GET['host'])` | RCE |
+| Command injection | `exec("convert " . $_FILES['img']['name'] . " output.png")` | RCE |
+| Deserialization | `unserialize($_COOKIE['data'])` | RCE |
 | SSRF | `file_get_contents($_GET['url'])` | SSRF |
-| 路径遍历 | `file_get_contents("uploads/" . $_GET['file'])` | Path Traversal |
+| Path traversal | `file_get_contents("uploads/" . $_GET['file'])` | Path Traversal |
 
-### 常见陷阱 (>= 7 种高危模式详解)
+### Common Pitfalls (>= 7 High-Risk Patterns Detailed)
 
-#### 1. `extract($_GET)` / `$$key` 变量覆盖
+#### 1. `extract($_GET)` / `$$key` Variable Overwrite
 
 ```php
-// 危险: 用户可覆盖任意变量，包括 $is_admin, $user_id 等
+// DANGEROUS: User can overwrite any variable, including $is_admin, $user_id etc.
 extract($_GET);
-// 攻击者访问: ?is_admin=1&user_id=999
+// Attacker visits: ?is_admin=1&user_id=999
 
-// 同样危险:
+// Equally dangerous:
 foreach ($_REQUEST as $key => $value) {
-    $$key = $value;  // 动态变量名 → 覆盖已有变量
+    $$key = $value;  // Dynamic variable name → overwrites existing variables
 }
 ```
 
-#### 2. `include $_GET['page']` 文件包含
+#### 2. `include $_GET['page']` File Inclusion
 
 ```php
-// 危险: LFI (Local File Inclusion)
+// DANGEROUS: LFI (Local File Inclusion)
 include $_GET['page'];
-// 攻击: ?page=../../etc/passwd
-// 攻击: ?page=php://filter/convert.base64-encode/resource=config.php
+// Attack: ?page=../../etc/passwd
+// Attack: ?page=php://filter/convert.base64-encode/resource=config.php
 
-// 带后缀也不安全 (PHP < 5.3.4 可用 %00 截断)
+// With suffix is also unsafe (PHP < 5.3.4 allows %00 truncation)
 include $_GET['page'] . '.php';
-// 攻击: ?page=../../etc/passwd%00   (null byte 截断)
+// Attack: ?page=../../etc/passwd%00   (null byte truncation)
 ```
 
-#### 3. `mysql_query()` 直接拼接 SQL
+#### 3. `mysql_query()` Direct SQL Concatenation
 
 ```php
-// 极危险: 古老 API + 无参数绑定
+// Extremely dangerous: Legacy API + no parameter binding
 $result = mysql_query("SELECT * FROM users WHERE id='" . $_GET['id'] . "'");
-// mysql_* 函数在 PHP 7.0 已移除，但仍存在于遗留项目
+// mysql_* functions were removed in PHP 7.0 but still exist in legacy projects
 
-// 即使用 mysqli，直接拼接仍然危险
+// Even with mysqli, direct concatenation is still dangerous
 $result = mysqli_query($conn, "SELECT * FROM users WHERE email='" . $_POST['email'] . "'");
 ```
 
-#### 4. 无 CSRF 保护
+#### 4. No CSRF Protection
 
 ```php
-// 危险: 表单无 Token 验证
+// DANGEROUS: Form has no Token validation
 if ($_POST['action'] === 'delete') {
-    delete_user($_POST['user_id']);  // 攻击者构造恶意页面即可触发
+    delete_user($_POST['user_id']);  // Attacker crafts a malicious page to trigger this
 }
 ```
 
-Native PHP 没有框架自动的 CSRF 中间件，开发者必须手动实现 Token 机制。
+Native PHP has no framework automatic CSRF middleware; developers MUST manually implement a Token mechanism.
 
-#### 5. 无输出转义
+#### 5. No Output Escaping
 
 ```php
-// 危险: 数据库读取后直接输出
+// DANGEROUS: Direct output after database read
 $user = $pdo->query("SELECT * FROM users WHERE id=1")->fetch();
 echo "<p>Welcome, " . $user['name'] . "</p>";
-// 若 name 字段含 <script>，即为 Stored XSS
+// If name field contains <script>, this is Stored XSS
 ```
 
-#### 6. 不安全的 Session 处理
+#### 6. Insecure Session Handling
 
 ```php
-// 危险: 登录成功后未重新生成 Session ID → Session Fixation
+// DANGEROUS: Session ID not regenerated after successful login → Session Fixation
 session_start();
 if (check_password($user, $pass)) {
     $_SESSION['logged_in'] = true;
-    // 缺少 session_regenerate_id(true);
+    // Missing session_regenerate_id(true);
 }
 
-// 危险: Session 存储路径权限不当 → 其他用户可读取 Session 文件
-// 危险: Session Cookie 未设置 HttpOnly / Secure / SameSite
+// DANGEROUS: Session storage path has improper permissions → other users can read Session files
+// DANGEROUS: Session Cookie not set with HttpOnly / Secure / SameSite
 ```
 
-#### 7. 不安全的文件上传
+#### 7. Insecure File Upload
 
 ```php
-// 危险: 仅检查扩展名，未检查实际内容
+// DANGEROUS: Only checks extension, not actual content
 $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
 if ($ext === 'jpg') {
     move_uploaded_file($_FILES['file']['tmp_name'], "uploads/" . $_FILES['file']['name']);
-    // 问题1: 文件名未重命名，可能被目录遍历攻击 (../../shell.php)
-    // 问题2: 上传目录在 web root 下，可直接访问执行
-    // 问题3: 未检查文件实际 MIME 类型
+    // Problem 1: Filename not renamed, vulnerable to directory traversal (../../shell.php)
+    // Problem 2: Upload directory under web root, directly accessible for execution
+    // Problem 3: Actual file MIME type not checked
 }
 ```
 
-### Native PHP 审计优先级
+### Native PHP Audit Priority
 
-由于 Native PHP 缺乏安全抽象，审计时应按以下优先级排查:
+Since Native PHP lacks security abstractions, auditing SHOULD follow this priority order:
 
-1. **SQL 注入** — 搜索所有 `mysql_query`、`mysqli_query`、`pg_query`、`$pdo->query(`（非 prepare）
-2. **文件包含** — 搜索 `include`/`require` 后跟变量的用法
-3. **命令注入** — 搜索 `system()`、`exec()`、`passthru()`、`shell_exec()`、反引号
-4. **XSS** — 搜索 `echo`/`print` 后跟 `$_GET`/`$_POST`/`$_REQUEST` 或未转义的数据库字段
-5. **变量覆盖** — 搜索 `extract(` 和 `$$`
-6. **反序列化** — 搜索 `unserialize(`
-7. **SSRF** — 搜索 `file_get_contents(`、`curl_exec(` 后跟用户输入的 URL
+1. **SQL injection** — Search for all `mysql_query`, `mysqli_query`, `pg_query`, `$pdo->query(` (non-prepare)
+2. **File inclusion** — Search for `include`/`require` followed by variables
+3. **Command injection** — Search for `system()`, `exec()`, `passthru()`, `shell_exec()`, backticks
+4. **XSS** — Search for `echo`/`print` followed by `$_GET`/`$_POST`/`$_REQUEST` or unescaped database fields
+5. **Variable overwrite** — Search for `extract(` and `$$`
+6. **Deserialization** — Search for `unserialize(`
+7. **SSRF** — Search for `file_get_contents(`, `curl_exec(` followed by user input URLs

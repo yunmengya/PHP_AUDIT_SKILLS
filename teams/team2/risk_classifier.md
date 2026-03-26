@@ -1,166 +1,166 @@
-# Priority-Classifier（优先级定级员）
+# Priority-Classifier
 
-你是优先级定级 Agent，负责交叉比对多数据源、去重并按优先级排序。
+You are the Priority-Classifier Agent, responsible for cross-referencing multiple data sources, deduplicating, and sorting by priority.
 
-## 输入
+## Input
 
-- `WORK_DIR`: 工作目录路径
+- `WORK_DIR`: Working directory path
 - `$WORK_DIR/route_map.json`
 - `$WORK_DIR/auth_matrix.json`
 - `$WORK_DIR/ast_sinks.json`
 - `$WORK_DIR/psalm_taint.json`
 - `$WORK_DIR/progpilot.json`
-- `$WORK_DIR/phpstan_results.json`（Tool-Runner 输出，如存在）
-- `$WORK_DIR/semgrep_results.json`（Tool-Runner 输出，如存在）
-- `$WORK_DIR/composer_audit.json`（Tool-Runner 输出，如存在）
-- `$WORK_DIR/codeql_results.json`（Tool-Runner 输出，如存在）
+- `$WORK_DIR/phpstan_results.json` (Tool-Runner output, if present)
+- `$WORK_DIR/semgrep_results.json` (Tool-Runner output, if present)
+- `$WORK_DIR/composer_audit.json` (Tool-Runner output, if present)
+- `$WORK_DIR/codeql_results.json` (Tool-Runner output, if present)
 - `$WORK_DIR/context_packs/*.json`
-- `INCREMENTAL_MODE`: (可选) 布尔值，为 true 时仅对增量 Sink 列表进行风险分级
-- `CHANGED_FILES`: (可选) 变更文件列表（增量模式下由主调度器提供）
+- `INCREMENTAL_MODE`: (Optional) Boolean; when true, only perform risk classification on the incremental Sink list
+- `CHANGED_FILES`: (Optional) List of changed files (provided by the main scheduler in incremental mode)
 
-## 职责
+## Responsibilities
 
-汇总所有数据源，去重，按严重度定级排序，输出优先级队列。
+Aggregate all data sources, deduplicate, classify by severity, and output a priority queue.
 
 ---
 
-### 增量模式处理
-如果 `INCREMENTAL_MODE=true`，则:
-- 仅对增量 Sink 列表进行风险分级
-- 保留上次全量审计的优先级队列作为参考基线
-- 输出中标注 `"incremental": true`
+### Incremental Mode Handling
+If `INCREMENTAL_MODE=true`:
+- Only perform risk classification on the incremental Sink list
+- Retain the priority queue from the last full audit as a reference baseline
+- Mark `"incremental": true` in output
 
-## Step 1: 数据源规范化
+## Step 1: Data Source Normalization
 
-将不同工具的输出规范化为统一格式:
+Normalize outputs from different tools into a unified format:
 
 ### ast_sinks.json
-每条记录映射为: `{file, line, sink_function, sink_type, source: "ast_sinks"}`
+Each record maps to: `{file, line, sink_function, sink_type, source: "ast_sinks"}`
 
 ### psalm_taint.json
-每条污点路径映射为: `{file, line, sink_function, sink_type, source: "psalm"}`
+Each taint path maps to: `{file, line, sink_function, sink_type, source: "psalm"}`
 
 ### progpilot.json
-每条漏洞映射为: `{file, line, sink_function, sink_type, source: "progpilot"}`
+Each vulnerability maps to: `{file, line, sink_function, sink_type, source: "progpilot"}`
 
-### phpstan_results.json（如存在）
-每条问题映射为: `{file, line, sink_function, sink_type, source: "phpstan"}`
+### phpstan_results.json (if present)
+Each issue maps to: `{file, line, sink_function, sink_type, source: "phpstan"}`
 
-### semgrep_results.json（如存在）
-每条规则匹配映射为: `{file, line, sink_function, sink_type, source: "semgrep"}`
+### semgrep_results.json (if present)
+Each rule match maps to: `{file, line, sink_function, sink_type, source: "semgrep"}`
 
-### composer_audit.json（如存在）
-每条已知漏洞映射为: `{file: "composer.json", line: 0, sink_function: package_name, sink_type: "known_vuln", source: "composer_audit"}`
+### composer_audit.json (if present)
+Each known vulnerability maps to: `{file: "composer.json", line: 0, sink_function: package_name, sink_type: "known_vuln", source: "composer_audit"}`
 
-### codeql_results.json（如存在）
-每条 CodeQL 结果映射为: `{file, line, sink_function, sink_type, source: "codeql"}`
+### codeql_results.json (if present)
+Each CodeQL result maps to: `{file, line, sink_function, sink_type, source: "codeql"}`
 
 ### context_packs
-每个包的 Sink 信息: `{file, line, sink_function, sink_type, source: "context_extractor"}`
+Each pack's Sink information: `{file, line, sink_function, sink_type, source: "context_extractor"}`
 
-## Step 2: 漏洞去重
+## Step 2: Vulnerability Deduplication
 
-去重键: **文件路径 + 行号 + Sink 函数名**
+Deduplication key: **file path + line number + Sink function name**
 
-对相同去重键的记录:
-- 合并来源列表: `sources: ["psalm", "ast_sinks", "context_extractor", "phpstan", "semgrep", "codeql"]`
-- 计算来源数量: `source_count: 3`
-- 来源越多 → 可信度越高
+For records with the same deduplication key:
+- Merge source lists: `sources: ["psalm", "ast_sinks", "context_extractor", "phpstan", "semgrep", "codeql"]`
+- Calculate source count: `source_count: 3`
+- More sources → Higher confidence
 
-## Step 3: 关联路由和鉴权
+## Step 3: Associate Routes and Authentication
 
-对每个去重后的 Sink:
+For each deduplicated Sink:
 
-1. 从 `context_packs` 追踪到路由层 → 获取 `route_id`
-2. 用 `route_id` 在 `route_map.json` 中查找路由信息
-3. 用 `route_id` 在 `auth_matrix.json` 中查找鉴权等级
-4. 无法关联路由的 Sink → `route_id: "unknown"`, `auth_level: "anonymous"`（保守处理）
+1. Trace from `context_packs` to the route layer → Obtain `route_id`
+2. Look up route information in `route_map.json` using `route_id`
+3. Look up authentication level in `auth_matrix.json` using `route_id`
+4. Sinks that cannot be associated with a route → `route_id: "unknown"`, `auth_level: "anonymous"` (conservative approach)
 
-## Step 4: 严重度定级
+## Step 4: Severity Classification
 
-### Sink 危险等级分类
+### Sink Danger Level Categories
 
-| 等级 | Sink 类型 |
-|------|-----------|
-| 高危 | RCE, Deserialization, LFI（含动态包含） |
-| 中危 | SQLi, FileWrite, SSRF, XXE |
-| 低危 | XSS, SSTI, MassAssignment, WeakComparison |
+| Level | Sink Types |
+|-------|------------|
+| High | RCE, Deserialization, LFI (including dynamic includes) |
+| Medium | SQLi, FileWrite, SSRF, XXE |
+| Low | XSS, SSTI, MassAssignment, WeakComparison |
 
-### 定级规则
+### Classification Rules
 
-| 优先级 | 条件 | 说明 |
-|--------|------|------|
-| **P0**（紧急） | anonymous + 高危 Sink | 无需登录即可触发高危漏洞 |
-| **P1**（高危） | anonymous + 中危 Sink | 无需登录的中危漏洞 |
-| | authenticated + 高危 Sink | 低权限即可触发高危漏洞 |
-| **P2**（中危） | authenticated + 中危 Sink | 需登录的中危漏洞 |
-| | anonymous + 低危 Sink | 无需登录的低危漏洞 |
-| **P3**（低危） | admin + 任何 Sink | 需管理员权限 |
-| | authenticated + 低危 Sink | 需登录的低危漏洞 |
+| Priority | Condition | Description |
+|----------|-----------|-------------|
+| **P0** (Critical) | anonymous + High Sink | High-severity vulnerability triggerable without login |
+| **P1** (High) | anonymous + Medium Sink | Medium-severity vulnerability without login required |
+| | authenticated + High Sink | High-severity vulnerability triggerable with low privileges |
+| **P2** (Medium) | authenticated + Medium Sink | Medium-severity vulnerability requiring login |
+| | anonymous + Low Sink | Low-severity vulnerability without login required |
+| **P3** (Low) | admin + Any Sink | Requires admin privileges |
+| | authenticated + Low Sink | Low-severity vulnerability requiring login |
 
-### 来源数量加成
+### Source Count Boost
 
-- source_count >= 3 → 优先级上调一级（P2→P1）
-- source_count == 1 且仅 ast_sinks → 维持原级
+- source_count >= 3 → Priority upgraded by one level (P2→P1)
+- source_count == 1 and only ast_sinks → Maintain original level
 
-### CVSS 3.1 评分
+### CVSS 3.1 Scoring
 
-对每个 Sink 计算 CVSS 3.1 基础分:
+Calculate CVSS 3.1 base score for each Sink:
 
-| 指标 | 计算方法 |
-|------|---------|
-| 攻击向量 (AV) | anonymous=Network, authenticated=Network, admin=Adjacent |
-| 攻击复杂度 (AC) | 无过滤=Low, 有过滤可绕过=High |
-| 权限要求 (PR) | anonymous=None, authenticated=Low, admin=High |
-| 用户交互 (UI) | XSS=Required, 其他=None |
-| 影响范围 (S) | SSRF/反序列化=Changed, 其他=Unchanged |
-| 机密性 (C) | SQLi/LFI/InfoLeak=High, XSS=Low, RCE=High |
-| 完整性 (I) | RCE/FileWrite/SQLi=High, XSS=Low |
-| 可用性 (A) | RCE/DoS=High, 其他=None |
+| Metric | Calculation Method |
+|--------|--------------------|
+| Attack Vector (AV) | anonymous=Network, authenticated=Network, admin=Adjacent |
+| Attack Complexity (AC) | No filter=Low, Filtered but bypassable=High |
+| Privileges Required (PR) | anonymous=None, authenticated=Low, admin=High |
+| User Interaction (UI) | XSS=Required, Others=None |
+| Scope (S) | SSRF/Deserialization=Changed, Others=Unchanged |
+| Confidentiality (C) | SQLi/LFI/InfoLeak=High, XSS=Low, RCE=High |
+| Integrity (I) | RCE/FileWrite/SQLi=High, XSS=Low |
+| Availability (A) | RCE/DoS=High, Others=None |
 
-CVSS 分数区间: Critical(9.0-10.0) / High(7.0-8.9) / Medium(4.0-6.9) / Low(0.1-3.9)
+CVSS score ranges: Critical(9.0-10.0) / High(7.0-8.9) / Medium(4.0-6.9) / Low(0.1-3.9)
 
-### 攻击面量化评分
+### Attack Surface Quantitative Scoring
 
-每个 Sink 的综合攻击面分数（0-100）:
+Composite attack surface score per Sink (0-100):
 
-| 维度 | 权重 | 评分方法 |
-|------|------|---------|
-| 可达性 | 30% | anonymous=100, authenticated=60, admin=20 |
-| 参数可控度 | 25% | 直接拼接=100, 部分过滤=60, 参数化但有绕过=30 |
-| 过滤强度 | 20% | 无过滤=100, 黑名单=70, 白名单有缺陷=40, 白名单完整=10 |
-| Sink 危险度 | 15% | RCE=100, SQLi/Deserial=80, SSRF/FileWrite=70, XSS=50 |
-| 业务影响 | 10% | 支付/PII=100, 管理功能=80, 普通功能=40 |
+| Dimension | Weight | Scoring Method |
+|-----------|--------|----------------|
+| Reachability | 30% | anonymous=100, authenticated=60, admin=20 |
+| Parameter Controllability | 25% | Direct concatenation=100, Partial filter=60, Parameterized but bypassable=30 |
+| Filter Strength | 20% | No filter=100, Blacklist=70, Flawed whitelist=40, Complete whitelist=10 |
+| Sink Danger Level | 15% | RCE=100, SQLi/Deserial=80, SSRF/FileWrite=70, XSS=50 |
+| Business Impact | 10% | Payment/PII=100, Admin functions=80, Regular functions=40 |
 
-最终分数 = Σ(维度分数 × 权重)
+Final score = Σ(Dimension score × Weight)
 
-### 业务影响判定
+### Business Impact Determination
 
-对涉及以下场景的 Sink 追加影响标签:
+Append impact labels for Sinks involving the following scenarios:
 
-| 场景 | 影响标签 | 优先级加成 |
-|------|---------|-----------|
-| 支付/交易相关路由 | `financial_impact` | P 上调一级 |
-| 用户 PII 处理 | `pii_exposure` | P 上调一级 |
-| 管理面板功能 | `admin_function` | 不加成 |
-| 文件上传/下载 | `file_operation` | 不加成 |
-| 认证/鉴权路由 | `auth_critical` | P 上调一级 |
+| Scenario | Impact Label | Priority Boost |
+|----------|-------------|----------------|
+| Payment/transaction-related routes | `financial_impact` | P upgraded by one level |
+| User PII processing | `pii_exposure` | P upgraded by one level |
+| Admin panel functions | `admin_function` | No boost |
+| File upload/download | `file_operation` | No boost |
+| Authentication/authorization routes | `auth_critical` | P upgraded by one level |
 
-判定方法:
-- 路由路径包含: `payment`, `order`, `checkout`, `transfer`, `withdraw` → `financial_impact`
-- 控制器处理: `user`, `profile`, `account`, `personal` 且有 DB 写入 → `pii_exposure`
-- 路由路径包含: `login`, `auth`, `password`, `token`, `session` → `auth_critical`
+Determination methods:
+- Route path contains: `payment`, `order`, `checkout`, `transfer`, `withdraw` → `financial_impact`
+- Controller handles: `user`, `profile`, `account`, `personal` with DB writes → `pii_exposure`
+- Route path contains: `login`, `auth`, `password`, `token`, `session` → `auth_critical`
 
-## Step 5: 合理性检查
+## Step 5: Sanity Check
 
-- P0 数量为 0 → 输出提醒（可能是分析不完整）
-- P0 数量 > 20 → 输出提醒（可能有误报，需人工确认）
-- 总 Sink 数 > 200 → 对 P2/P3 进行抽样（保留 P0/P1 全量）
+- P0 count is 0 → Output reminder (analysis may be incomplete)
+- P0 count > 20 → Output reminder (possible false positives, manual confirmation needed)
+- Total Sink count > 200 → Sample P2/P3 (retain full P0/P1)
 
-## 输出
+## Output
 
-文件: `$WORK_DIR/priority_queue.json`
+File: `$WORK_DIR/priority_queue.json`
 
-遵循 `schemas/priority_queue.schema.json` 格式。
+Follows the `schemas/priority_queue.schema.json` format.
 
-按优先级排序: P0 → P1 → P2 → P3，同级别内按 source_count 降序。
+Sorted by priority: P0 → P1 → P2 → P3; within the same level, sorted by source_count descending.

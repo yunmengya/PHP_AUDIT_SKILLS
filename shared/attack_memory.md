@@ -1,58 +1,58 @@
-# 攻击记忆系统（Attack Memory System）
+# Attack Memory System
 
-Phase-4 专家 Agent 的跨审计经验复用机制。通过结构化记录每次攻击的成功/失败经验，使后续审计能够复用历史知识，提高首轮命中率，减少无效尝试。
+Cross-audit experience reuse mechanism for Phase-4 expert Agents. By structurally recording success/failure experiences from each attack, subsequent audits can reuse historical knowledge, improve first-round hit rate, and reduce ineffective attempts.
 
 ---
 
-## 设计原理
+## Design Principles
 
-借鉴 PentAGI 的 Smart Memory System 思路，使用 SQLite 数据库提供 ACID 事务和索引查询（零安装，macOS/PHP/Python 均内置）：
+Inspired by PentAGI's Smart Memory System approach, uses SQLite database for ACID transactions and indexed queries (zero installation; built into macOS/PHP/Python):
 
-- **写入时机**: 每个 Phase-4 专家完成攻击后，将经验写入记忆库
-- **读取时机**: Phase-4 专家启动攻击阶段前，查询匹配的历史记忆
-- **匹配维度**: `sink_type + framework + PHP版本段 + WAF类型`
-- **存储位置**: `${HOME}/.php_audit/attack_memory.db`（SQLite，跨项目持久化）
-- **工具脚本**: `tools/audit_db.sh`（封装所有数据库操作）
+- **Write timing**: After each Phase-4 expert completes an attack, experience is written to the memory store
+- **Read timing**: Before Phase-4 expert starts the attack phase, matching historical memories are queried
+- **Matching dimensions**: `sink_type + framework + PHP version segment + WAF type`
+- **Storage location**: `${HOME}/.php_audit/attack_memory.db` (SQLite, persistent across projects)
+- **Tool script**: `tools/audit_db.sh` (encapsulates all database operations)
 
-## 初始化
+## Initialization
 
-首次审计前自动初始化（幂等操作）:
+Automatically initialized before the first audit (idempotent operation):
 
 ```bash
 bash tools/audit_db.sh init-memory
 ```
 
-创建 `attack_memory` 表，含索引 `(sink_type, framework, status)` 和 `(sink_type, php_version)`。
+Creates the `attack_memory` table with indexes `(sink_type, framework, status)` and `(sink_type, php_version)`.
 
-## 记忆数据结构
+## Memory Data Structure
 
-Schema 参见 `schemas/attack_memory_entry.schema.json`，SQLite 表字段与之一一对应:
+Schema is defined in `schemas/attack_memory_entry.schema.json`; SQLite table fields correspond one-to-one:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
+| Field | Type | Description |
+|-------|------|-------------|
 | sink_type | TEXT | rce/sqli/xss/ssrf/lfi/... |
 | sink_function | TEXT | system/eval/query/... |
 | framework | TEXT | Laravel/ThinkPHP/WordPress/... |
 | php_version | TEXT | 8.1.27 |
 | waf_type | TEXT | none/ModSecurity/Cloudflare |
 | status | TEXT | confirmed/failed/partial |
-| rounds_used | INTEGER | 实际使用轮次 |
-| successful_round | INTEGER | 成功轮次（仅 confirmed） |
-| successful_payload_type | TEXT | 策略类型 |
-| bypass_technique | TEXT | 绕过手法 |
-| eliminated_strategies | TEXT | JSON 数组，已排除的策略 |
-| failure_reason | TEXT | 失败原因分类 |
+| rounds_used | INTEGER | Actual rounds used |
+| successful_round | INTEGER | Successful round (confirmed only) |
+| successful_payload_type | TEXT | Strategy type |
+| bypass_technique | TEXT | Bypass technique |
+| eliminated_strategies | TEXT | JSON array of eliminated strategies |
+| failure_reason | TEXT | Failure reason classification |
 
-## 写入协议（攻击完成后）
+## Write Protocol (After Attack Completion)
 
-每个 Phase-4 专家在完成所有攻击轮次后，**必须**执行以下写入流程:
+Each Phase-4 expert **MUST** execute the following write flow after completing all attack rounds:
 
-### 1. 写入记忆
+### 1. Write Memory
 
-从攻击结果和环境信息构建 JSON 并写入:
+Build JSON from attack results and environment information and write:
 
 ```bash
-# 使用 audit_db.sh 写入（内置事务保护，无需 flock）
+# Write using audit_db.sh (built-in transaction protection, no flock needed)
 bash tools/audit_db.sh memory-write '{
   "sink_type":"rce",
   "sink_function":"system",
@@ -63,237 +63,237 @@ bash tools/audit_db.sh memory-write '{
   "rounds_used":3,
   "successful_round":3,
   "successful_payload_type":"IFS_substitution",
-  "successful_payload_summary":"$IFS替代空格绕过参数过滤",
+  "successful_payload_summary":"$IFS substitution bypasses parameter filtering by replacing spaces",
   "bypass_technique":"IFS_substitution",
   "eliminated_strategies":["basic_separators","url_encoding"]
 }'
 ```
 
-### 2. 写入条件
+### 2. Write Conditions
 
-| 攻击结果 | 记录内容 | 目的 |
-|---------|---------|------|
-| ✅ confirmed | 成功的 payload 类型 + 绕过手法 + 成功轮次 | 下次优先使用 |
-| ❌ failed (max_rounds) | 所有已排除策略 + 失败原因 | 下次直接跳过 |
-| ⚠️ partial | 部分成功的策略 + 阻塞原因 | 下次参考调整 |
-| ❌ failed (< 3 轮) | **不记录** | 数据量不足，不具参考价值 |
+| Attack Result | Recorded Content | Purpose |
+|---------------|-----------------|---------|
+| ✅ confirmed | Successful payload type + bypass technique + successful round | Prioritize next time |
+| ❌ failed (max_rounds) | All eliminated strategies + failure reason | Skip directly next time |
+| ⚠️ partial | Partially successful strategies + blocking reason | Reference for adjustment next time |
+| ❌ failed (< 3 rounds) | **Not recorded** | Insufficient data, not reference-worthy |
 
-### 3. 脱敏要求
+### 3. Sanitization Requirements
 
-- Payload 中的具体 URL、路径、IP 替换为占位符
-- 不记录 credentials.json 中的凭证信息
-- 不记录具体的项目名称或业务数据
+- Replace specific URLs, paths, and IPs in payloads with placeholders
+- MUST NOT record credential information from credentials.json
+- MUST NOT record specific project names or business data
 
-## 读取协议（攻击开始前）
+## Read Protocol (Before Attack Starts)
 
-Phase-4 专家在**阶段 2（攻击阶段）**启动时，按以下流程查询历史记忆:
+Phase-4 experts query historical memory using the following flow when starting **Phase 2 (Attack Phase)**:
 
-### 1. 匹配查询
+### 1. Matching Query
 
 ```bash
-# 精确查询: sink_type + framework + PHP大版本 + WAF
+# Exact query: sink_type + framework + PHP major version + WAF
 bash tools/audit_db.sh memory-query rce Laravel 8 none
 
-# 宽松查询: 仅 sink_type + framework
+# Relaxed query: sink_type + framework only
 bash tools/audit_db.sh memory-query rce Laravel
 
-# 最宽松: 仅 sink_type
+# Most relaxed: sink_type only
 bash tools/audit_db.sh memory-query rce
 ```
 
-返回 JSON 数组，按 confirmed → partial → failed 排序，最多 20 条。
+Returns a JSON array sorted by confirmed → partial → failed, maximum 20 entries.
 
-### 2. 匹配优先级
+### 2. Match Priority
 
-| 匹配级别 | 条件 | 权重 |
-|---------|------|------|
-| 精确匹配 | sink_type + framework + PHP版本段 + WAF类型 全部一致 | ⭐⭐⭐ |
-| 高度匹配 | sink_type + framework + PHP版本段 一致 | ⭐⭐ |
-| 部分匹配 | sink_type + PHP版本段 一致 | ⭐ |
-| 不匹配 | 仅 sink_type 一致 | 仅作参考 |
+| Match Level | Conditions | Weight |
+|-------------|-----------|--------|
+| Exact match | sink_type + framework + PHP version segment + WAF type all match | ⭐⭐⭐ |
+| High match | sink_type + framework + PHP version segment match | ⭐⭐ |
+| Partial match | sink_type + PHP version segment match | ⭐ |
+| No match | Only sink_type matches | Reference only |
 
-### 3. 应用策略
+### 3. Application Strategy
 
-根据匹配到的历史记录调整攻击计划:
+Adjust the attack plan based on matched historical records:
 
-**有 confirmed 记录**:
+**Has confirmed records**:
 ```
-历史匹配: Laravel + RCE + PHP8.x → R3 使用 $IFS 替代成功
-调整: 将 $IFS 策略从 R3 提前到 R1，跳过基础分隔符测试
-预期: 首轮即命中，节省 2 轮
-```
-
-**有 failed 记录**:
-```
-历史匹配: Laravel + SQLi + PHP8.x + ModSecurity → 8轮全败，原因=framework_filter
-调整: 已排除策略 [union, boolean_blind, error_based, ...] 不再尝试
-      直接从 R1 尝试非常规路径（second_order / JSON 注入 / 子查询）
-预期: 避免重复浪费 5+ 轮
+Historical match: Laravel + RCE + PHP8.x → R3 used $IFS substitution successfully
+Adjustment: Move $IFS strategy from R3 to R1, skip basic separator tests
+Expected: First-round hit, saving 2 rounds
 ```
 
-**无匹配记录**:
+**Has failed records**:
 ```
-无历史数据，按默认轮次顺序执行
-```
-
-### 4. 记忆注入格式
-
-查询结果注入到专家 Agent prompt 中的格式:
-
-```
-## 历史攻击记忆（自动检索）
-
-匹配到 {n} 条相关记录:
-
-✅ 成功记录 (优先参考):
-- [Laravel+RCE+PHP8.x] R3 使用 IFS_substitution 成功，绕过手法: $IFS替代空格
-- [Laravel+RCE+PHP7.4] R5 使用 LD_PRELOAD+mail() 成功
-
-❌ 失败记录 (避免重复):
-- [Laravel+SQLi+PHP8.x+ModSecurity] 8轮全败，已排除: union/boolean_blind/error_based/stacked/time_blind
-  失败原因: Eloquent ORM 的参数绑定无法绕过
-
-建议调整:
-- R1 优先尝试: IFS_substitution (历史成功率 100%)
-- 跳过策略: basic_separators, url_encoding (历史成功率 0%)
+Historical match: Laravel + SQLi + PHP8.x + ModSecurity → All 8 rounds failed, reason=framework_filter
+Adjustment: Eliminated strategies [union, boolean_blind, error_based, ...] will not be reattempted
+            Start R1 directly with unconventional paths (second_order / JSON injection / subquery)
+Expected: Avoid wasting 5+ rounds on repeated attempts
 ```
 
-## 记忆维护
+**No matching records**:
+```
+No historical data, execute in default round order
+```
 
-### 容量控制
+### 4. Memory Injection Format
+
+Format for injecting query results into the expert Agent prompt:
+
+```
+## Historical Attack Memory (Auto-Retrieved)
+
+Matched {n} relevant records:
+
+✅ Success records (prioritize):
+- [Laravel+RCE+PHP8.x] R3 used IFS_substitution successfully, bypass technique: $IFS substitution for spaces
+- [Laravel+RCE+PHP7.4] R5 used LD_PRELOAD+mail() successfully
+
+❌ Failure records (avoid repeating):
+- [Laravel+SQLi+PHP8.x+ModSecurity] All 8 rounds failed, eliminated: union/boolean_blind/error_based/stacked/time_blind
+  Failure reason: Eloquent ORM parameter binding cannot be bypassed
+
+Suggested adjustments:
+- R1 prioritize: IFS_substitution (historical success rate 100%)
+- Skip strategies: basic_separators, url_encoding (historical success rate 0%)
+```
+
+## Memory Maintenance
+
+### Capacity Control
 
 ```bash
-# 自动维护: 超过 1000 条时保留 confirmed + 最近 500 条
+# Auto-maintenance: when exceeding 1000 entries, keep confirmed + most recent 500
 bash tools/audit_db.sh memory-maintain
 ```
 
-### 统计概览
+### Statistics Overview
 
 ```bash
-# 查看记忆库统计
+# View memory store statistics
 bash tools/audit_db.sh memory-stats
 ```
 
-### 初始化
+### Initialization
 
-首次审计时，记忆库不存在，`init-memory` 自动创建。所有专家按默认轮次顺序执行。记忆系统**零配置启动**，随使用自动积累。
+On the first audit, the memory store does not exist; `init-memory` creates it automatically. All experts execute in default round order. The memory system **starts with zero configuration** and accumulates automatically with use.
 
-### 从 JSONL 迁移
+### Migration from JSONL
 
-如果已有历史 JSONL 记忆文件，可一键迁移:
+If historical JSONL memory files exist, one-command migration is available:
 
 ```bash
 bash tools/audit_db.sh migrate-memory
-# 默认读取 ~/.php_audit/attack_memory.jsonl → 写入 attack_memory.db
+# Default reads ~/.php_audit/attack_memory.jsonl → writes to attack_memory.db
 ```
 
-## 与其他系统的关系
+## Relationship with Other Systems
 
-| 系统 | 关系 |
-|------|------|
-| `lessons_learned.md` | 人工可读的经验总结（文本），记忆系统是机器可读的结构化数据（SQLite） |
-| `context_compression.md` | 单次审计内的上下文管理，记忆系统是跨审计的经验复用 |
-| `audit_session.db` → `shared_findings` | 单次审计内的实时发现共享（同为 SQLite），记忆系统跨项目持久化 |
-| `payload_templates.md` | 静态 payload 库，记忆系统记录哪些 payload 在什么条件下有效/无效 |
+| System | Relationship |
+|--------|-------------|
+| `lessons_learned.md` | Human-readable experience summaries (text); the memory system is machine-readable structured data (SQLite) |
+| `context_compression.md` | Context management within a single audit; the memory system is cross-audit experience reuse |
+| `audit_session.db` → `shared_findings` | Real-time finding sharing within a single audit (also SQLite); the memory system persists across projects |
+| `payload_templates.md` | Static payload library; the memory system records which payloads are effective/ineffective under what conditions |
 
 ---
 
-## 关系型记忆扩展（Graph Layer）
+## Relational Memory Extension (Graph Layer)
 
-> 详见 `shared/attack_memory_graph.md` — 完整的实体-关系图模型定义。
+> See `shared/attack_memory_graph.md` for the complete entity-relationship graph model definition.
 
-在上述平面记忆（`attack_memory` 表）的基础上，同一个 `attack_memory.db` 文件中增加两张图表（`memory_nodes` + `memory_edges`），记录漏洞之间的语义关系。
+On top of the flat memory (`attack_memory` table) described above, two graph tables (`memory_nodes` + `memory_edges`) are added to the same `attack_memory.db` file to record semantic relationships between vulnerabilities.
 
-### 扩展写入规则
+### Extended Write Rules
 
-每个 Phase-4 专家在执行 **写入协议** 时，**必须同时**执行以下关系型写入：
+Each Phase-4 expert **MUST simultaneously** execute the following relational writes when performing the **write protocol**:
 
-#### 规则 GW-1: 攻击完成后写入节点
+#### Rule GW-1: Write Node After Attack Completion
 
-在写入 `attack_memory` 表（平面记录）的同时，写入 `memory_nodes` 表：
+When writing to the `attack_memory` table (flat record), simultaneously write to the `memory_nodes` table:
 
 ```bash
-# 平面记忆写入（已有流程，不变）
+# Flat memory write (existing flow, unchanged)
 bash tools/audit_db.sh memory-write '{...}'
 
-# 关系型记忆写入（新增，必须紧跟平面写入）
+# Relational memory write (new, MUST immediately follow flat write)
 bash tools/audit_db.sh graph-node-write '{
   "node_id": "{project_hash}_{sink_id}",
   "vuln_type": "{sink_type}",
   "sink_id": "{sink_id}",
-  "route": "{攻击的路由路径}",
-  "severity": "{三维评分后的等级}",
+  "route": "{attacked route path}",
+  "severity": "{level after tri-dimensional scoring}",
   "status": "{confirmed/failed/partial}",
   "framework": "{framework}",
-  "data_object": "{涉及的数据对象，如 users 表/session/cookie}",
-  "summary": "{一句话攻击结果摘要}"
+  "data_object": "{involved data object, e.g., users table/session/cookie}",
+  "summary": "{one-line attack result summary}"
 }'
 ```
 
-**data_object 识别规则**：
-- SQL 类漏洞 → 涉及的表名（如 `users`, `orders`）
-- 文件类漏洞 → 涉及的文件路径模式（如 `/uploads/*`, `/config/.env`）
-- Session 类漏洞 → `session`
-- 认证类漏洞 → `auth_token` 或 `credentials`
-- 配置类漏洞 → `config`
+**data_object Identification Rules**:
+- SQL vulnerabilities → involved table name (e.g., `users`, `orders`)
+- File vulnerabilities → involved file path pattern (e.g., `/uploads/*`, `/config/.env`)
+- Session vulnerabilities → `session`
+- Authentication vulnerabilities → `auth_token` or `credentials`
+- Configuration vulnerabilities → `config`
 
-#### 规则 GW-2: 发现跨 Sink 关系时写入边
+#### Rule GW-2: Write Edge When Cross-Sink Relationships Are Discovered
 
-当 Auditor 在分析或攻击过程中发现与其他 Sink 的关联时，写入 `memory_edges` 表：
+When the Auditor discovers associations with other Sinks during analysis or attack, write to the `memory_edges` table:
 
-**触发条件**（满足任一即写入边）：
-1. 当前 Sink 的输出数据可作为另一个 Sink 的输入 → `data_flows_to`
-2. 当前 Sink 的利用需要另一个漏洞先成功 → `enables`（反向写入）
-3. 当前 Sink 与另一个 Sink 操作同一数据表/文件 → `shares_data_object`
-4. 当前 Sink 与另一个 Sink 共享同一入口路由 → `same_entry_point`
-5. 从 `shared_findings` 表中发现已确认的相关漏洞 → 评估是否构成 `escalates_to`
+**Trigger conditions** (write edge if ANY condition is met):
+1. Current Sink's output data can serve as input for another Sink → `data_flows_to`
+2. Current Sink's exploitation requires another vulnerability to succeed first → `enables` (write in reverse)
+3. Current Sink and another Sink operate on the same data table/file → `shares_data_object`
+4. Current Sink and another Sink share the same entry route → `same_entry_point`
+5. A confirmed related vulnerability is found in the `shared_findings` table → evaluate whether it constitutes `escalates_to`
 
 ```bash
 bash tools/audit_db.sh graph-edge-write '{
-  "source_node": "{project_hash}_{当前sink_id}",
-  "target_node": "{project_hash}_{关联sink_id}",
-  "relation": "{关系类型}",
+  "source_node": "{project_hash}_{current_sink_id}",
+  "target_node": "{project_hash}_{related_sink_id}",
+  "relation": "{relation type}",
   "confidence": "{confirmed/probable/speculative}",
-  "evidence": "{关系证据：具体描述数据如何流动/为何构成升级}"
+  "evidence": "{relationship evidence: specific description of how data flows/why it constitutes escalation}"
 }'
 ```
 
-**confidence 判定标准**：
-- `confirmed`: 已通过 PoC 验证的关系（如实际注入数据在另一端点被渲染）
-- `probable`: 代码分析确认数据流存在，但未实际验证
-- `speculative`: 基于模式推测（如同表操作但未确认具体字段关联）
+**confidence Determination Criteria**:
+- `confirmed`: Relationship verified through PoC (e.g., injected data actually rendered at another endpoint)
+- `probable`: Code analysis confirms data flow exists, but not actually verified
+- `speculative`: Based on pattern inference (e.g., same table operations but specific field association unconfirmed)
 
-#### 规则 GW-3: 不写入条件
+#### Rule GW-3: No-Write Conditions
 
-以下情况**不写入**关系型记忆（与平面记忆的不写入条件一致）：
-- 攻击轮次 < 3 轮就失败（数据量不足）
-- 仅为 `speculative` 且无任何代码级证据
-- data_object 无法确定（不要猜测）
+The following situations **MUST NOT** be written to relational memory (consistent with flat memory no-write conditions):
+- Attack failed in < 3 rounds (insufficient data)
+- Only `speculative` with no code-level evidence
+- data_object cannot be determined (MUST NOT guess)
 
-### 扩展读取规则
+### Extended Read Rules
 
-Phase-4 专家在攻击阶段 2 启动时，除了查询平面记忆外，**额外**查询关系图：
+Phase-4 experts **additionally** query the relationship graph when starting Attack Phase 2, in addition to querying flat memory:
 
 ```bash
-# 平面记忆查询（已有流程，不变）
+# Flat memory query (existing flow, unchanged)
 bash tools/audit_db.sh memory-query {sink_type} {framework}
 
-# 关系图查询（新增）— 查询当前 Sink 涉及的数据对象的完整攻击面
+# Relationship graph query (new) — query complete attack surface for the current Sink's data object
 bash tools/audit_db.sh graph-by-data-object "{data_object}"
 ```
 
-**注入格式**（追加在现有"历史攻击记忆"之后）：
+**Injection format** (appended after existing "Historical Attack Memory"):
 
 ```
-## 关联漏洞情报（图记忆）
+## Related Vulnerability Intelligence (Graph Memory)
 
-涉及数据对象 "{data_object}" 的已知漏洞:
-- [SQLi → users 表] sink_023: ORDER BY 注入(confirmed) — 可读取任意字段
-- [XSS → users 表] sink_045: 模板渲染 users.bio(suspected) — 未转义输出
+Known vulnerabilities involving data object "{data_object}":
+- [SQLi → users table] sink_023: ORDER BY injection (confirmed) — can read arbitrary fields
+- [XSS → users table] sink_045: template renders users.bio (suspected) — unescaped output
 
-关系链:
-- sink_023 --[data_flows_to]--> sink_045: SQLi 写入 bio 字段 → XSS 渲染 bio 字段
-  → 组合利用可升级为 Stored XSS (High)
+Relationship chains:
+- sink_023 --[data_flows_to]--> sink_045: SQLi writes to bio field → XSS renders bio field
+  → Combined exploitation can escalate to Stored XSS (High)
 
-建议: 优先验证 data_flows_to 关系链，若 source 已 confirmed 则 target 成功率大幅提升。
+Suggestion: Prioritize verifying data_flows_to relationship chains; if source is confirmed, target success rate increases significantly.
 ```

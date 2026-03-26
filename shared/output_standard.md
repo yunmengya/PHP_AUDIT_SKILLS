@@ -1,34 +1,34 @@
-# 统一输出规范（硬约束）
+# Unified Output Standard (Hard Constraints)
 
-> 本文件定义所有 Agent 输出的强制约束。质检员校验时以此为标准。任何违反硬约束的输出一律判定不通过。
+> This file defines mandatory constraints for all Agent outputs. The QA Inspector uses this as the standard during validation. Any output violating hard constraints MUST be rejected.
 
 ---
 
-## 6 条硬约束
+## 6 Hard Constraints
 
-### 约束 1：不增删章节
-- 每个 Agent 的输出必须严格包含其对应 data_contracts.md 中定义的所有章节
-- 不得新增未定义的章节
-- 不得删除或跳过任何章节（无内容则标注 `无` 或 `N/A`，不得省略）
+### Constraint 1: No Adding or Removing Sections
+- Each Agent's output MUST strictly include all sections defined in its corresponding data_contracts.md
+- MUST NOT add undefined sections
+- MUST NOT remove or skip any section (if no content, mark as `N/A` or `None`, MUST NOT omit)
 
-### 约束 2：不改表头/列名
-- JSON 输出的字段名必须与 schema 定义完全一致（大小写敏感）
-- Markdown 表格的列名必须与模板定义一致
-- 不得重命名、合并或拆分列
+### Constraint 2: No Modifying Table Headers/Column Names
+- JSON output field names MUST exactly match the schema definitions (case-sensitive)
+- Markdown table column names MUST match the template definitions
+- MUST NOT rename, merge, or split columns
 
-### 约束 3：占位符必须全部替换
-- 输出中不得残留任何占位符标记：`【填写】`、`TODO`、`TBD`、`PLACEHOLDER`、`xxx`
-- 质检员使用以下命令检测残留：
+### Constraint 3: All Placeholders MUST Be Replaced
+- Output MUST NOT contain any remaining placeholder markers: `【填写】`, `TODO`, `TBD`, `PLACEHOLDER`, `xxx`
+- The QA Inspector uses the following command to detect remnants:
   ```bash
   grep -rn '【填写】\|TODO\|TBD\|PLACEHOLDER\|xxx' "$FILE"
   ```
-- 发现任何残留 → 该校验项立即判定 ❌
+- Any remnant found → that validation item is immediately marked ❌
 
-### 约束 4：JSON 必须通过 Schema 校验
-- 所有 JSON 输出文件必须通过对应的 `schemas/*.schema.json` 校验
-- 校验方法（质检员执行）：
+### Constraint 4: JSON MUST Pass Schema Validation
+- All JSON output files MUST pass validation against their corresponding `schemas/*.schema.json`
+- Validation method (executed by QA Inspector):
   ```bash
-  # 使用 Python 内置 jsonschema（如可用）
+  # Using Python built-in jsonschema (if available)
   python3 -c "
   import json, jsonschema
   data = json.load(open('$FILE'))
@@ -37,41 +37,41 @@
   print('PASS')
   "
   ```
-- 无 jsonschema 模块时，至少验证 JSON 语法正确：
+- When the jsonschema module is unavailable, at minimum verify JSON syntax is correct:
   ```bash
   python3 -m json.tool "$FILE" > /dev/null
   ```
 
-### 约束 5：文件命名规范
-- JSON 文件：小写 + 下划线，`.json` 后缀
+### Constraint 5: File Naming Convention
+- JSON files: lowercase + underscore, `.json` suffix
   - ✅ `route_map.json`, `auth_matrix.json`, `priority_queue.json`
   - ❌ `routeMap.json`, `Route_Map.JSON`
-- Exploit 文件：`exploits/{sink_id}.json`，sink_id 使用 kebab-case
+- Exploit files: `exploits/{sink_id}.json`, sink_id uses kebab-case
   - ✅ `exploits/sqli-user-login.json`
   - ❌ `exploits/SQLi_User_Login.json`
-- PoC 文件：`poc/{vuln_type}_{sink_id}.py`
-- Patch 文件：`patches/{finding_id}.patch`
+- PoC files: `poc/{vuln_type}_{sink_id}.py`
+- Patch files: `patches/{finding_id}.patch`
 
-### 约束 6：编码 UTF-8
-- 所有文本文件必须为 UTF-8 编码（无 BOM）
-- 检测方法：
+### Constraint 6: UTF-8 Encoding
+- All text files MUST be UTF-8 encoded (no BOM)
+- Detection method:
   ```bash
   file --mime-encoding "$FILE" | grep -q 'utf-8\|us-ascii'
   ```
 
 ---
 
-## 各 Team 输出必需文件清单
+## Required Output Files per Team
 
-> **输出目录结构**: 所有文件按以下目录组织，不得散放在 WORK_DIR 根目录。
+> **Output directory structure**: All files MUST be organized in the following directory structure. Files MUST NOT be placed directly in the WORK_DIR root.
 
 ```
 $WORK_DIR/
 ├── 报告/
-│   ├── 审计报告.md              ← 主报告（全中文，含 Burp 模板 + 攻击链 + AI验证标记）
-│   └── audit_report.sarif.json  ← 机器可读报告（给 CI/CD 用）
+│   ├── 审计报告.md              ← Main report (full Chinese, with Burp templates + attack chains + AI verification markers)
+│   └── audit_report.sarif.json  ← Machine-readable report (for CI/CD)
 ├── PoC脚本/
-│   ├── poc_{sink_id}.py         ← 独立 PoC 脚本
+│   ├── poc_{sink_id}.py         ← Standalone PoC scripts
 │   ├── requirements.txt
 │   └── 一键运行.sh
 ├── 修复补丁/
@@ -99,75 +99,75 @@ $WORK_DIR/
     └── .audit_state/
 ```
 
-### Team-1（环境构建）
+### Team-1 (Environment Setup)
 
-| 文件 | Schema | 必需 | 说明 |
-|------|--------|:----:|------|
-| environment_status.json | environment_status.schema.json | ✅ | PHP版本、框架、扩展、路由分类 |
+| File | Schema | Required | Description |
+|------|--------|:--------:|-------------|
+| environment_status.json | environment_status.schema.json | ✅ | PHP version, framework, extensions, route classification |
 
-### Team-2（静态侦察）
+### Team-2 (Static Reconnaissance)
 
-| 文件 | Schema | 必需 | 说明 |
-|------|--------|:----:|------|
-| route_map.json | route_map.schema.json | ✅ | 路由表 |
-| auth_matrix.json | auth_matrix.schema.json | ✅ | 权限矩阵 |
-| ast_sinks.json | — | ✅ | AST Sink 扫描结果 |
-| priority_queue.json | priority_queue.schema.json | ✅ | 优先级排序 |
-| context_packs/*.json | context_pack.schema.json | ✅ | 上下文包 |
-| dep_risk.json | dep_risk.schema.json | ⚠️ | 依赖风险评估 |
+| File | Schema | Required | Description |
+|------|--------|:--------:|-------------|
+| route_map.json | route_map.schema.json | ✅ | Route table |
+| auth_matrix.json | auth_matrix.schema.json | ✅ | Authorization matrix |
+| ast_sinks.json | — | ✅ | AST Sink scan results |
+| priority_queue.json | priority_queue.schema.json | ✅ | Priority ranking |
+| context_packs/*.json | context_pack.schema.json | ✅ | Context packs |
+| dep_risk.json | dep_risk.schema.json | ⚠️ | Dependency risk assessment |
 
-### Team-3（动态追踪）
+### Team-3 (Dynamic Tracing)
 
-| 文件 | Schema | 必需 | 说明 |
-|------|--------|:----:|------|
-| credentials.json | credentials.schema.json | ✅ | 3 级凭证 |
-| traces/*.json | trace_record.schema.json | ✅ | 调用链追踪记录 |
+| File | Schema | Required | Description |
+|------|--------|:--------:|-------------|
+| credentials.json | credentials.schema.json | ✅ | 3-tier credentials |
+| traces/*.json | trace_record.schema.json | ✅ | Call chain trace records |
 
-### Team-4（漏洞利用）
+### Team-4 (Exploit Verification)
 
-| 文件 | Schema | 必需 | 说明 |
-|------|--------|:----:|------|
-| exploits/{sink_id}.json | — | ✅ | 每个利用结果 |
-| .audit_state/team4_progress.json | — | ✅ | 进度汇总 |
+| File | Schema | Required | Description |
+|------|--------|:--------:|-------------|
+| exploits/{sink_id}.json | — | ✅ | Individual exploit results |
+| .audit_state/team4_progress.json | — | ✅ | Progress summary |
 
-### Team-4.5（关联分析）
+### Team-4.5 (Correlation Analysis)
 
-| 文件 | Schema | 必需 | 说明 |
-|------|--------|:----:|------|
-| attack_graph.json | — | ✅ | 攻击图 |
-| correlation_report.json | — | ✅ | 关联分析报告 |
-| 修复补丁/*.patch | — | ⚠️ | 修复补丁 |
+| File | Schema | Required | Description |
+|------|--------|:--------:|-------------|
+| attack_graph.json | — | ✅ | Attack graph |
+| correlation_report.json | — | ✅ | Correlation analysis report |
+| 修复补丁/*.patch | — | ⚠️ | Fix patches |
 
-### Team-5（报告生成）
+### Team-5 (Report Generation)
 
-| 文件 | Schema | 必需 | 说明 |
-|------|--------|:----:|------|
-| 报告/审计报告.md | — | ✅ | 全中文审计报告 |
-| 报告/audit_report.sarif.json | SARIF 2.1.0 | ✅ | 机器可读报告 |
-| PoC脚本/poc_*.py | — | ✅ | PoC 脚本（如有 confirmed） |
-| PoC脚本/一键运行.sh | — | ✅ | 批量执行 PoC |
-| 质量报告/质量报告.md | — | ✅ | 最终质量报告 |
+| File | Schema | Required | Description |
+|------|--------|:--------:|-------------|
+| 报告/审计报告.md | — | ✅ | Full Chinese audit report |
+| 报告/audit_report.sarif.json | SARIF 2.1.0 | ✅ | Machine-readable report |
+| PoC脚本/poc_*.py | — | ✅ | PoC scripts (if confirmed findings exist) |
+| PoC脚本/一键运行.sh | — | ✅ | Batch PoC execution |
+| 质量报告/质量报告.md | — | ✅ | Final quality report |
 
 ---
 
-## 违规检测方法（质检员执行）
+## Violation Detection Methods (Executed by QA Inspector)
 
-### 快速全量检测脚本
+### Quick Full-Scan Detection Script
 
-质检员在校验时依次执行以下检测：
+The QA Inspector executes the following checks sequentially during validation:
 
 ```bash
-# 1. 占位符残留检测
+# 1. Placeholder remnant detection
 echo "=== 占位符残留检测 ==="
 find "$WORK_DIR" -name "*.json" -o -name "*.md" | xargs grep -ln '【填写】\|TODO\|TBD\|PLACEHOLDER' 2>/dev/null
 
-# 2. JSON 语法检测
+# 2. JSON syntax detection
 echo "=== JSON 语法检测 ==="
 find "$WORK_DIR" -name "*.json" | while read f; do
   python3 -m json.tool "$f" > /dev/null 2>&1 || echo "FAIL: $f"
 done
 
-# 3. 编码检测
+# 3. Encoding detection
 echo "=== 编码检测 ==="
 find "$WORK_DIR" -name "*.json" -o -name "*.md" | while read f; do
   enc=$(file --mime-encoding "$f" | awk -F= '{print $2}')
@@ -177,13 +177,13 @@ find "$WORK_DIR" -name "*.json" -o -name "*.md" | while read f; do
   esac
 done
 
-# 4. 文件命名检测
+# 4. File naming detection
 echo "=== 文件命名检测 ==="
 find "$WORK_DIR" -name "*.json" | while read f; do
   basename "$f" | grep -qE '^[a-z][a-z0-9_-]*\.json$' || echo "BAD NAME: $f"
 done
 
-# 5. 必需文件存在性检测
+# 5. Required file existence detection
 echo "=== 必需文件检测 ==="
 for f in environment_status.json route_map.json auth_matrix.json ast_sinks.json \
          priority_queue.json credentials.json; do
@@ -196,7 +196,7 @@ done
 [ -d "$WORK_DIR/exploits" ] || echo "MISSING: exploits/"
 ```
 
-### 单文件 Schema 校验
+### Single-File Schema Validation
 
 ```bash
 validate_schema() {
@@ -221,25 +221,25 @@ except ImportError:
 
 ---
 
-## Markdown 报告格式约束
+## Markdown Report Format Constraints
 
-### 审计报告.md 必需章节
+### Required Sections in 审计报告.md
 
-1. **概述** — 审计范围、目标、方法
-2. **环境信息** — PHP 版本、框架、数据库
-3. **漏洞摘要表** — 全部发现的一览表（编号 / 类型 / 等级 / AI验证 / 端点）
-4. **漏洞详情**（每条漏洞一个子章节）:
-   - AI 验证状态（🟢/🟡/🔴 醒目标签）
-   - 攻击链（Mermaid 流程图）
-   - 数据流（Source → Sink）
-   - Burp 复现模板（完整 HTTP 请求，可直接复制到 Burp Repeater）
-   - 服务器响应（物理证据）
-   - 修复方案（修复前 vs 修复后代码）
-5. **联合攻击链** — 跨漏洞组合攻击路径（Mermaid 图）
-6. **覆盖率统计** — 已审计/跳过/总路由 + Agent 执行状态表
-7. **待补证风险池** — 未完全验证的条目
+1. **概述** — Audit scope, objectives, methodology
+2. **环境信息** — PHP version, framework, database
+3. **漏洞摘要表** — Summary table of all findings (ID / Type / Severity / AI Verification / Endpoint)
+4. **漏洞详情** (one subsection per vulnerability):
+   - AI 验证状态 (🟢/🟡/🔴 prominent labels)
+   - 攻击链 (Mermaid flowchart)
+   - 数据流 (Source → Sink)
+   - Burp 复现模板 (complete HTTP request, directly copyable to Burp Repeater)
+   - 服务器响应 (physical evidence)
+   - 修复方案 (before-fix vs after-fix code)
+5. **联合攻击链** — Cross-vulnerability combined attack paths (Mermaid diagram)
+6. **覆盖率统计** — Audited/Skipped/Total routes + Agent execution status table
+7. **待补证风险池** — Items not fully verified
 
-### Burp 格式硬约束
+### Burp Format Hard Constraints
 
 ```http
 POST /api/user/login HTTP/1.1
@@ -251,9 +251,9 @@ Content-Length: 42
 username=admin'OR+1=1--&password=anything
 ```
 
-- 必须包含完整请求行（METHOD URI HTTP/1.1）
-- 必须包含 Host header
-- 必须包含 Content-Type（如 POST）
-- 必须包含认证信息（Cookie/Authorization，如适用）
-- 必须包含请求体（如 POST/PUT）
-- 可直接复制到 Burp Repeater 使用
+- MUST include complete request line (METHOD URI HTTP/1.1)
+- MUST include Host header
+- MUST include Content-Type (for POST requests)
+- MUST include authentication information (Cookie/Authorization, if applicable)
+- MUST include request body (for POST/PUT)
+- MUST be directly copyable to Burp Repeater

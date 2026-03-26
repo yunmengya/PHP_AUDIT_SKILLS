@@ -1,200 +1,200 @@
-# Known CVEs — PHP 生态高频 CVE 速查库
+# Known CVEs — PHP Ecosystem High-Frequency CVE Quick Reference
 
-审计时快速比对目标组件版本，判断是否存在已知漏洞。按组件分类，每条包含完整利用前提。
+Quickly compare target component versions during audits to determine whether known vulnerabilities exist. Organized by component, each entry includes complete exploitation prerequisites.
 
 ---
 
 ## Laravel
 
 ### CVE-2021-3129 — Ignition RCE (Log Poisoning + Phar)
-- **影响版本**: Ignition < 2.5.2 (Laravel 6.x / 7.x / 8.x with debug mode)
-- **漏洞类型**: RCE (Remote Code Execution)
-- **检测方法**: 访问 `/_ignition/execute-solution`，返回非 404 即存在；检查 `composer.lock` 中 `facade/ignition` 版本
-- **利用前提**: `APP_DEBUG=true`；Ignition 组件存在且可访问；可写 storage/logs
-- **利用链**: 通过 `_ignition/execute-solution` 清空日志 → 逐字节写入 phar payload → `phar://` 触发反序列化
+- **Affected Versions**: Ignition < 2.5.2 (Laravel 6.x / 7.x / 8.x with debug mode)
+- **Vulnerability Type**: RCE (Remote Code Execution)
+- **Detection Method**: Access `/_ignition/execute-solution`; non-404 response indicates presence; check `facade/ignition` version in `composer.lock`
+- **Prerequisites**: `APP_DEBUG=true`; Ignition component present and accessible; writable storage/logs
+- **Exploit Chain**: Clear logs via `_ignition/execute-solution` → write phar payload byte by byte → trigger deserialization via `phar://`
 
 ### CVE-2018-15133 — APP_KEY Deserialization RCE
-- **影响版本**: Laravel 5.5.x ~ 5.6.29
-- **漏洞类型**: RCE (Deserialization)
-- **检测方法**: 发送恶意 cookie，观察 500 错误堆栈是否暴露反序列化相关类；需已知 APP_KEY
-- **利用前提**: 必须获得 `APP_KEY`（通过 `.env` 泄露、debug 页面、git 泄露等）
-- **利用链**: 利用 APP_KEY 加密恶意序列化对象 → 放入 laravel_session cookie → 服务端解密触发 `unserialize()`
+- **Affected Versions**: Laravel 5.5.x ~ 5.6.29
+- **Vulnerability Type**: RCE (Deserialization)
+- **Detection Method**: Send malicious cookie, observe whether 500 error stack exposes deserialization-related classes; requires known APP_KEY
+- **Prerequisites**: MUST obtain `APP_KEY` (via `.env` leak, debug page, git leak, etc.)
+- **Exploit Chain**: Encrypt malicious serialized object using APP_KEY → place in laravel_session cookie → server-side decryption triggers `unserialize()`
 
 ### CVE-2021-21263 — Query Binding Bypass (SQLi)
-- **影响版本**: Laravel < 8.22.1
-- **漏洞类型**: SQL Injection
-- **检测方法**: 检查 `composer.lock` 版本；搜索使用 `whereIn` / `whereNotIn` 配合用户输入的代码
-- **利用前提**: 应用使用 PostgreSQL；用户输入进入 query binding 且未额外验证类型
-- **利用链**: 传入特殊构造的数组参数 → 绕过 PDO 参数绑定 → 注入 SQL 片段
+- **Affected Versions**: Laravel < 8.22.1
+- **Vulnerability Type**: SQL Injection
+- **Detection Method**: Check `composer.lock` version; search for code using `whereIn` / `whereNotIn` with user input
+- **Prerequisites**: Application uses PostgreSQL; user input enters query binding without additional type validation
+- **Exploit Chain**: Pass specially crafted array parameter → bypass PDO parameter binding → inject SQL fragment
 
 ### CVE-2024-13918 / CVE-2024-13919 — Laravel Reflected XSS
-- **影响版本**: Laravel 11.9.0 ~ 11.35.1, 12.0.0 ~ 12.1.1
-- **漏洞类型**: Reflected XSS
-- **检测方法**: 检查 `composer.lock` 版本；测试错误页面中路由参数是否被反射
-- **利用前提**: `APP_DEBUG=true` 或自定义错误页面渲染用户输入
-- **利用链**: 构造含 XSS payload 的 URL 路由参数 → 触发 404/500 → 错误页面未转义输出
+- **Affected Versions**: Laravel 11.9.0 ~ 11.35.1, 12.0.0 ~ 12.1.1
+- **Vulnerability Type**: Reflected XSS
+- **Detection Method**: Check `composer.lock` version; test whether route parameters are reflected in error pages
+- **Prerequisites**: `APP_DEBUG=true` or custom error pages render user input
+- **Exploit Chain**: Craft URL route parameter containing XSS payload → trigger 404/500 → error page outputs unescaped content
 
 ---
 
 ## ThinkPHP
 
-### ThinkPHP 5.0 RCE — invokefunction 远程代码执行
-- **CVE**: 无正式编号 (CNVD-2018-24942)
-- **影响版本**: ThinkPHP 5.0.0 ~ 5.0.23
-- **漏洞类型**: RCE
-- **检测方法**: 发送 `?s=index/think\app/invokefunction&function=phpinfo&vars[0]=1`，返回 phpinfo 即存在
-- **利用前提**: 默认路由开启 (通常默认开启)；无 WAF 拦截
-- **利用链**: 控制器/方法路由解析缺陷 → 可调用任意类的任意方法 → `call_user_func_array()` 执行任意函数
+### ThinkPHP 5.0 RCE — invokefunction Remote Code Execution
+- **CVE**: No official number (CNVD-2018-24942)
+- **Affected Versions**: ThinkPHP 5.0.0 ~ 5.0.23
+- **Vulnerability Type**: RCE
+- **Detection Method**: Send `?s=index/think\app/invokefunction&function=phpinfo&vars[0]=1`; phpinfo response confirms presence
+- **Prerequisites**: Default routing enabled (typically on by default); no WAF interception
+- **Exploit Chain**: Controller/method route parsing flaw → can invoke any method of any class → `call_user_func_array()` executes arbitrary functions
 
-### ThinkPHP 5.1 SQLi — Builder 组件 SQL 注入
-- **CVE**: 无正式编号
-- **影响版本**: ThinkPHP 5.1.0 ~ 5.1.25
-- **漏洞类型**: SQL Injection
-- **检测方法**: 搜索使用 `order()` / `where()` 且参数来自用户输入的代码；检查框架版本
-- **利用前提**: 用户输入直接进入 `order()` / `where()` 等 query builder 方法
-- **利用链**: `order` 参数传入 `updatexml` 等报错注入函数 → 拼接进 SQL → 数据库执行报错带出数据
+### ThinkPHP 5.1 SQLi — Builder Component SQL Injection
+- **CVE**: No official number
+- **Affected Versions**: ThinkPHP 5.1.0 ~ 5.1.25
+- **Vulnerability Type**: SQL Injection
+- **Detection Method**: Search for code using `order()` / `where()` with user input parameters; check framework version
+- **Prerequisites**: User input directly enters `order()` / `where()` and other query builder methods
+- **Exploit Chain**: Pass error-based injection functions like `updatexml` via `order` parameter → concatenated into SQL → database executes and leaks data via error
 
-### ThinkPHP 6 Session 反序列化
-- **CVE**: 无正式编号
-- **影响版本**: ThinkPHP 6.0.0 ~ 6.0.1
-- **漏洞类型**: Deserialization RCE
-- **检测方法**: 检查 session 配置是否使用 file driver；session ID 是否来自未过滤的用户输入
-- **利用前提**: session driver 为 file (非 Redis/Memcache)；session 文件路径可控（session ID 未严格过滤）
-- **利用链**: 控制 session ID → 写入含恶意序列化数据的 session 文件 → 任意文件创建 + 反序列化
+### ThinkPHP 6 Session Deserialization
+- **CVE**: No official number
+- **Affected Versions**: ThinkPHP 6.0.0 ~ 6.0.1
+- **Vulnerability Type**: Deserialization RCE
+- **Detection Method**: Check whether session config uses file driver; whether session ID comes from unfiltered user input
+- **Prerequisites**: Session driver MUST be file (not Redis/Memcache); session file path controllable (session ID not strictly filtered)
+- **Exploit Chain**: Control session ID → write session file containing malicious serialized data → arbitrary file creation + deserialization
 
-### ThinkPHP 多语言 RCE — lang 参数包含
-- **CVE**: 无正式编号 (2022年公开)
-- **影响版本**: ThinkPHP 5.x / 6.x 开启多语言功能
-- **漏洞类型**: RCE (File Inclusion)
-- **检测方法**: 发送 `?lang=../../../../usr/local/lib/php/pearcmd`，观察响应；检查中间件是否加载 `LoadLangPack`
-- **利用前提**: 开启多语言中间件；PHP 安装了 pearcmd.php (默认安装通常存在)
-- **利用链**: `lang` 参数控制语言文件路径 → 文件包含 → 利用 `pearcmd.php` 实现文件写入 → Webshell
+### ThinkPHP Multi-Language RCE — lang Parameter Inclusion
+- **CVE**: No official number (disclosed 2022)
+- **Affected Versions**: ThinkPHP 5.x / 6.x with multi-language feature enabled
+- **Vulnerability Type**: RCE (File Inclusion)
+- **Detection Method**: Send `?lang=../../../../usr/local/lib/php/pearcmd`; observe response; check whether middleware loads `LoadLangPack`
+- **Prerequisites**: Multi-language middleware enabled; PHP has pearcmd.php installed (typically present in default installations)
+- **Exploit Chain**: `lang` parameter controls language file path → file inclusion → leverage `pearcmd.php` for file write → Webshell
 
 ---
 
 ## WordPress
 
 ### CVE-2022-21661 — WP_Query SQL Injection
-- **影响版本**: WordPress < 5.8.3
-- **漏洞类型**: SQL Injection
-- **检测方法**: 检查 WordPress 版本；搜索使用 `WP_Query` 且 `tax_query` 参数来自用户输入的代码
-- **利用前提**: 存在允许用户控制 `WP_Query` 参数的功能（如自定义 REST endpoint、AJAX handler）
-- **利用链**: 构造恶意 `tax_query` 参数 → `WP_Tax_Query::clean_query()` 处理不当 → 注入 SQL
+- **Affected Versions**: WordPress < 5.8.3
+- **Vulnerability Type**: SQL Injection
+- **Detection Method**: Check WordPress version; search for code using `WP_Query` with `tax_query` parameters from user input
+- **Prerequisites**: Functionality exists that allows user control of `WP_Query` parameters (e.g., custom REST endpoint, AJAX handler)
+- **Exploit Chain**: Craft malicious `tax_query` parameter → `WP_Tax_Query::clean_query()` mishandles → SQL injection
 
-### CVE-2019-8942 — WordPress Image RCE (Crop 功能)
-- **影响版本**: WordPress < 5.0.1 / < 4.9.9
-- **漏洞类型**: RCE (via Post Meta Overwrite + Path Traversal)
-- **检测方法**: 检查 WP 版本；需要至少 Author 权限
-- **利用前提**: 攻击者拥有 Author 或以上角色；服务器使用 GD/Imagick 库
-- **利用链**: 上传含恶意 EXIF 的图片 → 利用 `wp_crop_image()` 的路径穿越覆写 → 修改 post meta 指向恶意文件 → 包含执行
+### CVE-2019-8942 — WordPress Image RCE (Crop Feature)
+- **Affected Versions**: WordPress < 5.0.1 / < 4.9.9
+- **Vulnerability Type**: RCE (via Post Meta Overwrite + Path Traversal)
+- **Detection Method**: Check WP version; requires at least Author privileges
+- **Prerequisites**: Attacker has Author role or above; server uses GD/Imagick library
+- **Exploit Chain**: Upload image with malicious EXIF → exploit path traversal in `wp_crop_image()` to overwrite → modify post meta to point to malicious file → include and execute
 
-### WordPress REST API 权限绕过 (CVE-2017-1001000)
-- **影响版本**: WordPress 4.7.0 ~ 4.7.1
-- **漏洞类型**: Authorization Bypass → Content Injection
-- **检测方法**: 发送 `POST /wp-json/wp/v2/posts/1?id=1abc`，若可修改内容则存在
-- **利用前提**: REST API 启用（WordPress 4.7+ 默认启用）；目标有 Posts
-- **利用链**: 利用类型转换缺陷在 URL 中传入非整型 ID → 绕过权限检查 → 未认证修改任意文章
+### WordPress REST API Authorization Bypass (CVE-2017-1001000)
+- **Affected Versions**: WordPress 4.7.0 ~ 4.7.1
+- **Vulnerability Type**: Authorization Bypass → Content Injection
+- **Detection Method**: Send `POST /wp-json/wp/v2/posts/1?id=1abc`; ability to modify content confirms presence
+- **Prerequisites**: REST API enabled (enabled by default in WordPress 4.7+); target has Posts
+- **Exploit Chain**: Exploit type casting flaw by passing non-integer ID in URL → bypass permission check → unauthenticated modification of arbitrary posts
 
 ### CVE-2023-2745 — WordPress Directory Traversal
-- **影响版本**: WordPress < 6.2.1
-- **漏洞类型**: Directory Traversal → 信息泄露
-- **检测方法**: 检查 WP 版本；尝试 `wp-login.php?wp_lang=../../../etc/passwd%00`
-- **利用前提**: 攻击者可访问 `wp-login.php`
-- **利用链**: `wp_lang` 参数路径穿越 → 包含任意 `.mo` 文件 → 信息泄露 / 配合文件上传实现 RCE
+- **Affected Versions**: WordPress < 6.2.1
+- **Vulnerability Type**: Directory Traversal → Information Disclosure
+- **Detection Method**: Check WP version; try `wp-login.php?wp_lang=../../../etc/passwd%00`
+- **Prerequisites**: Attacker can access `wp-login.php`
+- **Exploit Chain**: `wp_lang` parameter path traversal → include arbitrary `.mo` file → information disclosure / combined with file upload for RCE
 
 ---
 
-## 常用组件 (Common Components)
+## Common Components
 
-### PHPUnit RCE — eval-stdin.php 远程代码执行
+### PHPUnit RCE — eval-stdin.php Remote Code Execution
 - **CVE**: CVE-2017-9841
-- **影响版本**: PHPUnit 4.8.19 ~ 4.8.27, 5.x ~ 5.6.2
-- **漏洞类型**: RCE
-- **检测方法**: 访问 `vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php`，返回非 404 即存在
-- **利用前提**: `vendor/` 目录可通过 Web 访问（生产环境未删除开发依赖或 Web 根目录配置不当）
-- **利用链**: POST 请求发送 PHP 代码到 `eval-stdin.php` → 直接 `eval()` 执行
+- **Affected Versions**: PHPUnit 4.8.19 ~ 4.8.27, 5.x ~ 5.6.2
+- **Vulnerability Type**: RCE
+- **Detection Method**: Access `vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php`; non-404 response confirms presence
+- **Prerequisites**: `vendor/` directory accessible via Web (dev dependencies not removed in production or web root misconfigured)
+- **Exploit Chain**: POST request sends PHP code to `eval-stdin.php` → directly `eval()` executed
 
 ### PHPMailer RCE — CVE-2016-10033 / CVE-2016-10045
-- **影响版本**: PHPMailer < 5.2.18 (10033), < 5.2.20 (10045 绕过补丁)
-- **漏洞类型**: RCE (mail() 参数注入)
-- **检测方法**: 检查 `composer.lock` 中 phpmailer 版本；搜索 `Sender` / `setFrom()` 是否接受用户输入
-- **利用前提**: 应用使用 `mail()` 作为传输方式（非 SMTP）；用户可控 sender/from 地址
-- **利用链**: 在 email 地址中注入 `-X` / `-OQueueDirectory` 参数 → Sendmail 写文件到 Web 目录 → Webshell
+- **Affected Versions**: PHPMailer < 5.2.18 (10033), < 5.2.20 (10045 patch bypass)
+- **Vulnerability Type**: RCE (mail() argument injection)
+- **Detection Method**: Check phpmailer version in `composer.lock`; search whether `Sender` / `setFrom()` accepts user input
+- **Prerequisites**: Application uses `mail()` as transport (not SMTP); user-controllable sender/from address
+- **Exploit Chain**: Inject `-X` / `-OQueueDirectory` arguments in email address → Sendmail writes file to web directory → Webshell
 
 ### Guzzle SSRF — CVE-2022-29248 / CVE-2022-31042 / CVE-2022-31043
-- **影响版本**: Guzzle < 7.4.4 (cookie / header 跨域泄露), 全版本 (SSRF 取决于使用方式)
-- **漏洞类型**: SSRF / Credential Leakage
-- **检测方法**: 搜索 `GuzzleHttp\Client` 使用场景，检查 URL 是否来自用户输入；检查版本
-- **利用前提**: 用户可控请求目标 URL 或部分 URL（host/path/query）
-- **利用链**: 传入内网 URL → Guzzle 发起服务端请求 → 访问云元数据 / 内网服务 → 信息泄露或进一步攻击
+- **Affected Versions**: Guzzle < 7.4.4 (cookie / header cross-domain leak), all versions (SSRF depends on usage)
+- **Vulnerability Type**: SSRF / Credential Leakage
+- **Detection Method**: Search for `GuzzleHttp\Client` usage; check whether URL comes from user input; check version
+- **Prerequisites**: User-controllable request target URL or partial URL (host/path/query)
+- **Exploit Chain**: Pass internal network URL → Guzzle makes server-side request → access cloud metadata / internal services → information disclosure or further attacks
 
-### Monolog RCE — 反序列化 Gadget Chain
-- **CVE**: 无正式 CVE (POP chain component)
-- **影响版本**: Monolog 1.x ~ 3.x (作为反序列化链的一部分)
-- **漏洞类型**: Deserialization → RCE (POP Gadget)
-- **检测方法**: 确认存在反序列化入口点；`composer.lock` 中存在 monolog
-- **利用前提**: 应用存在可触发的 `unserialize()` 入口点；Monolog 在 autoload 范围内
-- **利用链**: 构造 `Monolog\Handler\BufferHandler` → 嵌套 `SyslogUdpHandler` → `__destruct()` 触发 → 写文件 / 命令执行
+### Monolog RCE — Deserialization Gadget Chain
+- **CVE**: No official CVE (POP chain component)
+- **Affected Versions**: Monolog 1.x ~ 3.x (as part of deserialization chain)
+- **Vulnerability Type**: Deserialization → RCE (POP Gadget)
+- **Detection Method**: Confirm deserialization entry point exists; monolog present in `composer.lock`
+- **Prerequisites**: Application has a triggerable `unserialize()` entry point; Monolog is within autoload scope
+- **Exploit Chain**: Construct `Monolog\Handler\BufferHandler` → nest `SyslogUdpHandler` → `__destruct()` triggers → file write / command execution
 
 ### Symfony Debug RCE — CVE-2021-21381
-- **影响版本**: Symfony 3.4.x ~ 5.x (HttpKernel debug mode)
-- **漏洞类型**: RCE (via _fragment route)
-- **检测方法**: 访问 `/_fragment`，返回 500 而非 404 说明路由存在；需获取 APP_SECRET
-- **利用前提**: debug 模式或 `_fragment` 路由启用；已知 `APP_SECRET`（可通过 `/_profiler` 泄露）
-- **利用链**: 利用 APP_SECRET 签名 `_fragment` URL → `HttpKernel::handleSubRequest()` → 执行任意 controller
+- **Affected Versions**: Symfony 3.4.x ~ 5.x (HttpKernel debug mode)
+- **Vulnerability Type**: RCE (via _fragment route)
+- **Detection Method**: Access `/_fragment`; 500 response instead of 404 indicates route exists; requires obtaining APP_SECRET
+- **Prerequisites**: Debug mode or `_fragment` route enabled; known `APP_SECRET` (can be leaked via `/_profiler`)
+- **Exploit Chain**: Sign `_fragment` URL using APP_SECRET → `HttpKernel::handleSubRequest()` → execute arbitrary controller
 
 ### Twig SSTI — Server-Side Template Injection
-- **CVE**: 无固定 CVE (代码使用不当)
-- **影响版本**: Twig 全版本 (取决于使用方式)
-- **漏洞类型**: SSTI → RCE
-- **检测方法**: 输入 `{{7*7}}`，返回 49 即存在；检查是否使用 `Twig\Environment::createTemplate()`
-- **利用前提**: 用户输入被作为模板字符串传入 Twig（非模板变量）
-- **利用链**: `{{_self.env.registerUndefinedFilterCallback("system")}}{{_self.env.getFilter("id")}}` → RCE
+- **CVE**: No fixed CVE (improper code usage)
+- **Affected Versions**: All Twig versions (depends on usage)
+- **Vulnerability Type**: SSTI → RCE
+- **Detection Method**: Input `{{7*7}}`; response of 49 confirms presence; check for `Twig\Environment::createTemplate()` usage
+- **Prerequisites**: User input is passed as a template string to Twig (not as a template variable)
+- **Exploit Chain**: `{{_self.env.registerUndefinedFilterCallback("system")}}{{_self.env.getFilter("id")}}` → RCE
 
 ---
 
-## PHP Runtime 安全修复
+## PHP Runtime Security Fixes
 
-### PHP 8.x 关键安全变更
+### PHP 8.x Key Security Changes
 
-| PHP 版本 | 安全修复 | 影响 |
-|-----------|----------|------|
-| PHP 8.0.0 | `libxml_disable_entity_loader()` 废弃，外部实体默认禁用 | XXE 在 PHP 8.0+ 基本无效（除非显式启用 `LIBXML_NOENT`） |
-| PHP 8.0.0 | `assert()` 不再执行字符串代码 | `assert($userInput)` 不再可作为 RCE 向量 |
-| PHP 8.1.0 | `$GLOBALS` 变为只读副本 | 通过 `$GLOBALS` 覆盖变量的技巧失效 |
-| PHP 8.1.0 | Fibers 引入 | 新的异步代码可能引入竞态条件 |
-| PHP 8.2.0 | 动态属性废弃 | 部分反序列化 gadget chain 可能需要调整 |
-| PHP 8.3.0 | `json_validate()` 新增 | 不影响安全，但可检测应用是否运行 8.3+ |
+| PHP Version | Security Fix | Impact |
+|-------------|-------------|--------|
+| PHP 8.0.0 | `libxml_disable_entity_loader()` deprecated, external entities disabled by default | XXE largely ineffective on PHP 8.0+ (unless `LIBXML_NOENT` explicitly enabled) |
+| PHP 8.0.0 | `assert()` no longer executes string code | `assert($userInput)` no longer viable as RCE vector |
+| PHP 8.1.0 | `$GLOBALS` becomes read-only copy | Variable overwrite techniques via `$GLOBALS` no longer work |
+| PHP 8.1.0 | Fibers introduced | New async code MAY introduce race conditions |
+| PHP 8.2.0 | Dynamic properties deprecated | Some deserialization gadget chains MAY need adjustment |
+| PHP 8.3.0 | `json_validate()` added | No security impact, but can detect if application runs 8.3+ |
 
-### PHP 7.x 遗留安全问题
+### PHP 7.x Legacy Security Issues
 
-| PHP 版本 | CVE / 问题 | 类型 |
-|-----------|------------|------|
-| PHP 7.0 ~ 7.4 | CVE-2019-11043 | Nginx + php-fpm 路径处理 RCE |
-| PHP 7.0 ~ 7.2 | `mt_rand()` 种子可预测 | 加密安全缺陷 |
-| PHP < 7.4.21 | CVE-2021-21705 | `filter_var()` SSRF / URL 验证绕过 |
-| PHP < 7.3.29 | CVE-2021-21702 | SOAP 客户端空指针 DoS |
+| PHP Version | CVE / Issue | Type |
+|-------------|------------|------|
+| PHP 7.0 ~ 7.4 | CVE-2019-11043 | Nginx + php-fpm path handling RCE |
+| PHP 7.0 ~ 7.2 | `mt_rand()` seed predictable | Cryptographic security flaw |
+| PHP < 7.4.21 | CVE-2021-21705 | `filter_var()` SSRF / URL validation bypass |
+| PHP < 7.3.29 | CVE-2021-21702 | SOAP client null pointer DoS |
 
 ### CVE-2019-11043 — PHP-FPM + Nginx RCE
-- **影响版本**: PHP 7.1.x ~ 7.3.x (特定版本), PHP-FPM
-- **漏洞类型**: RCE (Buffer Underflow)
-- **检测方法**: 使用 `phuip-fpizdam` 工具扫描；检查 Nginx 配置中 `fastcgi_split_path_info` 正则
-- **利用前提**: Nginx 配置使用特定 `fastcgi_split_path_info` 正则且带 `PATH_INFO`；PHP-FPM
-- **利用链**: 发送特殊构造的 URL 含 `%0a` → `fastcgi_split_path_info` 正则匹配异常 → env 变量下溢 → 覆写 PHP-FPM worker 配置 → RCE
+- **Affected Versions**: PHP 7.1.x ~ 7.3.x (specific versions), PHP-FPM
+- **Vulnerability Type**: RCE (Buffer Underflow)
+- **Detection Method**: Scan using `phuip-fpizdam` tool; check `fastcgi_split_path_info` regex in Nginx config
+- **Prerequisites**: Nginx config uses specific `fastcgi_split_path_info` regex with `PATH_INFO`; PHP-FPM
+- **Exploit Chain**: Send specially crafted URL containing `%0a` → `fastcgi_split_path_info` regex match anomaly → env variable underflow → overwrite PHP-FPM worker config → RCE
 
 ### CVE-2024-4577 — PHP CGI Argument Injection (Windows)
-- **影响版本**: PHP 8.1 < 8.1.29, 8.2 < 8.2.20, 8.3 < 8.3.8 (Windows only)
-- **漏洞类型**: RCE (CGI Argument Injection)
-- **检测方法**: Windows + PHP CGI 模式；发送 `?%ADd+allow_url_include%3D1+%ADd+auto_prepend_file%3Dphp://input`
-- **利用前提**: Windows 系统；PHP 运行在 CGI 模式（非 PHP-FPM/Apache mod_php）
-- **利用链**: Windows Best-Fit 字符映射将 `%AD` (soft hyphen) 转为 `-` → 注入 PHP CLI 参数 → `-d` 修改配置 → `auto_prepend_file=php://input` → RCE
+- **Affected Versions**: PHP 8.1 < 8.1.29, 8.2 < 8.2.20, 8.3 < 8.3.8 (Windows only)
+- **Vulnerability Type**: RCE (CGI Argument Injection)
+- **Detection Method**: Windows + PHP CGI mode; send `?%ADd+allow_url_include%3D1+%ADd+auto_prepend_file%3Dphp://input`
+- **Prerequisites**: Windows system; PHP running in CGI mode (not PHP-FPM/Apache mod_php)
+- **Exploit Chain**: Windows Best-Fit character mapping converts `%AD` (soft hyphen) to `-` → inject PHP CLI arguments → `-d` modifies config → `auto_prepend_file=php://input` → RCE
 
 ---
 
-## 速查：按漏洞类型索引
+## Quick Reference: Index by Vulnerability Type
 
-| 漏洞类型 | 相关 CVE |
-|----------|----------|
+| Vulnerability Type | Related CVEs |
+|-------------------|-------------|
 | RCE | CVE-2021-3129, CVE-2018-15133, ThinkPHP 5.0, CVE-2017-9841, CVE-2016-10033, CVE-2019-11043, CVE-2019-8942, CVE-2024-4577 |
 | SQLi | CVE-2021-21263, ThinkPHP 5.1, CVE-2022-21661 |
 | Deserialization | CVE-2018-15133, ThinkPHP 6 Session, Monolog chain |
@@ -202,4 +202,4 @@
 | SSTI | Twig (usage-dependent) |
 | Auth Bypass | CVE-2017-1001000 (WordPress REST API) |
 | XSS | CVE-2024-13918, CVE-2024-13919 |
-| File Inclusion | ThinkPHP 多语言, CVE-2023-2745 |
+| File Inclusion | ThinkPHP Multi-Language, CVE-2023-2745 |

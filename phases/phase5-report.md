@@ -1,19 +1,19 @@
-# Phase 5: 清理与报告
+# Phase 5: Cleanup & Report
 
-主调度器已设置变量: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_RESOURCES
-提示词模板参考 phase1-env.md 中的模板。
-动态 TASK_ID 映射由 phase2-tasks-dynamic.md 阶段记录。
+The main dispatcher has set variables: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_RESOURCES
+Refer to the prompt template in phase1-env.md.
+Dynamic TASK_ID mappings were recorded during the phase2-tasks-dynamic.md stage.
 
-## 执行步骤
+## Execution Steps
 
-### 并行 Step: 清理 + 报告 + SARIF
+### Parallel Step: Cleanup + Report + SARIF
 
-读取以下文件内容:
+Read the following file contents:
 - ${SKILL_DIR}/teams/team5/env_cleaner.md
 - ${SKILL_DIR}/teams/team5/report_writer.md
 - ${SKILL_DIR}/teams/team5/sarif_exporter.md
 
-同时 spawn 三个 Agent（background 模式，互不依赖）:
+Spawn three Agents simultaneously (background mode, mutually independent):
 
 **Agent 1: env-cleaner**
 ```
@@ -23,10 +23,10 @@ Agent(
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
-  prompt= 提示词模板(TASK_ID=N+1) + env_cleaner.md 内容
+  prompt= Prompt template(TASK_ID=N+1) + env_cleaner.md contents
 )
 ```
-职责: 停 Xdebug、还原代码、清理痕迹、重置数据库
+Responsibilities: Stop Xdebug, restore code, clean up traces, reset database
 
 **Agent 2: report-writer**
 ```
@@ -36,10 +36,10 @@ Agent(
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
-  prompt= 提示词模板(TASK_ID=N+2) + report_writer.md 内容
+  prompt= Prompt template(TASK_ID=N+2) + report_writer.md contents
 )
 ```
-输出: $WORK_DIR/报告/审计报告.md
+Output: $WORK_DIR/报告/审计报告.md
 
 **Agent 3: sarif-exporter**
 ```
@@ -49,16 +49,16 @@ Agent(
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
-  prompt= 提示词模板(TASK_ID=N+3) + sarif_exporter.md 内容
+  prompt= Prompt template(TASK_ID=N+3) + sarif_exporter.md contents
 )
 ```
-输出: $WORK_DIR/报告/audit_report.sarif.json
+Output: $WORK_DIR/报告/audit_report.sarif.json
 
-**等待三者全部完成。**
+**Wait for all three to complete.**
 
-### 串行 Step: quality-checker-final
+### Sequential Step: quality-checker-final
 
-读取: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality_check_templates.md
+Read: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality_check_templates.md
 
 **Agent 4: quality-checker-final**
 ```
@@ -67,21 +67,21 @@ Agent(
   team_name="php-audit",
   mode="bypassPermissions",
   subagent_type="general-purpose",
-  prompt= 提示词模板(TASK_ID=N+4) + teams/qc/quality_checker.md + references/quality_check_templates.md（对应阶段章节）+ shared/output_standard.md
+  prompt= Prompt template(TASK_ID=N+4) + teams/qc/quality_checker.md + references/quality_check_templates.md (corresponding phase section) + shared/output_standard.md
 )
 ```
-输出: 最终质检结果 JSON
+Output: Final quality check result JSON
 
-**等待完成。**
+**Wait for completion.**
 
-### 后置 Step: 敏感数据清理 + 文件整理（最终质检通过后）
+### Post Step: Sensitive Data Cleanup + File Organization (after final quality check passes)
 
-最终质检（quality-checker-final）验证通过后，执行敏感数据清理和文件整理:
+After the final quality check (quality-checker-final) passes, execute sensitive data cleanup and file organization:
 
 ```bash
-# 由主调度器直接执行（无需 spawn Agent）
+# Executed directly by the main dispatcher (no Agent spawn required)
 
-# 1. 安全删除 audit_session.db（含明文凭证）
+# 1. Securely delete audit_session.db (contains plaintext credentials)
 if [ -f "$WORK_DIR/audit_session.db" ]; then
   dd if=/dev/urandom of="$WORK_DIR/audit_session.db" bs=1k count=$(stat -f%z "$WORK_DIR/audit_session.db" 2>/dev/null || stat -c%s "$WORK_DIR/audit_session.db" 2>/dev/null) 2>/dev/null
   rm -f "$WORK_DIR/audit_session.db" "$WORK_DIR/audit_session.db-wal" "$WORK_DIR/audit_session.db-shm"
@@ -89,7 +89,7 @@ fi
 rm -rf "$WORK_DIR/second_order/" 2>/dev/null || true
 rm -f "$WORK_DIR/.shared_findings.lock" 2>/dev/null || true
 
-# 2. 文件整理：将中间产物归档到 原始数据/
+# 2. File organization: archive intermediate artifacts to 原始数据/
 for f in environment_status.json route_map.json auth_matrix.json ast_sinks.json \
          priority_queue.json credentials.json dep_risk.json exploit_summary.json \
          attack_graph.json correlation_report.json attack_graph_data.json checkpoint.json; do

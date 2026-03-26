@@ -1,227 +1,227 @@
-# 证据合约系统（Evidence Contract System）
+# Evidence Contract System
 
-本文件定义标准化的证据点 ID 字典（EVID_*），用于所有 Phase-4 专家输出结论时的证据引用。
-灵感来自 0xShe/PHP-Code-Audit-Skill 的 Trace-Gate 机制，适配本项目的动态攻击架构。
-
----
-
-## 核心原则
-
-1. **每个漏洞结论必须引用至少一个 EVID_* 证据点**，无证据 = 无结论
-2. **auth_matrix 不可变传播** — `auth_matrix.json` 由 Phase-2 生成后，Phase-4 所有 Auditor 只读引用、禁止修改。`prerequisite_conditions.auth_requirement` 必须与 `auth_matrix.json` 中该路由的 `auth_level` 严格一致，不一致则质检不通过
-2. **证据来源优先级**: 动态攻击响应 > Xdebug trace > 静态源码分析
-3. **置信度与证据完备性挂钩**:
-   - `✅已确认` → 所有必填 EVID 项均有实证（HTTP 请求/响应 + 源码定位）
-   - `⚠️高度疑似` → 必填 EVID 项部分缺失，但有合理推断链
-   - `⚡需验证` → 仅有静态源码级证据，未经动态验证
-4. **EVID 缺失处理**: 若某必填 EVID 无法获取，标注 `EVID_XXX: [未获取:原因]`，结论自动降级
+This file defines the standardized evidence point ID dictionary (EVID_*), used for evidence referencing when all Phase-4 experts output conclusions.
+Inspired by the Trace-Gate mechanism from 0xShe/PHP-Code-Audit-Skill, adapted for this project's dynamic attack architecture.
 
 ---
 
-## 证据点字典
+## Core Principles
 
-### CMD — 命令执行（rce_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_CMD_EXEC_POINT` | 命令执行函数位置 (file:line)，如 system/exec/passthru/shell_exec/popen | ✅ |
-| `EVID_CMD_STRING_CONSTRUCTION` | 命令字符串构造/拼接位置，参数如何进入命令 | ✅ |
-| `EVID_CMD_USER_PARAM_MAPPING` | 用户可控参数到命令片段的完整映射（Source→Sink 路径） | ✅ |
-| `EVID_CMD_EXECUTION_RESPONSE` | 攻击请求的 HTTP 响应 + 命令执行证据（回显/时间差/外带） | 确认时必填 |
-
-### SQL — SQL 注入（sqli_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_SQL_EXEC_POINT` | SQL 执行函数/语句位置 (file:line) | ✅ |
-| `EVID_SQL_STRING_CONSTRUCTION` | SQL 字符串构造/拼接位置 | ✅ |
-| `EVID_SQL_USER_PARAM_MAPPING` | 用户可控参数到 SQL 片段的映射 | ✅ |
-| `EVID_SQL_EXECUTION_RESPONSE` | 注入 Payload 的响应差异（报错/布尔/时间盲注证据） | 确认时必填 |
-
-### NOSQL — NoSQL 注入（nosql_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_NOSQL_QUERY_CONSTRUCTION` | NoSQL 查询构造点 (find/update/delete) | ✅ |
-| `EVID_NOSQL_USER_INPUT_MAPPING` | 用户输入进入查询条件结构的证据 | ✅ |
-| `EVID_NOSQL_OPERATOR_INJECTION` | operator 注入字段证据 ($ne/$gt/$or/$where) | ✅ |
-| `EVID_NOSQL_QUERY_SEMANTIC_DIFF` | 正常查询 vs 注入查询的返回结果差异 | 确认时必填 |
-
-### FILE — 文件包含（lfi_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_FILE_WRAPPER_PREFIX` | 流包装前缀使用方式 (php:///phar:///zip://) | ✅ |
-| `EVID_FILE_RESOLVED_TARGET` | 包含/读取的最终解析目标路径 | ✅ |
-| `EVID_FILE_INCLUDE_EXEC_BOUNDARY` | include/require 的执行边界（执行 PHP vs 仅读取） | ✅ |
-| `EVID_FILE_TRAVERSAL_RESPONSE` | 路径遍历攻击的 HTTP 响应（文件内容泄露证据） | 确认时必填 |
-
-### WRITE — 文件写入（filewrite_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_WRITE_CALLSITE` | 写入函数调用位置 (file_put_contents/fwrite/move_uploaded_file) | ✅ |
-| `EVID_WRITE_DESTPATH_RESOLVED` | 目的路径最终解析结果（是否逃逸 base 目录） | ✅ |
-| `EVID_WRITE_CONTENT_SOURCE` | 写入内容与用户可控输入的映射 | ✅ |
-| `EVID_WRITE_EXEC_ACCESSIBILITY` | 写入后文件的可执行性/可访问性证据 | ✅ |
-| `EVID_WRITE_UPLOAD_RESPONSE` | 上传/写入攻击的 HTTP 响应 + webshell 访问证据 | 确认时必填 |
-
-### SSRF — 服务端请求伪造（ssrf_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_SSRF_URL_NORMALIZATION` | URL 归一化处理步骤 | ✅ |
-| `EVID_SSRF_FINAL_URL` | 发起请求前的最终 URL/Host/Port | ✅ |
-| `EVID_SSRF_REDIRECT_CHAIN` | 重定向链跟踪证据（若有跟随跳转） | 条件必填 |
-| `EVID_SSRF_DNS_INNER_BLOCK` | DNS/IP 解析与内网拦截判定 | ✅ |
-| `EVID_SSRF_EXECUTION_RESPONSE` | SSRF 攻击响应（内网数据泄露/端口探测结果） | 确认时必填 |
-
-### XSS — 跨站脚本 + SSTI（xss_ssti_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_XSS_OUTPUT_POINT` | 响应输出点位置 (echo/模板输出/script 上下文) | ✅ |
-| `EVID_XSS_USER_INPUT_MAPPING` | 用户输入进入输出的路径 | ✅ |
-| `EVID_XSS_ESCAPE_STATUS` | 转义/编码/raw 输出状态证据 | ✅ |
-| `EVID_XSS_PAYLOAD_REFLECTION` | Payload 在响应中的反射/执行证据 | 确认时必填 |
-| `EVID_TPL_ENGINE_ENTRY` | 模板引擎渲染/解析入口 (SSTI 时必填) | 条件必填 |
-| `EVID_TPL_EXPR_CONTROL` | 模板表达式是否可控证据 (SSTI 时必填) | 条件必填 |
-
-### XXE — XML 外部实体注入（xxe_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_XXE_PARSER_CALL` | XML 解析器调用位置 (DOMDocument/simplexml/XMLReader) | ✅ |
-| `EVID_XXE_INPUT_SOURCE` | 输入流来源 (php://input/上传/参数) | ✅ |
-| `EVID_XXE_ENTITY_SAFETY` | 外部实体/DOCTYPE 禁用配置证据 | ✅ |
-| `EVID_XXE_EXECUTION_RESPONSE` | XXE Payload 的响应（文件读取/SSRF/RCE 证据） | 确认时必填 |
-
-### DESER — 反序列化（deserial_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_DESER_CALLSITE` | 反序列化调用位置 (unserialize/phar) | ✅ |
-| `EVID_DESER_INPUT_SOURCE` | 入参用户可控来源 | ✅ |
-| `EVID_DESER_GADGET_CHAIN` | POP chain / gadget 链路证据（类→魔术方法→敏感操作） | ✅ |
-| `EVID_DESER_EXECUTION_RESPONSE` | 反序列化攻击的执行证据（命令回显/文件创建） | 确认时必填 |
-
-### AUTH — 认证授权（authz_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_AUTH_PATH_MATCH` | 路由进入受保护 handler 的匹配证据 | ✅ |
-| `EVID_AUTH_TOKEN_JUDGMENT` | Token/Session 解码与判断逻辑 | ✅ |
-| `EVID_AUTH_PERMISSION_CHECK` | 权限判断函数/条件语句执行证据 | ✅ |
-| `EVID_AUTH_IDOR_OWNERSHIP` | IDOR 归属校验条件（WHERE owner_id/user_id） | 条件必填 |
-| `EVID_AUTH_BYPASS_RESPONSE` | 越权访问/绕过的 HTTP 请求+响应 | 确认时必填 |
-
-### CFG — 安全配置（config_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_CFG_CONFIG_LOCATION` | 配置文件/环境变量位置 (.env/config/php.ini) | ✅ |
-| `EVID_CFG_RUNTIME_SETTING` | 运行时设置代码位置 (ini_set/中间件) | 条件必填 |
-| `EVID_CFG_IMPACT_SCOPE` | 受影响的路由/响应范围 | ✅ |
-| `EVID_CFG_SECURITY_SWITCH` | 安全头/错误暴露/CORS/危险开关证据 | ✅ |
-
-### INFOLEAK — 信息泄露（infoleak_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_LEAK_SOURCE_POINT` | 信息泄露源位置 (file:line) | ✅ |
-| `EVID_LEAK_DATA_TYPE` | 泄露数据类型（源码/凭证/内部路径/调试信息/堆栈） | ✅ |
-| `EVID_LEAK_ACCESS_PATH` | 外部可达的访问路径证据 | ✅ |
-| `EVID_LEAK_RESPONSE_CONTENT` | 实际泄露内容的 HTTP 响应证据 | 确认时必填 |
-
-### RACE — 竞态条件（race_condition_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_RACE_CRITICAL_SECTION` | 临界区代码位置（读取→检查→操作序列） | ✅ |
-| `EVID_RACE_SHARED_RESOURCE` | 共享资源标识（数据库行/文件/缓存键） | ✅ |
-| `EVID_RACE_WINDOW_ANALYSIS` | 竞态窗口分析（操作间隔/锁机制缺失） | ✅ |
-| `EVID_RACE_STATISTICAL_RESULT` | 并发测试统计结果（请求数/成功率/时间窗口，≥20次） | 确认时必填 |
-
-### CRYPTO — 密码学（crypto_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_CRYPTO_ALGORITHM_USAGE` | 加密/哈希算法使用位置及上下文 | ✅ |
-| `EVID_CRYPTO_KEY_MANAGEMENT` | 密钥管理（硬编码/弱密钥/可预测） | ✅ |
-| `EVID_CRYPTO_SECURITY_CONTEXT` | 安全场景判定（密码存储 vs 缓存键 vs 签名） | ✅ |
-| `EVID_CRYPTO_EXPLOIT_PROOF` | 实际利用证据（破解结果/伪造签名/预测随机数） | 确认时必填 |
-
-### WP — WordPress 专项（wordpress_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_WP_COMPONENT_SCOPE` | 影响范围（核心/插件名+版本/主题名+版本） | ✅ |
-| `EVID_WP_HOOK_ENTRY` | Hook/Action/Filter 入口 (wp_ajax/xmlrpc/shortcode) | ✅ |
-| `EVID_WP_NONCE_STATUS` | Nonce 校验状态证据 | 条件必填 |
-| `EVID_WP_CVE_VERSION_MATCH` | CVE 版本匹配验证（当前版本 ∈ 受影响范围） | 条件必填 |
-| `EVID_WP_EXPLOIT_RESPONSE` | 攻击 HTTP 请求+响应 | 确认时必填 |
-
-### BIZLOGIC — 业务逻辑（business_logic_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_BIZ_FLOW_DESCRIPTION` | 完整业务流程描述（正常路径） | ✅ |
-| `EVID_BIZ_BYPASS_POINT` | 被绕过的环节/校验位置 | ✅ |
-| `EVID_BIZ_STATE_PERSISTENCE` | 绕过后状态是否被持久化（数据库/文件变更） | ✅ |
-| `EVID_BIZ_EXPLOIT_RESPONSE` | 业务逻辑攻击的完整请求链+响应 | 确认时必填 |
-
-### CRLF — CRLF 注入 / HTTP 响应拆分（crlf_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_CRLF_INJECTION_POINT` | header()/setcookie()/mail() 调用位置 (file:line) | ✅ |
-| `EVID_CRLF_USER_INPUT_PATH` | 用户输入到头部值的完整数据流（Source→header 参数） | ✅ |
-| `EVID_CRLF_SANITIZATION_STATUS` | 换行符过滤/转义机制证据（有无 str_replace/preg_replace/header 参数校验） | ✅ |
-| `EVID_CRLF_INJECTION_RESPONSE` | 注入成功的 HTTP 响应（含注入的头部/拆分的响应体） | 确认时必填 |
-
-### CSRF — 跨站请求伪造（csrf_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_CSRF_ENDPOINT_IDENTITY` | 受影响的状态变更端点 (METHOD /path) + 对应的业务操作描述 | ✅ |
-| `EVID_CSRF_TOKEN_STATUS` | Token 存在性/验证逻辑/中间件配置证据 | ✅ |
-| `EVID_CSRF_SAMESITE_STATUS` | SameSite cookie 属性配置及其对跨站请求的影响 | ✅ |
-| `EVID_CSRF_CROSS_ORIGIN_RESPONSE` | 跨域请求成功执行状态变更的 HTTP 请求+响应证据 | 确认时必填 |
-
-### SESS — Session/Cookie 安全（session_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_SESS_CONFIG_STATE` | php.ini / runtime session 配置项及安全等级评估 | ✅ |
-| `EVID_SESS_COOKIE_FLAGS` | 实际 Set-Cookie 响应头中的 HttpOnly/Secure/SameSite/Path/Domain 值 | ✅ |
-| `EVID_SESS_LIFECYCLE_FLOW` | Session 创建→认证绑定→使用→销毁的完整生命周期代码路径 | ✅ |
-| `EVID_SESS_EXPLOIT_RESPONSE` | Session 攻击的 HTTP 证据（fixation 成功/cookie 泄露/ID 可预测统计） | 确认时必填 |
-
-### LDAP — LDAP 注入（ldap_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_LDAP_QUERY_POINT` | ldap_search/ldap_bind/ldap_list 调用位置 (file:line) | ✅ |
-| `EVID_LDAP_FILTER_CONSTRUCTION` | LDAP filter 字符串构造/拼接位置及方式 | ✅ |
-| `EVID_LDAP_USER_INPUT_PATH` | 用户输入到 LDAP filter/DN 的完整数据流 | ✅ |
-| `EVID_LDAP_INJECTION_RESPONSE` | LDAP 注入成功的响应差异（返回数据变化/认证绕过） | 确认时必填 |
-
-### LOG — 日志安全（logging_auditor）
-
-| 证据点 ID | 说明 | 必填 |
-|---|---|---|
-| `EVID_LOG_WRITE_POINT` | 日志写入函数/方法位置 (error_log/Log::/syslog 等) (file:line) | ✅ |
-| `EVID_LOG_CONTENT_ANALYSIS` | 日志内容中的敏感数据/注入可能性/格式化缺陷证据 | ✅ |
-| `EVID_LOG_ACCESS_CONTROL` | 日志文件路径、权限、Web 可达性证据 | ✅ |
-| `EVID_LOG_EXPLOIT_RESPONSE` | 日志注入或日志包含攻击的 HTTP 响应证据 | 确认时必填 |
+1. **Every vulnerability conclusion MUST reference at least one EVID_* evidence point** — no evidence = no conclusion
+2. **auth_matrix immutable propagation** — `auth_matrix.json` is generated by Phase-2; all Phase-4 Auditors MUST reference it read-only and MUST NOT modify it. `prerequisite_conditions.auth_requirement` MUST strictly match the `auth_level` of that route in `auth_matrix.json`; inconsistency results in QC failure
+2. **Evidence source priority**: Dynamic attack response > Xdebug trace > Static source code analysis
+3. **Confidence is tied to evidence completeness**:
+   - `✅ Confirmed` → All required EVID items have substantive evidence (HTTP request/response + source code location)
+   - `⚠️ Highly Suspected` → Some required EVID items are missing, but a reasonable inference chain exists
+   - `⚡ Needs Verification` → Only static source-level evidence exists, not dynamically verified
+4. **EVID missing handling**: If a required EVID cannot be obtained, annotate `EVID_XXX: [Not obtained: reason]`, and the conclusion is automatically downgraded
 
 ---
 
-## 使用规范
+## Evidence Point Dictionary
 
-### 1. 输出格式
+### CMD — Command Execution (rce_auditor)
 
-每个漏洞结论必须包含 `evidence` 字段，列出引用的 EVID：
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_CMD_EXEC_POINT` | Command execution function location (file:line), e.g., system/exec/passthru/shell_exec/popen | ✅ |
+| `EVID_CMD_STRING_CONSTRUCTION` | Command string construction/concatenation location, how parameters enter the command | ✅ |
+| `EVID_CMD_USER_PARAM_MAPPING` | Complete mapping of user-controllable parameters to command fragments (Source→Sink path) | ✅ |
+| `EVID_CMD_EXECUTION_RESPONSE` | HTTP response of the attack request + command execution evidence (echo/time delta/out-of-band) | Required when confirmed |
+
+### SQL — SQL Injection (sqli_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_SQL_EXEC_POINT` | SQL execution function/statement location (file:line) | ✅ |
+| `EVID_SQL_STRING_CONSTRUCTION` | SQL string construction/concatenation location | ✅ |
+| `EVID_SQL_USER_PARAM_MAPPING` | Mapping of user-controllable parameters to SQL fragments | ✅ |
+| `EVID_SQL_EXECUTION_RESPONSE` | Response difference from injection payload (error-based/boolean/time-based blind evidence) | Required when confirmed |
+
+### NOSQL — NoSQL Injection (nosql_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_NOSQL_QUERY_CONSTRUCTION` | NoSQL query construction point (find/update/delete) | ✅ |
+| `EVID_NOSQL_USER_INPUT_MAPPING` | Evidence of user input entering the query condition structure | ✅ |
+| `EVID_NOSQL_OPERATOR_INJECTION` | Operator injection field evidence ($ne/$gt/$or/$where) | ✅ |
+| `EVID_NOSQL_QUERY_SEMANTIC_DIFF` | Return result difference between normal query vs injected query | Required when confirmed |
+
+### FILE — File Inclusion (lfi_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_FILE_WRAPPER_PREFIX` | Stream wrapper prefix usage (php:///phar:///zip://) | ✅ |
+| `EVID_FILE_RESOLVED_TARGET` | Final resolved target path for inclusion/reading | ✅ |
+| `EVID_FILE_INCLUDE_EXEC_BOUNDARY` | include/require execution boundary (executing PHP vs read-only) | ✅ |
+| `EVID_FILE_TRAVERSAL_RESPONSE` | HTTP response of path traversal attack (file content disclosure evidence) | Required when confirmed |
+
+### WRITE — File Write (filewrite_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_WRITE_CALLSITE` | Write function call location (file_put_contents/fwrite/move_uploaded_file) | ✅ |
+| `EVID_WRITE_DESTPATH_RESOLVED` | Final resolved destination path (whether it escapes the base directory) | ✅ |
+| `EVID_WRITE_CONTENT_SOURCE` | Mapping between written content and user-controllable input | ✅ |
+| `EVID_WRITE_EXEC_ACCESSIBILITY` | Evidence of written file's executability/accessibility | ✅ |
+| `EVID_WRITE_UPLOAD_RESPONSE` | HTTP response of upload/write attack + webshell access evidence | Required when confirmed |
+
+### SSRF — Server-Side Request Forgery (ssrf_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_SSRF_URL_NORMALIZATION` | URL normalization processing steps | ✅ |
+| `EVID_SSRF_FINAL_URL` | Final URL/Host/Port before issuing the request | ✅ |
+| `EVID_SSRF_REDIRECT_CHAIN` | Redirect chain tracking evidence (if following redirects) | Conditionally required |
+| `EVID_SSRF_DNS_INNER_BLOCK` | DNS/IP resolution and internal network blocking determination | ✅ |
+| `EVID_SSRF_EXECUTION_RESPONSE` | SSRF attack response (internal data leakage/port scanning results) | Required when confirmed |
+
+### XSS — Cross-Site Scripting + SSTI (xss_ssti_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_XSS_OUTPUT_POINT` | Response output point location (echo/template output/script context) | ✅ |
+| `EVID_XSS_USER_INPUT_MAPPING` | Path of user input entering the output | ✅ |
+| `EVID_XSS_ESCAPE_STATUS` | Evidence of escaping/encoding/raw output status | ✅ |
+| `EVID_XSS_PAYLOAD_REFLECTION` | Evidence of payload reflection/execution in the response | Required when confirmed |
+| `EVID_TPL_ENGINE_ENTRY` | Template engine rendering/parsing entry point (required for SSTI) | Conditionally required |
+| `EVID_TPL_EXPR_CONTROL` | Evidence of whether template expression is controllable (required for SSTI) | Conditionally required |
+
+### XXE — XML External Entity Injection (xxe_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_XXE_PARSER_CALL` | XML parser invocation location (DOMDocument/simplexml/XMLReader) | ✅ |
+| `EVID_XXE_INPUT_SOURCE` | Input stream source (php://input/upload/parameter) | ✅ |
+| `EVID_XXE_ENTITY_SAFETY` | External entity/DOCTYPE disable configuration evidence | ✅ |
+| `EVID_XXE_EXECUTION_RESPONSE` | Response of XXE payload (file read/SSRF/RCE evidence) | Required when confirmed |
+
+### DESER — Deserialization (deserial_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_DESER_CALLSITE` | Deserialization call location (unserialize/phar) | ✅ |
+| `EVID_DESER_INPUT_SOURCE` | User-controllable input source | ✅ |
+| `EVID_DESER_GADGET_CHAIN` | POP chain / gadget chain evidence (class→magic method→sensitive operation) | ✅ |
+| `EVID_DESER_EXECUTION_RESPONSE` | Deserialization attack execution evidence (command echo/file creation) | Required when confirmed |
+
+### AUTH — Authentication & Authorization (authz_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_AUTH_PATH_MATCH` | Evidence of route entering a protected handler | ✅ |
+| `EVID_AUTH_TOKEN_JUDGMENT` | Token/Session decoding and judgment logic | ✅ |
+| `EVID_AUTH_PERMISSION_CHECK` | Permission check function/conditional statement execution evidence | ✅ |
+| `EVID_AUTH_IDOR_OWNERSHIP` | IDOR ownership validation condition (WHERE owner_id/user_id) | Conditionally required |
+| `EVID_AUTH_BYPASS_RESPONSE` | HTTP request+response of privilege escalation/bypass | Required when confirmed |
+
+### CFG — Security Configuration (config_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_CFG_CONFIG_LOCATION` | Configuration file/environment variable location (.env/config/php.ini) | ✅ |
+| `EVID_CFG_RUNTIME_SETTING` | Runtime setting code location (ini_set/middleware) | Conditionally required |
+| `EVID_CFG_IMPACT_SCOPE` | Affected routes/response scope | ✅ |
+| `EVID_CFG_SECURITY_SWITCH` | Evidence of security headers/error exposure/CORS/dangerous switches | ✅ |
+
+### INFOLEAK — Information Disclosure (infoleak_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_LEAK_SOURCE_POINT` | Information leak source location (file:line) | ✅ |
+| `EVID_LEAK_DATA_TYPE` | Leaked data type (source code/credentials/internal paths/debug info/stack traces) | ✅ |
+| `EVID_LEAK_ACCESS_PATH` | Externally reachable access path evidence | ✅ |
+| `EVID_LEAK_RESPONSE_CONTENT` | HTTP response evidence of actual leaked content | Required when confirmed |
+
+### RACE — Race Condition (race_condition_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_RACE_CRITICAL_SECTION` | Critical section code location (read→check→operate sequence) | ✅ |
+| `EVID_RACE_SHARED_RESOURCE` | Shared resource identifier (database row/file/cache key) | ✅ |
+| `EVID_RACE_WINDOW_ANALYSIS` | Race window analysis (operation interval/missing lock mechanism) | ✅ |
+| `EVID_RACE_STATISTICAL_RESULT` | Concurrent test statistical results (request count/success rate/time window, ≥20 times) | Required when confirmed |
+
+### CRYPTO — Cryptography (crypto_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_CRYPTO_ALGORITHM_USAGE` | Encryption/hash algorithm usage location and context | ✅ |
+| `EVID_CRYPTO_KEY_MANAGEMENT` | Key management (hardcoded/weak key/predictable) | ✅ |
+| `EVID_CRYPTO_SECURITY_CONTEXT` | Security scenario determination (password storage vs cache key vs signature) | ✅ |
+| `EVID_CRYPTO_EXPLOIT_PROOF` | Actual exploitation evidence (cracking results/forged signature/predicted random number) | Required when confirmed |
+
+### WP — WordPress Specific (wordpress_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_WP_COMPONENT_SCOPE` | Impact scope (core/plugin name+version/theme name+version) | ✅ |
+| `EVID_WP_HOOK_ENTRY` | Hook/Action/Filter entry point (wp_ajax/xmlrpc/shortcode) | ✅ |
+| `EVID_WP_NONCE_STATUS` | Nonce verification status evidence | Conditionally required |
+| `EVID_WP_CVE_VERSION_MATCH` | CVE version match verification (current version ∈ affected range) | Conditionally required |
+| `EVID_WP_EXPLOIT_RESPONSE` | Attack HTTP request+response | Required when confirmed |
+
+### BIZLOGIC — Business Logic (business_logic_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_BIZ_FLOW_DESCRIPTION` | Complete business flow description (normal path) | ✅ |
+| `EVID_BIZ_BYPASS_POINT` | Bypassed step/validation location | ✅ |
+| `EVID_BIZ_STATE_PERSISTENCE` | Whether the bypassed state is persisted (database/file changes) | ✅ |
+| `EVID_BIZ_EXPLOIT_RESPONSE` | Complete request chain+response of business logic attack | Required when confirmed |
+
+### CRLF — CRLF Injection / HTTP Response Splitting (crlf_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_CRLF_INJECTION_POINT` | header()/setcookie()/mail() call location (file:line) | ✅ |
+| `EVID_CRLF_USER_INPUT_PATH` | Complete data flow from user input to header value (Source→header parameter) | ✅ |
+| `EVID_CRLF_SANITIZATION_STATUS` | Newline character filtering/escaping mechanism evidence (presence of str_replace/preg_replace/header parameter validation) | ✅ |
+| `EVID_CRLF_INJECTION_RESPONSE` | HTTP response of successful injection (containing injected headers/split response body) | Required when confirmed |
+
+### CSRF — Cross-Site Request Forgery (csrf_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_CSRF_ENDPOINT_IDENTITY` | Affected state-changing endpoint (METHOD /path) + corresponding business operation description | ✅ |
+| `EVID_CSRF_TOKEN_STATUS` | Token presence/verification logic/middleware configuration evidence | ✅ |
+| `EVID_CSRF_SAMESITE_STATUS` | SameSite cookie attribute configuration and its impact on cross-site requests | ✅ |
+| `EVID_CSRF_CROSS_ORIGIN_RESPONSE` | HTTP request+response evidence of cross-origin request successfully executing state change | Required when confirmed |
+
+### SESS — Session/Cookie Security (session_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_SESS_CONFIG_STATE` | php.ini / runtime session configuration items and security level assessment | ✅ |
+| `EVID_SESS_COOKIE_FLAGS` | Actual HttpOnly/Secure/SameSite/Path/Domain values in Set-Cookie response headers | ✅ |
+| `EVID_SESS_LIFECYCLE_FLOW` | Complete lifecycle code path of session creation→authentication binding→usage→destruction | ✅ |
+| `EVID_SESS_EXPLOIT_RESPONSE` | HTTP evidence of session attack (fixation success/cookie leakage/predictable ID statistics) | Required when confirmed |
+
+### LDAP — LDAP Injection (ldap_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_LDAP_QUERY_POINT` | ldap_search/ldap_bind/ldap_list call location (file:line) | ✅ |
+| `EVID_LDAP_FILTER_CONSTRUCTION` | LDAP filter string construction/concatenation location and method | ✅ |
+| `EVID_LDAP_USER_INPUT_PATH` | Complete data flow from user input to LDAP filter/DN | ✅ |
+| `EVID_LDAP_INJECTION_RESPONSE` | Response difference of successful LDAP injection (data change/authentication bypass) | Required when confirmed |
+
+### LOG — Log Security (logging_auditor)
+
+| Evidence Point ID | Description | Required |
+|---|---|---|
+| `EVID_LOG_WRITE_POINT` | Log write function/method location (error_log/Log::/syslog etc.) (file:line) | ✅ |
+| `EVID_LOG_CONTENT_ANALYSIS` | Evidence of sensitive data/injection possibility/formatting flaws in log content | ✅ |
+| `EVID_LOG_ACCESS_CONTROL` | Log file path, permissions, and web accessibility evidence | ✅ |
+| `EVID_LOG_EXPLOIT_RESPONSE` | HTTP response evidence of log injection or log inclusion attack | Required when confirmed |
+
+---
+
+## Usage Guidelines
+
+### 1. Output Format
+
+Every vulnerability conclusion MUST include an `evidence` field listing the referenced EVIDs:
 
 ```json
 {
@@ -230,65 +230,65 @@
   "status": "confirmed",
   "evidence": {
     "EVID_SQL_EXEC_POINT": "app/Models/User.php:89 — DB::select(\"SELECT * FROM users WHERE id = $id\")",
-    "EVID_SQL_STRING_CONSTRUCTION": "app/Http/Controllers/UserController.php:34 — $id = $request->input('id') 直接拼接",
+    "EVID_SQL_STRING_CONSTRUCTION": "app/Http/Controllers/UserController.php:34 — $id = $request->input('id') directly concatenated",
     "EVID_SQL_USER_PARAM_MAPPING": "GET /api/user?id={user_input} → UserController::show() → User::findRaw($id) → DB::select()",
-    "EVID_SQL_EXECUTION_RESPONSE": "GET /api/user?id=1'+OR+1=1-- → HTTP 200, 返回全部用户数据（正常仅返回 1 条）"
+    "EVID_SQL_EXECUTION_RESPONSE": "GET /api/user?id=1'+OR+1=1-- → HTTP 200, returned all user data (normally returns only 1 record)"
   }
 }
 ```
 
-### 2. 证据缺失标注
+### 2. Missing Evidence Annotation
 
 ```json
 {
-  "EVID_SQL_EXECUTION_RESPONSE": "[未获取: 容器未启动，无法发送动态请求]"
+  "EVID_SQL_EXECUTION_RESPONSE": "[Not obtained: container not started, unable to send dynamic request]"
 }
 ```
 
-此时结论自动从 `confirmed` 降级为 `suspected`。
+In this case, the conclusion is automatically downgraded from `confirmed` to `suspected`.
 
-### 3. 与 anti_hallucination.md 的关系
+### 3. Relationship with anti_hallucination.md
 
-本证据合约是 anti_hallucination.md 规则 2（结论必须附带源码片段）、规则 4（调用链每环必须有代码支撑）、规则 10（已确认漏洞必须有完整复现材料）的**结构化实现**。anti_hallucination.md 定义"什么必须做"，本文件定义"具体怎么做"。
+This evidence contract is the **structured implementation** of anti_hallucination.md Rule 2 (conclusions MUST include source code snippets), Rule 4 (every link in the call chain MUST have code support), and Rule 10 (confirmed vulnerabilities MUST have complete reproduction materials). anti_hallucination.md defines "what MUST be done"; this file defines "how to do it specifically".
 
 ---
 
-## 三维评分要求
+## Three-Dimensional Scoring Requirements
 
-每个漏洞的 `exploits/{sink_id}.json` 必须包含 `severity` 对象，按 `shared/severity_rating.md` 标准填写：
+Each vulnerability's `exploits/{sink_id}.json` MUST include a `severity` object, filled according to the `shared/severity_rating.md` standard:
 
-| 必填字段 | 类型 | 说明 |
-|----------|------|------|
-| reachability | 0-3 | 与 prerequisite_conditions.auth_requirement 对应 |
-| reachability_reason | string | 判定依据，不得为空 |
-| impact | 0-3 | 与漏洞类型和实际影响对应 |
-| impact_reason | string | 判定依据，不得为空 |
-| complexity | 0-3 | 反转计分：越容易利用分越高 |
-| complexity_reason | string | 判定依据，不得为空 |
-| score | number | `R×0.40 + I×0.35 + C×0.25`（自行计算） |
+| Required Field | Type | Description |
+|---------------|------|-------------|
+| reachability | 0-3 | Corresponds to prerequisite_conditions.auth_requirement |
+| reachability_reason | string | Justification basis, MUST NOT be empty |
+| impact | 0-3 | Corresponds to vulnerability type and actual impact |
+| impact_reason | string | Justification basis, MUST NOT be empty |
+| complexity | 0-3 | Inverted scoring: easier to exploit = higher score |
+| complexity_reason | string | Justification basis, MUST NOT be empty |
+| score | number | `R×0.40 + I×0.35 + C×0.25` (self-calculated) |
 | cvss | number | `(score / 3.0) × 10.0` |
-| level | C/H/M/L | 按 score 区间映射 |
-| vuln_id | string | 格式 `{Level}-{Type}-{Sequence}`，如 `C-RCE-001` |
+| level | C/H/M/L | Mapped by score range |
+| vuln_id | string | Format `{Level}-{Type}-{Sequence}`, e.g., `C-RCE-001` |
 
-**一致性规则：**
-- `severity.score ≥ 2.70` 但 `evidence_score < 7` → 矛盾，质检不通过
-- `exploitability_judgment = "not_exploitable"` → `severity.score` 强制为 0
-- reason 字段为空 → 质检不通过
+**Consistency Rules:**
+- `severity.score ≥ 2.70` but `evidence_score < 7` → contradiction, QC fails
+- `exploitability_judgment = "not_exploitable"` → `severity.score` is forced to 0
+- reason field is empty → QC fails
 
 ---
 
-## 前置条件要求
+## Prerequisite Conditions Requirements
 
-每个漏洞的 `exploits/{sink_id}.json` 必须包含 `prerequisite_conditions` 对象：
+Each vulnerability's `exploits/{sink_id}.json` MUST include a `prerequisite_conditions` object:
 
-| 必填字段 | 类型 | 说明 |
-|----------|------|------|
+| Required Field | Type | Description |
+|---------------|------|-------------|
 | auth_requirement | enum | `anonymous` / `authenticated` / `admin` / `internal_network` |
-| bypass_method | string\|null | 鉴权绕过方法（如"IDOR via user_id"），无绕过则 null |
-| other_preconditions | string[] | 其他前提条件列表（如 `["APP_DEBUG=true", "allow_url_include=On"]`） |
+| bypass_method | string\|null | Authentication bypass method (e.g., "IDOR via user_id"), null if no bypass |
+| other_preconditions | string[] | List of other preconditions (e.g., `["APP_DEBUG=true", "allow_url_include=On"]`) |
 | exploitability_judgment | enum | `directly_exploitable` / `conditionally_exploitable` / `not_exploitable` |
 
-**降级规则：**
-- `not_exploitable` → `final_verdict` 最高为 `potential`，`confidence` 最高为 `low`
-- `conditionally_exploitable` → `severity.complexity` 降 1 级（更保守估计）
-- `auth_requirement` 必须与 `auth_matrix.json` 中该路由的 `auth_level` 一致
+**Downgrade Rules:**
+- `not_exploitable` → `final_verdict` is at most `potential`, `confidence` is at most `low`
+- `conditionally_exploitable` → `severity.complexity` is downgraded by 1 level (more conservative estimate)
+- `auth_requirement` MUST match the `auth_level` of that route in `auth_matrix.json`

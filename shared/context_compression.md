@@ -1,92 +1,92 @@
-# 多轮攻击上下文压缩协议（Context Compression Protocol）
+# Multi-Round Attack Context Compression Protocol
 
-Phase-4 专家 Agent 在多轮攻击循环中，必须遵守以下上下文压缩规则，以确保后续轮次有足够的 token 预算进行精细分析。
+Phase-4 expert Agents MUST follow the context compression rules below during multi-round attack loops, to ensure sufficient token budget for detailed analysis in subsequent rounds.
 
 ---
 
-## 压缩触发条件
+## Compression Trigger Condition
 
-每完成 **3 轮攻击**后（即 R3 完成后、R6 完成后、R9 完成后），必须执行一次上下文压缩。
+After every **3 attack rounds** are completed (i.e., after R3, R6, R9), a context compression MUST be performed.
 
-## 压缩规则
+## Compression Rules
 
-### 压缩格式
+### Compression Format
 
-将已完成轮次的详细记录压缩为**单行摘要表**，格式如下:
+Compress detailed records of completed rounds into a **single-line summary table** in the following format:
 
 ```
-| 轮次 | 策略 | Payload 摘要 | 结果 | 关键发现 |
-|------|------|-------------|------|---------|
-| R1 | 基础注入 | ;id / |id / $(id) | ❌ 403 WAF拦截 | ModSecurity CRS 激活 |
-| R2 | 编码绕过 | %3Bid / double-URL | ❌ 403 仍拦截 | URL编码无效 |
-| R3 | 通配符替代 | $IFS / {cmd,arg} | ❌ 200 无回显 | 可能存在盲注入 |
+| Round | Strategy | Payload Summary | Result | Key Findings |
+|-------|----------|----------------|--------|-------------|
+| R1 | Basic injection | ;id / |id / $(id) | ❌ 403 WAF blocked | ModSecurity CRS activated |
+| R2 | Encoding bypass | %3Bid / double-URL | ❌ 403 still blocked | URL encoding ineffective |
+| R3 | Wildcard substitution | $IFS / {cmd,arg} | ❌ 200 no output | Possible blind injection |
 ```
 
-### 保留内容
+### Retained Content
 
-压缩后必须保留:
-1. **轮次摘要表**（如上格式）
-2. **已排除路径清单** — 明确列出已证明无效的策略，后续轮次不再尝试
-3. **关键发现** — WAF 类型、过滤规则、可利用的特征
-4. **最后一轮的完整详情** — 最近一轮的 HTTP 请求/响应保持完整，供下一轮参考
+The following MUST be retained after compression:
+1. **Round summary table** (format as above)
+2. **Eliminated paths list** — explicitly list strategies proven ineffective; subsequent rounds MUST NOT retry them
+3. **Key findings** — WAF type, filtering rules, exploitable characteristics
+4. **Full details of the last round** — the most recent round's HTTP request/response MUST remain intact for the next round's reference
 
-### 删除内容
+### Removed Content
 
-以下内容在压缩时移除:
-1. 早期轮次的完整 HTTP 请求/响应 Body
-2. 早期轮次的逐步分析推理过程
-3. 重复的源码引用（已在攻击前准备中记录过的）
-4. 工具调用的原始输出（仅保留关键结果行）
+The following content SHALL be removed during compression:
+1. Full HTTP request/response bodies from earlier rounds
+2. Step-by-step analysis reasoning from earlier rounds
+3. Duplicate source code references (already recorded in pre-attack preparation)
+4. Raw output from tool invocations (retain only key result lines)
 
-## 压缩示例
+## Compression Example
 
-**压缩前**（~8000 tokens）:
+**Before compression** (~8000 tokens):
 ```
-R1: 发送 curl -X POST ... -d "cmd=;id" → 响应 403 ... [完整 HTML body 500行] ...
-分析: ModSecurity 检测到命令注入模式 ... [详细推理 300词] ...
-R2: 尝试编码 ... [重复分析] ...
-R3: 尝试通配符 ... [详细过程] ...
-```
-
-**压缩后**（~800 tokens）:
-```
-## R1-R3 压缩摘要
-
-| 轮次 | 策略 | 结果 | 关键发现 |
-|------|------|------|---------|
-| R1 | 基础命令分隔符 | ❌ 403 | ModSecurity CRS v3.x |
-| R2 | URL/双重编码 | ❌ 403 | 编码类绕过全部失效 |
-| R3 | $IFS/通配符 | ❌ 200 无回显 | 命令可能执行但无输出 |
-
-已排除: 基础分隔符、URL编码、双重编码
-关键发现: WAF=ModSecurity CRS, 200响应可能为盲注入
-下一步建议: 尝试时间盲注 (sleep 5) 或 OOB (DNS/HTTP 回连)
+R1: Sent curl -X POST ... -d "cmd=;id" → Response 403 ... [full HTML body 500 lines] ...
+Analysis: ModSecurity detected command injection pattern ... [detailed reasoning 300 words] ...
+R2: Tried encoding ... [repeated analysis] ...
+R3: Tried wildcards ... [detailed process] ...
 ```
 
-## 输出格式要求
+**After compression** (~800 tokens):
+```
+## R1-R3 Compressed Summary
 
-每次压缩后，在 `$WORK_DIR/exploits/{sink_id}_plan.json` 中更新 `compressed_rounds` 字段:
+| Round | Strategy | Result | Key Findings |
+|-------|----------|--------|-------------|
+| R1 | Basic command separators | ❌ 403 | ModSecurity CRS v3.x |
+| R2 | URL/double encoding | ❌ 403 | All encoding bypasses failed |
+| R3 | $IFS/wildcards | ❌ 200 no output | Command may execute but no output |
+
+Eliminated: basic separators, URL encoding, double encoding
+Key findings: WAF=ModSecurity CRS, 200 response may indicate blind injection
+Next suggestion: Try time-based blind injection (sleep 5) or OOB (DNS/HTTP callback)
+```
+
+## Output Format Requirements
+
+After each compression, update the `compressed_rounds` field in `$WORK_DIR/exploits/{sink_id}_plan.json`:
 
 ```json
 {
   "compressed_rounds": [
     {
       "range": "R1-R3",
-      "summary": "基础注入/编码/通配符全部失败",
+      "summary": "Basic injection/encoding/wildcards all failed",
       "eliminated": ["basic_separators", "url_encoding", "double_encoding", "wildcards"],
       "discoveries": ["waf_type=ModSecurity_CRS", "blind_possible=true"],
-      "next_hint": "尝试时间盲注或 OOB"
+      "next_hint": "Try time-based blind injection or OOB"
     }
   ],
   "current_round": 4,
-  "remaining_budget_hint": "保持每轮分析在 2000 tokens 以内"
+  "remaining_budget_hint": "Keep each round's analysis within 2000 tokens"
 }
 ```
 
-## Token 预算参考
+## Token Budget Reference
 
-| 总轮次 | 压缩后预估 token | 每轮可用 token |
-|--------|-----------------|---------------|
-| 8 轮 | R1-3 摘要 ~800 + R4-6 摘要 ~800 + R7-8 完整 ~4000 | ~2000/轮 |
-| 11 轮 | R1-3 ~800 + R4-6 ~800 + R7-9 ~800 + R10-11 完整 | ~2000/轮 |
-| 12 轮 | R1-3 ~800 + R4-6 ~800 + R7-9 ~800 + R10-12 完整 | ~2000/轮 |
+| Total Rounds | Estimated Tokens After Compression | Available Tokens Per Round |
+|-------------|-----------------------------------|--------------------------|
+| 8 rounds | R1-3 summary ~800 + R4-6 summary ~800 + R7-8 full ~4000 | ~2000/round |
+| 11 rounds | R1-3 ~800 + R4-6 ~800 + R7-9 ~800 + R10-11 full | ~2000/round |
+| 12 rounds | R1-3 ~800 + R4-6 ~800 + R7-9 ~800 + R10-12 full | ~2000/round |

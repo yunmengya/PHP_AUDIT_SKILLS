@@ -1,87 +1,87 @@
-# 兼容性自愈策略映射表
+# Compatibility Self-Healing Strategy Mapping Table
 
-本文件供 `@docker-builder` Agent 在 **Phase B（兼容性修复）** 阶段使用。
+This file is used by the `@docker-builder` Agent during **Phase B (Compatibility Fix)**.
 
-Phase A（标准自愈 ×5）失败后进入 Phase B，Phase B 共 3 轮，每轮对应一类修复策略。
+After Phase A (Standard Self-Healing ×5) fails, Phase B is entered. Phase B has 3 rounds, each corresponding to a category of fix strategies.
 
 ---
 
-## Round B-1: Helper / 函数缺失修复
+## Round B-1: Helper / Missing Function Fix
 
-从容器错误日志中提取 `Call to undefined function` 的函数名，按映射表修复。
+Extract `Call to undefined function` function names from container error logs and fix according to the mapping table.
 
-| 错误特征 | 修复命令 |
-|----------|----------|
+| Error Pattern | Fix Command |
+|--------------|-------------|
 | `Call to undefined function str_slug` | `composer require laravel/helpers` |
-| `Call to undefined function str_*` (任意 str_ helper) | `composer require laravel/helpers` |
-| `Call to undefined function array_*` (签名不匹配) | 检查 PHP 版本兼容性，尝试 `composer require symfony/polyfill-phpXX` |
+| `Call to undefined function str_*` (any str_ helper) | `composer require laravel/helpers` |
+| `Call to undefined function array_*` (signature mismatch) | Check PHP version compatibility, try `composer require symfony/polyfill-phpXX` |
 | `Call to undefined function collect` | `composer require illuminate/collections` |
 | `Call to undefined function env` | `composer require vlucas/phpdotenv` |
 | `Call to undefined function dd` / `dump` | `composer require symfony/var-dumper` |
-| `Call to undefined function {其他}` | 从函数名推断包名 → `composer search {func}` → `composer require {package}` |
+| `Call to undefined function {other}` | Infer package name from function name → `composer search {func}` → `composer require {package}` |
 
-**执行流程**:
-1. `docker compose logs --tail=100 php 2>&1 | grep "undefined function"` 提取所有缺失函数
-2. 逐一匹配上表，执行 `docker exec php composer require {package} --no-interaction`
-3. 重启 PHP 容器: `docker compose restart php`
-4. 验证: `docker exec php curl -sS -o /dev/null -w "%{http_code}" http://nginx:80/`
-5. 仍有新的 undefined function → 重复（本轮内最多修 5 个包）
+**Execution Flow**:
+1. `docker compose logs --tail=100 php 2>&1 | grep "undefined function"` to extract all missing functions
+2. Match each against the table above, execute `docker exec php composer require {package} --no-interaction`
+3. Restart PHP container: `docker compose restart php`
+4. Verify: `docker exec php curl -sS -o /dev/null -w "%{http_code}" http://nginx:80/`
+5. If new undefined functions remain → repeat (maximum 5 packages per round)
 
 ---
 
-## Round B-2: ServiceProvider / 中间件修复
+## Round B-2: ServiceProvider / Middleware Fix
 
-从容器错误日志中提取 Provider 或中间件报错，注释掉非核心组件。
+Extract Provider or middleware errors from container error logs, comment out non-core components.
 
-| 错误特征 | 修复命令 |
-|----------|----------|
-| `Class "XXXServiceProvider" not found` | 在 `config/app.php` 的 `providers` 数组中注释该 Provider |
-| `Target class [xxx] does not exist` (中间件) | 在 `app/Http/Kernel.php` 中注释该中间件 |
-| `Class "XXX" not found` (Facade) | 在 `config/app.php` 的 `aliases` 数组中注释该 Facade |
-| `ReflectionException: Class xxx does not exist` | 同上，定位引用位置并注释 |
+| Error Pattern | Fix Command |
+|--------------|-------------|
+| `Class "XXXServiceProvider" not found` | Comment out that Provider in the `providers` array in `config/app.php` |
+| `Target class [xxx] does not exist` (middleware) | Comment out that middleware in `app/Http/Kernel.php` |
+| `Class "XXX" not found` (Facade) | Comment out that Facade in the `aliases` array in `config/app.php` |
+| `ReflectionException: Class xxx does not exist` | Same as above — locate the reference and comment it out |
 
-**保护清单** — 以下组件 **禁止注释**（影响审计核心功能）:
-- `AuthServiceProvider` / `auth` 中间件
+**Protection List** — The following components MUST NOT be commented out (they affect core audit functionality):
+- `AuthServiceProvider` / `auth` middleware
 - `RouteServiceProvider`
-- `SessionServiceProvider` / `StartSession` 中间件
-- `EncryptCookies` 中间件
-- 数据库相关 Provider
+- `SessionServiceProvider` / `StartSession` middleware
+- `EncryptCookies` middleware
+- Database-related Providers
 
-**执行流程**:
-1. `docker compose logs --tail=100 php 2>&1 | grep -E "not found|does not exist"` 提取报错
-2. 确认目标不在保护清单中
-3. 用 `docker exec php sed -i` 注释对应行（在行首加 `//`）
-4. 如果是 Laravel: `docker exec php php artisan config:clear && docker exec php php artisan cache:clear`
-5. 重启: `docker compose restart php`
-6. 验证
+**Execution Flow**:
+1. `docker compose logs --tail=100 php 2>&1 | grep -E "not found|does not exist"` to extract errors
+2. Confirm the target is not in the protection list
+3. Use `docker exec php sed -i` to comment out the corresponding line (add `//` at the beginning)
+4. If Laravel: `docker exec php php artisan config:clear && docker exec php php artisan cache:clear`
+5. Restart: `docker compose restart php`
+6. Verify
 
 ---
 
-## Round B-3: PHP 版本切换
+## Round B-3: PHP Version Switch
 
-B-1 + B-2 仍失败时，尝试切换 PHP 版本重建容器。
+When B-1 + B-2 still fail, try switching PHP version and rebuilding the container.
 
-**策略**:
+**Strategy**:
 
-| 当前 PHP 版本 | 尝试切换到 | 理由 |
-|---------------|-----------|------|
-| 8.0+ | 7.4 | 旧项目可能依赖 PHP 7.x 特性 |
-| 7.x | 8.1 | 新依赖包可能要求 PHP 8+ |
-| 7.4 已尝试 | 7.2 | 极老项目最后尝试 |
+| Current PHP Version | Try Switching To | Rationale |
+|--------------------|-----------------|-----------|
+| 8.0+ | 7.4 | Legacy projects MAY depend on PHP 7.x features |
+| 7.x | 8.1 | Newer dependency packages MAY require PHP 8+ |
+| 7.4 already tried | 7.2 | Last attempt for very old projects |
 
-**执行流程**:
-1. 修改 `$WORK_DIR/docker/Dockerfile` 中的 `FROM php:X.X-fpm` 为目标版本
+**Execution Flow**:
+1. Modify `FROM php:X.X-fpm` in `$WORK_DIR/docker/Dockerfile` to the target version
 2. `docker compose build --no-cache php`
 3. `docker compose up -d php`
-4. 重新执行 `composer install --no-interaction`
-5. 验证
+4. Re-execute `composer install --no-interaction`
+5. Verify
 
 ---
 
-## Phase B 失败 → 暂停等待用户介入
+## Phase B Failure → Pause and Wait for User Intervention
 
-3 轮全部失败后:
-- 通过 AskUserQuestion 通知用户: "环境构建失败（已尝试标准修复 5 轮 + 兼容性修复 3 轮）。请检查以下错误日志并手动修复环境问题，修复完成后我将重新尝试构建。"
-- 附上最近的容器错误日志摘要
-- 用户确认修复后，从 Phase A 重新开始自愈循环，直到环境构建成功
-- **绝不降级为 static-only 模式，Docker 环境必须构建成功才能继续**
+After all 3 rounds fail:
+- Notify the user via AskUserQuestion: "环境构建失败（已尝试标准修复 5 轮 + 兼容性修复 3 轮）。请检查以下错误日志并手动修复环境问题，修复完成后我将重新尝试构建。"
+- Attach a summary of the most recent container error logs
+- After user confirms the fix, restart the self-healing cycle from Phase A until the environment builds successfully
+- **MUST NOT downgrade to static-only mode; the Docker environment MUST build successfully before proceeding**

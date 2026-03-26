@@ -1,31 +1,31 @@
-# 实时发现共享协议（Realtime Finding Sharing Protocol）
+# Realtime Finding Sharing Protocol
 
-本文件定义 Phase-4 审计员之间的实时信息共享规范。所有审计员在发现可供其他审计员利用的关键信息时，必须写入共享发现数据库。
+This document defines the realtime information sharing specification between Phase-4 auditors. All auditors MUST write to the shared findings database when they discover critical information that other auditors can leverage.
 
 ---
 
-## 共享数据库
+## Shared Database
 
-`$WORK_DIR/audit_session.db` → `shared_findings` 表（SQLite，WAL 模式，支持并发读写）。
+`$WORK_DIR/audit_session.db` → `shared_findings` table (SQLite, WAL mode, supports concurrent reads/writes).
 
-初始化（Phase-4 启动时自动执行，幂等操作）:
+Initialization (automatically executed at Phase-4 startup, idempotent operation):
 ```bash
 bash tools/audit_db.sh init-session "$WORK_DIR"
 ```
 
-## 写入规则
+## Write Rules
 
-### 何时写入
+### When to Write
 
-审计员在以下情况下**必须**写入共享发现:
+Auditors **MUST** write shared findings in the following situations:
 
-1. **发现有效凭证**: 数据库密码、API 密钥、JWT Secret、Token、Session Cookie
-2. **发现内网地址**: 内部 IP、内部 API 端点、服务端口
-3. **发现密钥材料**: APP_KEY、加密密钥、HMAC Secret、私钥
-4. **发现可利用端点**: 无鉴权管理端点、调试端点、文件上传端点
-5. **确认绕过方法**: WAF 绕过技巧、编码方式、HTTP 方法绕过
+1. **Valid credentials discovered**: Database passwords, API keys, JWT Secret, Tokens, Session Cookies
+2. **Internal addresses discovered**: Internal IPs, internal API endpoints, service ports
+3. **Key material discovered**: APP_KEY, encryption keys, HMAC Secret, private keys
+4. **Exploitable endpoints discovered**: Unauthenticated admin endpoints, debug endpoints, file upload endpoints
+5. **Bypass methods confirmed**: WAF bypass techniques, encoding methods, HTTP method bypasses
 
-### 写入命令
+### Write Command
 
 ```bash
 bash tools/audit_db.sh finding-write "$WORK_DIR" '{
@@ -35,100 +35,100 @@ bash tools/audit_db.sh finding-write "$WORK_DIR" '{
   "data": {
     "key": "JWT_SECRET",
     "value": "super_secret_key_123",
-    "context": "从 .env 文件泄露获取",
+    "context": "Obtained from .env file leak",
     "source_location": "GET /.env"
   },
   "target_agents": ["authz-auditor", "crypto-auditor"]
 }'
 ```
 
-**优势**: 内置 UNIQUE 约束自动去重（相同 source_agent + finding_type + data_key + data_value 不会重复插入），无需手动判重。
+**Advantage**: Built-in UNIQUE constraint provides automatic deduplication (identical source_agent + finding_type + data_key + data_value will not be inserted again); no manual dedup needed.
 
-### 写入格式
+### Write Format
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |------|------|------|
-| source_agent | TEXT | 写入方 Agent 名 |
+| source_agent | TEXT | Name of the writing agent |
 | finding_type | TEXT | credential/internal_url/secret_key/endpoint/bypass_method/config_value |
 | priority | TEXT | critical/high/medium |
-| data.key | TEXT | 发现的名称/标识 |
-| data.value | TEXT | 发现的值 |
-| data.context | TEXT | 上下文描述 |
-| data.source_location | TEXT | 来源: file:line 或 HTTP 端点 |
-| target_agents | JSON数组 | 建议的消费方 Agent 名 |
+| data.key | TEXT | Name/identifier of the finding |
+| data.value | TEXT | Value of the finding |
+| data.context | TEXT | Contextual description |
+| data.source_location | TEXT | Source: file:line or HTTP endpoint |
+| target_agents | JSON array | Suggested consumer agent names |
 
-## 读取规则
+## Read Rules
 
-### 何时读取
+### When to Read
 
-审计员在以下时机读取共享发现:
+Auditors SHOULD read shared findings at the following times:
 
-1. **攻击阶段开始前**: 检查是否有其他审计员提供的凭证/密钥可直接利用
-2. **每轮攻击失败后**: 检查是否有新的绕过方法或内部端点可尝试
-3. **组合链构建时(R8)**: 获取所有跨审计员发现用于链式利用
+1. **Before starting the attack phase**: Check whether other auditors have provided credentials/keys that can be directly leveraged
+2. **After each failed attack round**: Check whether new bypass methods or internal endpoints are available to try
+3. **During combination chain construction (R8)**: Retrieve all cross-auditor findings for chained exploitation
 
-### 读取命令
+### Read Commands
 
 ```bash
-# 读取所有发现（按 critical → high → medium 排序）
+# Read all findings (sorted by critical → high → medium)
 bash tools/audit_db.sh finding-read "$WORK_DIR"
 
-# 仅读取特定类型
+# Read only a specific type
 bash tools/audit_db.sh finding-read "$WORK_DIR" credential
 
-# 仅读取本 agent 未消费的发现
+# Read only findings not yet consumed by this agent
 bash tools/audit_db.sh finding-read "$WORK_DIR" "" sqli-auditor
 ```
 
-返回 JSON 数组，可直接用 `jq` 解析:
+Returns a JSON array that can be parsed directly with `jq`:
 
 ```bash
-# 示例: 提取所有未消费的凭证
+# Example: extract all unconsumed credentials
 bash tools/audit_db.sh finding-read "$WORK_DIR" credential sqli-auditor \
   | jq -r '.[] | "\(.data_key)=\(.data_value)"'
 ```
 
-### 消费标记
+### Consumption Marking
 
-消费方读取发现后，标记已消费:
+After the consumer reads a finding, mark it as consumed:
 
 ```bash
 bash tools/audit_db.sh finding-consume "$WORK_DIR" 1 authz-auditor
-# 参数: WORK_DIR, finding_id, agent_name
+# Arguments: WORK_DIR, finding_id, agent_name
 ```
 
-### 消费方行为
+### Consumer Behavior
 
-| finding_type | 消费方 | 行为 |
+| finding_type | Consumer | Behavior |
 |---|---|---|
-| credential (DB密码) | sqli-auditor | 尝试直接数据库连接验证 |
-| credential (API密钥) | infoleak-auditor | 验证密钥是否活跃、权限范围 |
-| secret_key (JWT_SECRET) | authz-auditor | 用于 JWT Token 伪造 (R5) |
-| secret_key (APP_KEY) | config-auditor | 用于 Cookie 解密/签名 URL 伪造 (R8) |
-| internal_url | ssrf-auditor | 添加到 SSRF 目标列表 |
-| internal_url (Redis) | nosql-auditor | 尝试 Redis 命令注入 |
-| endpoint (admin) | authz-auditor | 添加到越权测试端点列表 |
-| bypass_method | 所有审计员 | 在失败轮次中应用绕过技巧 |
-| config_value | crypto-auditor | 用于密码学分析 |
+| credential (DB password) | sqli-auditor | Attempt direct database connection verification |
+| credential (API key) | infoleak-auditor | Verify whether the key is active and its permission scope |
+| secret_key (JWT_SECRET) | authz-auditor | Use for JWT Token forgery (R5) |
+| secret_key (APP_KEY) | config-auditor | Use for Cookie decryption / signed URL forgery (R8) |
+| internal_url | ssrf-auditor | Add to SSRF target list |
+| internal_url (Redis) | nosql-auditor | Attempt Redis command injection |
+| endpoint (admin) | authz-auditor | Add to privilege escalation test endpoint list |
+| bypass_method | All auditors | Apply bypass techniques in failed rounds |
+| config_value | crypto-auditor | Use for cryptographic analysis |
 
-## 并发安全
+## Concurrency Safety
 
-SQLite WAL 模式天然支持并发:
-- **多个 reader 同时读取**: 无需任何锁，不阻塞
-- **单 writer 写入时不阻塞 reader**: WAL 提供快照隔离
-- **写入冲突**: SQLite 自动重试（5 秒超时），对审计场景完全够用
-- **ACID 事务**: 每次写入都是原子的，不会出现半写入行
+SQLite WAL mode natively supports concurrency:
+- **Multiple readers reading simultaneously**: No locks needed, non-blocking
+- **Single writer does not block readers**: WAL provides snapshot isolation
+- **Write conflicts**: SQLite auto-retries (5-second timeout), fully sufficient for audit scenarios
+- **ACID transactions**: Each write is atomic; no partial writes occur
 
-无需 `flock` 文件锁。
+No `flock` file locks needed.
 
-## 统计
+## Statistics
 
 ```bash
-# 查看当前审计的发现统计
+# View finding statistics for the current audit
 bash tools/audit_db.sh finding-stats "$WORK_DIR"
 ```
 
-输出示例:
+Example output:
 ```
 === 共享发现统计 ===
 总发现: 12
@@ -151,41 +151,41 @@ bash tools/audit_db.sh finding-stats "$WORK_DIR"
 未消费: 4
 ```
 
-## 从 JSONL 迁移
+## Migrating from JSONL
 
-如果审计过程中需要迁移已有的 JSONL 数据:
+If existing JSONL data needs to be migrated during the audit:
 
 ```bash
 bash tools/audit_db.sh migrate-findings "$WORK_DIR"
 ```
 
-## 图记忆节点桥接
+## Graph Memory Node Bridging
 
-当审计员写入高置信度图节点（`status = "confirmed"`）时，应**同时**写入共享发现，使其他审计员能在实时共享中感知关联漏洞:
+When an auditor writes a high-confidence graph node (`status = "confirmed"`), it SHOULD **also** write a shared finding so that other auditors can perceive related vulnerabilities via realtime sharing:
 
 ```bash
-# 写入图节点后，同步写入共享发现
+# After writing a graph node, synchronously write a shared finding
 bash tools/audit_db.sh finding-write "$WORK_DIR" '{
-  "source_agent": "{当前 auditor 名}",
+  "source_agent": "{current auditor name}",
   "finding_type": "endpoint",
   "priority": "high",
   "data_key": "graph_node_{sink_id}",
   "data_value": "{vuln_type}: {summary}",
-  "data_context": "关系型图节点 confirmed — data_object={data_object}, severity={severity}",
+  "data_context": "Relational graph node confirmed — data_object={data_object}, severity={severity}",
   "source_location": "{route}",
-  "target_agents": ["correlation_engine", "相关 auditor"]
+  "target_agents": ["correlation_engine", "related auditor"]
 }'
 ```
 
-**桥接条件**（满足全部才桥接）:
-- 图节点 `status = "confirmed"`（不桥接 suspected/speculative）
-- 图节点 `data_object` 非空（有明确的数据对象关联）
-- 该 data_object 尚未被其他审计员在 shared_findings 中报告过
+**Bridging conditions** (all MUST be met to bridge):
+- Graph node `status = "confirmed"` (do not bridge suspected/speculative)
+- Graph node `data_object` is non-empty (has a definite data object association)
+- The data_object has not already been reported by another auditor in shared_findings
 
-**目的**: 确保关系型图记忆（全局持久化 `attack_memory.db`）与会话级实时共享（`audit_session.db`）双向互通，不存在信息孤岛。
+**Purpose**: Ensure bidirectional interoperability between the relational graph memory (globally persisted `attack_memory.db`) and session-level realtime sharing (`audit_session.db`), eliminating information silos.
 
-## 约束
+## Constraints
 
-- 写入的值必须是**实际获取到的数据**，禁止推测
-- 敏感凭证在报告中脱敏（仅在 audit_session.db 中保留原文供审计使用）
-- audit_session.db 在 Phase-5 清理时由 env-cleaner 安全删除（`shred` 或 `dd` 覆写后 `rm`）
+- Written values MUST be **actually obtained data**; speculation is MUST NOT be used
+- Sensitive credentials MUST be redacted in reports (originals are retained only in audit_session.db for audit use)
+- audit_session.db is securely deleted by env-cleaner during Phase-5 cleanup (`shred` or `dd` overwrite followed by `rm`)
