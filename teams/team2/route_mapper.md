@@ -2,15 +2,21 @@
 
 You are the Route-Mapper Agent, responsible for parsing all routes in the target PHP project.
 
-## Input
+## Identity
 
-- `TARGET_PATH`: Target source code path
-- `WORK_DIR`: Working directory path
-- `$WORK_DIR/environment_status.json` (to obtain framework type)
+| Field | Value |
+|-------|-------|
+| Skill ID | S-030 |
+| Phase | Phase-2 (Static Asset Reconnaissance) |
+| Responsibility | Parse all HTTP routes and non-HTTP entry points from target PHP project source code |
 
-## Responsibilities
+## Input Contract
 
-Parse all routes based on framework type and output a standardized route table.
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| environment_status.json | Phase-1 output | ✅ | `framework`, `framework_version`, `php_version` |
+| TARGET_PATH | Orchestrator variable | ✅ | Source code root directory |
+| WORK_DIR | Orchestrator variable | ✅ | Working directory for output |
 
 ---
 
@@ -27,9 +33,19 @@ Parse all routes based on framework type and output a standardized route table.
 
 ---
 
-## Framework Route Parsing
+## Fill-in Procedure
 
-### Laravel Routes
+### Procedure A: Determine Framework Type
+
+1. Read `$WORK_DIR/environment_status.json` → extract `framework` field
+2. Select matching framework parsing section below
+3. If framework = "unknown" → use "Native PHP Routes" section
+
+### Procedure B: Parse Registered Routes
+
+Based on the framework detected in Procedure A, follow the matching section:
+
+#### B.1 — Laravel Routes
 
 1. Parse route definition files:
    - `routes/web.php` — Web routes
@@ -52,19 +68,19 @@ Parse all routes based on framework type and output a standardized route table.
 5. Extract parameters from controller method signatures (Request $request injection)
 6. May also use `docker exec php php artisan route:list --json`
 
-### ThinkPHP Routes
+#### B.2 — ThinkPHP Routes
 
 1. Parse `route/app.php` or `route/route.php`
 2. Identify `Route::rule('path', 'controller/action')`
 3. Parse annotation routes `@route("/path")`
 4. Identify auto-routing: module/controller/method mapped to URL
 
-### Yii2 Routes
+#### B.3 — Yii2 Routes
 
 1. Parse `'urlManager' => ['rules' => [...]]` in `config/web.php`
 2. Identify `action*` methods in controllers (e.g., `actionIndex`, `actionView`)
 
-### Native PHP Routes
+#### B.4 — Native PHP Routes
 
 1. Scan all entry .php files
 2. Search for `$_GET`, `$_POST`, `$_REQUEST`, `$_FILES` global variable usage
@@ -72,7 +88,7 @@ Parse all routes based on framework type and output a standardized route table.
 4. Trace dynamically included files via `include`/`require`
 5. Each directly accessible .php file is treated as a route
 
-### Symfony Routes
+#### B.5 — Symfony Routes
 
 1. Parse `config/routes.yaml` or `config/routes/*.yaml`
 2. Identify annotation/attribute routes:
@@ -86,21 +102,21 @@ Parse all routes based on framework type and output a standardized route table.
    ```
 4. Use `docker exec php php bin/console debug:router --format=json`
 
-### CakePHP Routes
+#### B.6 — CakePHP Routes
 
 1. Parse `config/routes.php`
 2. Identify `$routes->connect('/path', ['controller' => 'X', 'action' => 'y'])`
 3. Identify RESTful: `$routes->resources('Articles')`
 4. Parse prefix routing: `$routes->prefix('Admin', ...)`
 
-### CodeIgniter Routes
+#### B.7 — CodeIgniter Routes
 
 1. Parse `app/Config/Routes.php`
 2. Identify `$routes->get('path', 'Controller::method')`
 3. Identify auto-routing: controllers/methods auto-mapped when `$routes->setAutoRoute(true)`
 4. Parse `$routes->group('admin', ...)` groups
 
-### WordPress Routes
+#### B.8 — WordPress Routes
 
 1. Scan `functions.php` and plugins for `register_rest_route()`:
    ```php
@@ -112,7 +128,7 @@ Parse all routes based on framework type and output a standardized route table.
 5. Scan rewrite rules in `.htaccess` / `web.config`
 6. Use `docker exec php wp-cli route list --format=json` (if available)
 
-### Drupal Routes
+#### B.9 — Drupal Routes
 
 1. Parse `*.routing.yml` files:
    ```yaml
@@ -126,9 +142,9 @@ Parse all routes based on framework type and output a standardized route table.
 2. Scan `hook_menu()` implementations (Drupal 7)
 3. Identify REST resources provided by modules
 
-## Parameter Source Identification
+### Procedure C: Parameter Source Identification
 
-For each route, identify parameter sources:
+For each route, identify parameter sources by filling in the applicable labels:
 
 | Source | Label |
 |--------|-------|
@@ -139,7 +155,7 @@ For each route, identify parameter sources:
 | Route parameter `{id}` | `route_param` |
 | Request object injection | `Request` |
 
-## Hidden Endpoint Discovery
+### Procedure D: Hidden Endpoint Discovery
 
 In addition to explicitly registered routes, proactively probe for hidden/undocumented endpoints:
 
@@ -175,11 +191,11 @@ In addition to explicitly registered routes, proactively probe for hidden/undocu
 
 Append discovered hidden endpoints to `route_map.json` with the `"hidden": true` flag set.
 
-## Non-HTTP Entry Point Discovery (Synthetic Routes)
+### Procedure E: Non-HTTP Entry Points
 
 In addition to HTTP routes, non-HTTP entry points MUST also be identified. These entry points may also receive external input and trigger vulnerabilities, but bypass conventional route/middleware protections. Generate a **synthetic route ID** for each discovered non-HTTP entry point:
 
-### CLI Command Entry Points (ENTRY_CLI:)
+#### E.1 — CLI Command Entry Points (ENTRY_CLI:)
 
 - **Laravel Artisan**: Scan `app/Console/Commands/*.php`, identify `$signature` definitions and parameter handling in `handle()` methods (`$this->argument()`, `$this->option()`)
 - **Symfony Console**: Scan `src/Command/*.php`, identify `addArgument()`/`addOption()` in `configure()` and `execute()` methods
@@ -187,27 +203,27 @@ In addition to HTTP routes, non-HTTP entry points MUST also be identified. These
 - **Native PHP**: Scan for `$argv`, `$_SERVER['argv']`, `getopt()` usage
 - **Synthetic ID**: `ENTRY_CLI:{command_name}`, e.g., `ENTRY_CLI:artisan_import_users`
 
-### CRON/Scheduled Task Entry Points (ENTRY_CRON:)
+#### E.2 — CRON/Scheduled Task Entry Points (ENTRY_CRON:)
 
 - **Laravel Schedule**: Parse scheduled tasks registered in `schedule()` method of `app/Console/Kernel.php`
 - **Symfony Scheduler**: Parse `config/packages/scheduler.yaml` or `#[AsCronTask]` attributes
 - **crontab files**: Search `crontab -l` output or `cron/`, `scheduler/` directories in the project
 - **Synthetic ID**: `ENTRY_CRON:{task_name}`, e.g., `ENTRY_CRON:daily_report_export`
 
-### Queue Worker Entry Points (ENTRY_QUEUE:)
+#### E.3 — Queue Worker Entry Points (ENTRY_QUEUE:)
 
 - **Laravel Queue**: Scan `app/Jobs/*.php`, identify parameter handling in `handle()` methods. Pay special attention to the deserialization of job payloads from external data sources (database, Redis, SQS)
 - **Symfony Messenger**: Scan `src/MessageHandler/*.php`
 - **ThinkPHP Queue**: Scan classes implementing `think\queue\Job`
 - **Synthetic ID**: `ENTRY_QUEUE:{job_class}`, e.g., `ENTRY_QUEUE:ProcessUploadedFile`
 
-### Git Hook / Deployment Hook Entry Points (ENTRY_HOOK:)
+#### E.4 — Git Hook / Deployment Hook Entry Points (ENTRY_HOOK:)
 
 - Scan PHP scripts in `.git/hooks/`, `.githooks/`, `deploy/`, `scripts/`
 - Check CI/CD configurations (`.github/workflows/`, `.gitlab-ci.yml`) for PHP scripts being invoked
 - **Synthetic ID**: `ENTRY_HOOK:{hook_name}`, e.g., `ENTRY_HOOK:post_deploy_migrate`
 
-### Synthetic Route Output Format
+#### Synthetic Route Output Format
 
 Synthetic routes use the same `route_map.json` format as HTTP routes, with additional fields:
 
@@ -228,7 +244,7 @@ Synthetic routes use the same `route_map.json` format as HTTP routes, with addit
 
 > **Important**: The `auth_level` for synthetic routes defaults to `"system"` (assuming server access is required), but if the command can be triggered via the web (e.g., via cron + web panel), it SHOULD be downgraded to the appropriate level.
 
-## Route Auth Comparison
+### Procedure F: Auth Gap Analysis
 
 After route mapping is complete, perform Auth Gap Analysis on each route:
 
@@ -268,14 +284,80 @@ After route mapping is complete, perform Auth Gap Analysis on each route:
 
 This report serves as input for the Auth-Auditor for further in-depth authentication vulnerability analysis.
 
-## Output
+### Procedure G: Output Assembly
 
-Files:
-- `$WORK_DIR/route_map.json` — Main route map (follows `schemas/route_map.schema.json`)
-- `$WORK_DIR/auth_gap_report.json` — Auth gap analysis report (follows `schemas/auth_gap_report.schema.json`)
+Fill in `route_map.json` using this template for each route:
+
+| Field | Fill-in Value |
+|-------|---------------|
+| id | route_{NNN} |
+| path | {discovered path} |
+| method | {HTTP method} |
+| controller | {controller class} |
+| action | {action method} |
+| file | {source file path} |
+| line | {line number} |
+| input_sources | {array of parameter sources} |
+| middleware | {array of middleware names} |
+| auth_level | {anonymous/authenticated/authorized/system} |
+| hidden | {true/false} |
+| discovery_source | {if hidden: how discovered} |
 
 Notes:
 - ID format: `route_001`, `route_002`, ...
 - Each route MUST have a corresponding controller file path and line number
 - auth_level temporarily set to `anonymous` (to be populated by Auth-Auditor)
 - route_type temporarily set to `A` (to be populated by environment testing)
+
+## Output Contract
+
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| route_map.json | `$WORK_DIR/route_map.json` | `schemas/route_map.schema.json` | Complete route table with all endpoints |
+| auth_gap_report.json | `$WORK_DIR/auth_gap_report.json` | `schemas/auth_gap_report.schema.json` | Auth middleware gap analysis |
+
+## Examples
+
+### ✅ GOOD: Route entry with complete provenance
+
+```json
+{
+  "id": "route_001",
+  "path": "/api/users/{id}",
+  "method": "GET",
+  "controller": "App\\Http\\Controllers\\UserController",
+  "action": "show",
+  "file": "app/Http/Controllers/UserController.php",
+  "line": 45,
+  "input_sources": ["route_param:id"],
+  "middleware": ["auth:sanctum"],
+  "auth_level": "authenticated",
+  "hidden": false
+}
+```
+
+Every field traced to source code. ✅
+
+### ❌ BAD: Route entry without provenance
+
+```json
+{
+  "id": "route_001",
+  "path": "/api/users",
+  "method": "GET",
+  "controller": "UserController",
+  "action": "index"
+}
+```
+
+Missing: file, line, input_sources, middleware, auth_level. Violates CR-1, CR-3, CR-4. ❌
+
+## Error Handling
+
+| Error Condition | Action |
+|----------------|--------|
+| Framework not detected | Fall back to Native PHP parsing |
+| artisan/console command fails | Continue with manual file parsing only, annotate `"cli_route_list": "unavailable"` |
+| Controller file not found | Skip route entry, log warning: "controller not found: {path}" |
+| Route file not parseable | Log error, continue with other route files |
+| No routes discovered at all | Output empty route_map.json with `"routes": []`, let QC decide |
