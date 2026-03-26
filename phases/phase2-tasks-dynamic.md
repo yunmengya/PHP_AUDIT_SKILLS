@@ -35,6 +35,8 @@ Read the `framework` field from $WORK_DIR/environment_status.json:
 
 ## Task Creation
 
+**TEMPLATE: Task numbers 15+ are dynamic. Orchestrator MUST renumber based on actual sink count and order. Do NOT use these numbers literally.**
+
 Create Tasks ONLY for specialists whose corresponding sink type exists (or is framework-mandatory):
 
 ```
