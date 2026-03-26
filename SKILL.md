@@ -734,6 +734,8 @@ bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_3_PASS" "PHASE_4"
 ```
 ```
 RESEARCH_COUNT=0   # Initialize Mini-Researcher dispatch counter
+PHASE_TIMEOUT_MIN=60
+AGENT_TIMEOUT_MIN=20  # per-auditor timeout
 echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 打印: ━━━ 进入 Phase-4: 深度对抗审计 ━━━
 ```
