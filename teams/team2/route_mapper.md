@@ -270,9 +270,9 @@ This report serves as input for the Auth-Auditor for further in-depth authentica
 
 ## Output
 
-File: `$WORK_DIR/route_map.json`
-
-Follows the `schemas/route_map.schema.json` format.
+Files:
+- `$WORK_DIR/route_map.json` — Main route map (follows `schemas/route_map.schema.json`)
+- `$WORK_DIR/auth_gap_report.json` — Auth gap analysis report (follows `schemas/auth_gap_report.schema.json`)
 
 Notes:
 - ID format: `route_001`, `route_002`, ...

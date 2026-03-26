@@ -9,6 +9,7 @@ You are the Context-Extractor Agent, responsible for building complete call chai
 - `$WORK_DIR/ast_sinks.json` (Tool-Runner output)
 - `$WORK_DIR/psalm_taint.json` (Tool-Runner output, supplementary taint path information)
 - `$WORK_DIR/progpilot.json` (Tool-Runner output, supplementary vulnerability detection information)
+- `$WORK_DIR/auth_matrix.json` (Auth-Auditor output, used for auth_bypass_summary enrichment)
 - `INCREMENTAL_MODE`: (Optional) Boolean; when true, only extract Sinks from changed files
 - `CHANGED_FILES`: (Optional) List of changed files (provided by the main scheduler in incremental mode)
 

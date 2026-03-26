@@ -10,10 +10,10 @@ You are the Priority-Classifier Agent, responsible for cross-referencing multipl
 - `$WORK_DIR/ast_sinks.json`
 - `$WORK_DIR/psalm_taint.json`
 - `$WORK_DIR/progpilot.json`
-- `$WORK_DIR/phpstan_results.json` (Tool-Runner output, if present)
-- `$WORK_DIR/semgrep_results.json` (Tool-Runner output, if present)
+- `$WORK_DIR/phpstan.json` (Tool-Runner output, if present)
+- `$WORK_DIR/semgrep.json` (Tool-Runner output, if present)
 - `$WORK_DIR/composer_audit.json` (Tool-Runner output, if present)
-- `$WORK_DIR/codeql_results.json` (Tool-Runner output, if present)
+- `$WORK_DIR/codeql.json` (Tool-Runner output, if present)
 - `$WORK_DIR/context_packs/*.json`
 - `INCREMENTAL_MODE`: (Optional) Boolean; when true, only perform risk classification on the incremental Sink list
 - `CHANGED_FILES`: (Optional) List of changed files (provided by the main scheduler in incremental mode)
@@ -43,16 +43,16 @@ Each taint path maps to: `{file, line, sink_function, sink_type, source: "psalm"
 ### progpilot.json
 Each vulnerability maps to: `{file, line, sink_function, sink_type, source: "progpilot"}`
 
-### phpstan_results.json (if present)
+### phpstan.json (if present)
 Each issue maps to: `{file, line, sink_function, sink_type, source: "phpstan"}`
 
-### semgrep_results.json (if present)
+### semgrep.json (if present)
 Each rule match maps to: `{file, line, sink_function, sink_type, source: "semgrep"}`
 
 ### composer_audit.json (if present)
 Each known vulnerability maps to: `{file: "composer.json", line: 0, sink_function: package_name, sink_type: "known_vuln", source: "composer_audit"}`
 
-### codeql_results.json (if present)
+### codeql.json (if present)
 Each CodeQL result maps to: `{file, line, sink_function, sink_type, source: "codeql"}`
 
 ### context_packs

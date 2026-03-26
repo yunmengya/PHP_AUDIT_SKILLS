@@ -39,7 +39,7 @@ All skill resources are located in the skill root directory (referred to as `SKI
   - `tools/validate_shared.php` — Shared resource validator. Usage: `php tools/validate_shared.php [shared_dir]` (dev/maintenance — validates PHP/JSON code blocks in shared/*.md)
   - `tools/audit_monitor.sh` — Real-time audit progress dashboard. Usage: `bash tools/audit_monitor.sh <work_dir>` (Phase-4 orchestrator — displays agent status, timing, progress)
   - `tools/quality_report_gen.sh` — Quality report generator. Usage: `bash tools/quality_report_gen.sh <work_dir>` (Phase-4.5/5 — generates QC summary report)
-  - `tools/vuln_intel.sh` — External vulnerability intelligence query (no API key required). Usage: `bash tools/vuln_intel.sh <cve_or_keyword>` (Phase-4 Mini-Researcher — queries public CVE/NVD databases)
+  - `tools/vuln_intel.sh` — Dependency vulnerability scanner (no API key required). Usage: `bash tools/vuln_intel.sh <composer.lock> [output_dir]` (Phase-4 Mini-Researcher — queries OSV.dev, cve.circl.lu for Packagist package vulnerabilities)
 
 ## Input Parameters
 
@@ -226,7 +226,7 @@ jq '.phases.phase3.mode = "degraded" | .phases.phase3.degradation_reason = "REAS
 }
 ```
 
-Agent status enum: `spawned` → `analyzing` (phase-1 analysis) → `attacking` (phase-2 attack) → `completed` (done, pending QC) → `passed` (QC pass) / `failed` (QC fail) / `retrying` (redo) / `timeout` (timed out)
+Agent status enum: `spawned` → `running` → `passed` (QC pass) / `failed` (QC fail) / `retrying` (redo) / `degraded` (retries exhausted) / `timed_out` (exceeded timeout)
 
 ### Step 4: Resume Detection
 
@@ -978,12 +978,14 @@ done
 [ -d "$WORK_DIR/context_packs" ] && mv "$WORK_DIR/context_packs" "$WORK_DIR/原始数据/"
 [ -d "$WORK_DIR/traces" ] && mv "$WORK_DIR/traces" "$WORK_DIR/原始数据/"
 [ -d "$WORK_DIR/research" ] && mv "$WORK_DIR/research" "$WORK_DIR/原始数据/"
-[ -d "$WORK_DIR/.audit_state" ] && mv "$WORK_DIR/.audit_state" "$WORK_DIR/原始数据/"
+# NOTE: .audit_state is moved AFTER phase_transition.sh call in Step 5
 ```
 
 **Step 5 — EXIT:**
 ```bash
 bash "$WORK_DIR/.audit_state/phase_transition.sh" "PHASE_5" "DONE"
+# NOW safe to move .audit_state (transition is complete)
+[ -d "$WORK_DIR/.audit_state" ] && mv "$WORK_DIR/.audit_state" "$WORK_DIR/原始数据/"
 # Write final checkpoint to 原始数据/
 cat > "$WORK_DIR/原始数据/checkpoint.json" << EOF
 {"completed": ["env", "scan", "trace", "exploit", "post_exploit", "report"], "current": "done"}

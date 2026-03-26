@@ -153,7 +153,7 @@ After completing Framework Fingerprinting (Module 2) and PHP Version Inference (
    - Each match entry SHALL include: `component`, `detected_version`, `cve_id`, `severity`, `description`, `affected_auditors`
    - severity is classified by CVSS: critical (≥9.0), high (7.0-8.9), medium (4.0-6.9), low (<4.0)
 4. **Priority marking**:
-   - critical/high CVE → annotate in output with `⚠️ 版本预判: 存在已知高危漏洞`
+   - critical/high CVE → annotate in output with `⚠️ Version warning: known high-severity vulnerability`
    - Map affected_auditors (e.g., ThinkPHP 5.x RCE → `["rce_auditor"]`)
 
 ### Version-CVE Mapping Rules
