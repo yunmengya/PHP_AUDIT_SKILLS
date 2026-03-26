@@ -4,6 +4,89 @@ The main dispatcher has set variables: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_
 Refer to the prompt template in phase1-env.md.
 Dynamic TASK_ID mappings were recorded during the phase2-tasks-dynamic.md stage.
 
+## 5-Step Orchestration Template
+
+**Step 1 — ENTER:**
+```bash
+bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_4_5_PASS" "PHASE_5"
+PHASE_TIMEOUT_MIN=15
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
+```
+```
+打印: ━━━ 进入 Phase-5: 清理与报告 ━━━
+```
+
+**Step 2 — SPAWN:**
+```
+spawn cleanup_agent (foreground, read teams/team5/env_cleaner.md)
+  — Stop Docker containers, clean temp files
+→ WAIT for cleanup completed
+
+spawn report_writer (foreground, read teams/team5/report_writer.md)
+  inject: exploit_summary.json + exploits/*.json + PoC脚本/*.py + 修复补丁/*.php
+→ WAIT for report completed
+```
+
+**Step 3 — WAIT + Final QC:**
+```
+spawn quality_checker (final report QC, foreground)
+⏳ Block-wait final QC result
+  — QC PASS → continue
+  — QC FAIL → check report_writer redo_count:
+    if redo_count < 2 → increment redo_count, revise and resubmit
+    if redo_count >= 2 → force output whatever is available
+```
+
+**Step 4 — GATE + File Reorganization:**
+```bash
+bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-5" "$WORK_DIR/报告/审计报告.md"
+# PASS → reorganize files
+# FAIL → Level 1: retry report_writer
+#         Level 2: force output whatever is available
+#         Level 3: N/A
+```
+```bash
+# Move all intermediate artifacts to 原始数据/ for clean user view
+for f in environment_status.json route_map.json auth_matrix.json ast_sinks.json \
+         priority_queue.json credentials.json dep_risk.json exploit_summary.json \
+         attack_graph.json correlation_report.json checkpoint.json; do
+  [ -f "$WORK_DIR/$f" ] && mv "$WORK_DIR/$f" "$WORK_DIR/原始数据/"
+done
+[ -d "$WORK_DIR/exploits" ] && mv "$WORK_DIR/exploits" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/context_packs" ] && mv "$WORK_DIR/context_packs" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/traces" ] && mv "$WORK_DIR/traces" "$WORK_DIR/原始数据/"
+[ -d "$WORK_DIR/research" ] && mv "$WORK_DIR/research" "$WORK_DIR/原始数据/"
+# NOTE: .audit_state is moved AFTER phase_transition.sh call in Step 5
+```
+
+**Step 5 — EXIT:**
+```bash
+bash "$WORK_DIR/.audit_state/phase_transition.sh" "PHASE_5" "DONE"
+# NOW safe to move .audit_state (transition is complete)
+[ -d "$WORK_DIR/.audit_state" ] && mv "$WORK_DIR/.audit_state" "$WORK_DIR/原始数据/"
+# Write final checkpoint to 原始数据/
+cat > "$WORK_DIR/原始数据/checkpoint.json" << EOF
+{"completed": ["env", "scan", "trace", "exploit", "post_exploit", "report"], "current": "done"}
+EOF
+```
+```
+Print pipeline: ALL ✅
+
+━━━ 审计完成 ━━━
+📋 审计报告: $WORK_DIR/报告/审计报告.md
+📊 SARIF:    $WORK_DIR/报告/audit_report.sarif.json
+🔧 PoC脚本: $WORK_DIR/PoC脚本/
+🩹 修复补丁: $WORK_DIR/修复补丁/
+📝 经验沉淀: $WORK_DIR/经验沉淀/
+📊 质量报告: $WORK_DIR/质量报告/质量报告.md
+📁 原始数据: $WORK_DIR/原始数据/
+━━━━━━━━━━━━━━━
+```
+
+**🚫 ONLY after Phase-5 Step 5 completes (phase_transition.sh returns 0 and checkpoint.json shows `"current": "done"`) may you show ANY vulnerability findings or fix suggestions to the user.**
+
+---
+
 ## Execution Steps
 
 ### Parallel Step: Cleanup + Report + SARIF

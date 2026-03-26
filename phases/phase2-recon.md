@@ -3,6 +3,65 @@
 The main dispatcher has set variables: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_RESOURCES
 Refer to the prompt template in phase1-env.md.
 
+## 5-Step Orchestration Template
+
+**Step 1 — ENTER:**
+```bash
+bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_1_PASS" "PHASE_2"
+PHASE_TIMEOUT_MIN=25
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
+```
+```
+打印: ━━━ 进入 Phase-2: 静态资产侦察 ━━━
+```
+
+**Step 2 — SPAWN:**
+```
+spawn tool_runner       (Task #5, background, read teams/team2/tool_runner.md)
+spawn route_mapper      (Task #6, background, read teams/team2/route_mapper.md)
+spawn auth_auditor      (Task #7, background, read teams/team2/auth_auditor.md)
+spawn dep_scanner       (Task #8, background, read teams/team2/dep_scanner.md)
+→ WAIT for Task #5,#6,#7,#8 ALL completed
+spawn context_extractor (Task #9, foreground, read teams/team2/context_extractor.md)
+→ WAIT for Task #9 completed
+spawn risk_classifier   (Task #10, foreground, read teams/team2/risk_classifier.md)
+→ WAIT for Task #10 completed
+```
+
+**Step 3 — WAIT + QC:**
+```
+spawn quality_checker (Task #11, foreground)
+⏳ Block-wait QC result
+  — QC PASS → continue
+  — QC FAIL → identify failing agent, check redo_count:
+    if redo_count < 2 → increment redo_count, re-run with failed_items
+    if redo_count >= 2 → mark degraded, continue with available results
+```
+
+**Step 4 — GATE:**
+```bash
+bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-2" \
+  "$WORK_DIR/priority_queue.json" \
+  "$WORK_DIR/context_packs"
+# PASS → continue
+# FAIL → Level 1: retry context_extractor/risk_classifier
+#         Level 2: if still fails, continue with partial context_packs (degraded)
+#         Level 3: if priority_queue.json missing entirely → USER HALT
+```
+
+**Step 5 — EXIT:**
+```bash
+bash "$WORK_DIR/.audit_state/phase_transition.sh" "PHASE_2" "GATE_2_PASS"
+```
+```
+Write checkpoint: {"completed": ["env", "scan"], "current": "trace"}
+Print pipeline: Phase-1 ✅ | Phase-2 ✅ | Phase-3~5 ⏳
+```
+
+**🚫 ONLY now proceed to dynamic task creation + Phase-3.**
+
+---
+
 ## Execution Steps
 
 ### Parallel Step

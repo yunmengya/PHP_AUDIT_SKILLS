@@ -6,6 +6,56 @@ Dynamic TASK_ID mappings were recorded during the phase2-tasks-dynamic.md stage.
 
 **This Phase is the SOLE source of PoC scripts — it MUST NOT be skipped.**
 
+## 5-Step Orchestration Template
+
+**Step 1 — ENTER:**
+```bash
+bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_4_PASS" "PHASE_4_5"
+PHASE_TIMEOUT_MIN=15
+echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
+```
+```
+打印: ━━━ 进入 Phase-4.5: 后渗透智能分析 ━━━
+```
+
+**Step 2 — SPAWN:**
+```
+spawn attack_graph_builder  (background, read teams/team4.5/attack_graph_builder.md)
+spawn correlation_engine    (background, read teams/team4.5/correlation_engine.md)
+→ WAIT for both completed
+spawn remediation_generator (background, read teams/team4.5/remediation_generator.md)
+spawn poc_generator         (background, read teams/team4.5/poc_generator.md)
+→ WAIT for both completed
+```
+
+**Step 3 — WAIT:**
+```
+⏳ Block-wait ALL Phase-4.5 agents completed (no separate QC for this phase)
+```
+
+**Step 4 — GATE:**
+```bash
+bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-4.5" "$WORK_DIR/PoC脚本" "$WORK_DIR/修复补丁"
+ls "$WORK_DIR/PoC脚本/"*.py >/dev/null 2>&1 || echo "❌ GATE-4.5 FAIL: PoC脚本/ empty"
+# PASS → continue
+# FAIL → Level 1: retry poc_generator / remediation_generator
+#         Level 2: if still fails, continue to Phase-5 with partial results (degraded)
+#         Level 3: N/A (can always degrade)
+```
+
+**Step 5 — EXIT:**
+```bash
+bash "$WORK_DIR/.audit_state/phase_transition.sh" "PHASE_4_5" "GATE_4_5_PASS"
+```
+```
+Write checkpoint: {"completed": ["env", "scan", "trace", "exploit", "post_exploit"], "current": "report"}
+Print pipeline: Phase-1~4.5 ✅ | Phase-5 ⏳
+```
+
+**🚫 ONLY now may you enter Phase-5.**
+
+---
+
 ## Execution Steps
 
 ### Parallel Step 1: Attack Graph + Correlation Analysis
