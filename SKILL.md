@@ -1013,6 +1013,7 @@ Print pipeline: ALL ✅
 🔧 PoC脚本: $WORK_DIR/PoC脚本/
 🩹 修复补丁: $WORK_DIR/修复补丁/
 📝 经验沉淀: $WORK_DIR/经验沉淀/
+📊 质量报告: $WORK_DIR/质量报告/质量报告.md
 📁 原始数据: $WORK_DIR/原始数据/
 ━━━━━━━━━━━━━━━
 ```
