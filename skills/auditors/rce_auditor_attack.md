@@ -29,6 +29,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST verify command execution by observing unique canary output (e.g., `echo UNIQUE_TOKEN`) — timing-only or blind detection requires secondary confirmation | FAIL — false positive on non-executing payloads |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 8-Round Attack Strategy
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -78,6 +79,9 @@ Direct command separator concatenation:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2: Encoding Bypass
 
@@ -96,6 +100,9 @@ Direct command separator concatenation:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3: Wildcard and Whitespace Bypass
 
@@ -114,6 +121,9 @@ Direct command separator concatenation:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4: Variable Overwrite Attack
 
@@ -131,6 +141,9 @@ Direct command separator concatenation:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5: Truncation and Newline Injection
 
@@ -149,6 +162,9 @@ Direct command separator concatenation:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6: disable_functions Bypass
 
@@ -167,6 +183,9 @@ Direct command separator concatenation:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6.5: PHP Filter Chain RCE (Important New Technique 2022+)
 
@@ -190,6 +209,9 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6.6: PHP 8.x Feature Exploitation
 
@@ -216,6 +238,9 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6.7: Composer Autoloader Abuse
 
@@ -233,6 +258,9 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6.8: mail() 5th Parameter Injection
 
@@ -250,6 +278,9 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R7: Logic Bypass + Race Condition
 
@@ -267,6 +298,9 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R8: Combined Attack
 

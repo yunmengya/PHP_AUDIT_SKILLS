@@ -24,6 +24,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST verify sensitive data (password, token, session_id) actually appears in log output file/stream — log function call with sanitized input is not a vulnerability | FAIL — sanitized logging reported as sensitive data leak |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 6-Round Attack
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -111,6 +112,9 @@ $logger->info("Search query: {query}", ['query' => $sanitizedInput]);
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2 - Sensitive Data in Logs
 
@@ -175,6 +179,9 @@ Log::debug('Request received', ['data' => $request->except(['password', 'token']
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3 - Log File Exposure
 
@@ -244,6 +251,9 @@ GET /download?path=../../var/log/syslog
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4 - Missing Audit Events
 
@@ -300,6 +310,9 @@ grep -rn 'log\|Log::' app/Http/Controllers/Auth/ --include="*.php"
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5 - Log Tampering
 
@@ -364,6 +377,9 @@ cat /etc/logrotate.d/app 2>/dev/null
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6 - Advanced Exploitation
 

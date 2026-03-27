@@ -29,6 +29,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST verify gadget chain triggers observable side effect (file write, DNS lookup, sleep) — deserialization without chain completion is `potential` not `confirmed` | FAIL — unverified gadget chain reported as confirmed |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 8-Round Attack Strategy
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -80,6 +81,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2: Encoding Bypass
 
@@ -97,6 +101,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3: Property Name Obfuscation + Case Variation
 
@@ -114,6 +121,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4: PHP Weak Type Confusion
 
@@ -131,6 +141,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5: protected/private Property Override
 
@@ -148,6 +161,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6: Nested Object Chains
 
@@ -165,6 +181,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R7: phar:// Bypass File Type Checks
 
@@ -194,6 +213,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R8: Multi-Gadget Combination + Framework-Specific Chains
 
@@ -214,6 +236,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R9: PHP 8.x Deserialization New Features
 
@@ -239,6 +264,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R10: Framework-Specific Gadget Chains (Extended)
 
@@ -271,6 +299,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R11: Non-Standard Deserialization Entry Points
 
@@ -298,6 +329,9 @@ Within each round, test payloads in the following priority order:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R12: PropertyOrientedProgramming Advanced Chain Construction
 

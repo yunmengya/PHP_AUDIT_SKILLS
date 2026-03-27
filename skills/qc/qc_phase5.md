@@ -30,7 +30,7 @@
 | CR-6 | `报告/审计报告.md` MUST exist | FAIL — report_writer did not produce output |
 | CR-7 | Confidence labels: ✅ = confirmed (has evidence), ⚠️ = suspected (code exploitable, no evidence), ⚡ = potential (static only) | FAIL — inconsistent labeling |
 | CR-8 | MUST-PASS: P0/P1 coverage, evidence completeness, remediation specificity, agent coverage matrix, EVID chain | FAIL if any MUST-PASS fails |
-| CR-9 | MAY-WARN: Markdown formatting, SARIF severity mapping, PoC URL consistency, file organization | WARN only — does not block gate |
+| CR-9d | MAY-WARN: Markdown formatting, SARIF severity mapping, PoC URL consistency, file organization | WARN only — does not block gate |
 
 ## Fill-in Procedure
 

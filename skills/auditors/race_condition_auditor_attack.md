@@ -24,6 +24,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST send concurrent requests (≥5 threads) and verify inconsistent state (duplicate records, double-spend, corrupted data) — sequential success does not prove race | FAIL — sequential test cannot demonstrate concurrency bug |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 8-Round Attack
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -94,6 +95,9 @@ Steps:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2 - Double Spend / Balance Overdraft
 
@@ -126,6 +130,9 @@ Steps:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3 - One-Time Token Replay
 
@@ -156,6 +163,9 @@ Steps:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4 - Coupon / Points Double Redemption
 
@@ -184,6 +194,9 @@ Variants:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5 - Rate Limit Bypass
 
@@ -220,6 +233,9 @@ Implementation analysis:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6 - Database Transaction Race
 
@@ -262,6 +278,9 @@ wait
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R7 - Session Race
 
@@ -296,6 +315,9 @@ Variants:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R8 - Combined Race Chain
 

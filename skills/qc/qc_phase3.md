@@ -26,7 +26,7 @@
 | CR-6 | All credential levels fail (0/3 valid) | Verdict = CONDITIONAL_PASS — degrade to static analysis mode; set `PHASE3_DEGRADED=true` flag |
 | CR-7 | MUST-PASS items: credentials.json exists, call chains non-empty | Failure → immediate FAIL |
 | CR-8 | MAY-WARN items: credential validity per level, dynamic bindings, filter annotations, cross-validation | Failure only degrades — does not block gate |
-| CR-9 | P0/P1 sinks require ≥ 90% trace coverage | Shortfall triggers CONDITIONAL_PASS |
+| CR-9b | P0/P1 sinks require ≥ 90% trace coverage | Shortfall triggers CONDITIONAL_PASS |
 
 ## Fill-in Procedure
 
@@ -47,7 +47,7 @@
 | 2.3 | Each `call_chain` is non-empty — no traces with zero-length chains | 0 empty chains | {fill-in: empty chain count} | {✅/❌} |
 | 2.4 | Chain structure valid: head = entry file/controller, tail = target sink function | head→sink structure in every chain | {fill-in: invalid chain count} | {✅/❌} |
 | 2.5 | No unreasonable jumps — consecutive entries are in call-graph proximity | 0 suspicious jumps | {fill-in: suspicious jump count} | {✅/❌} |
-| 2.6 | Spot-check 3 trace chains for logical consistency | 3/3 spot-checks logically consistent | {fill-in: spot-check results} | {✅/❌} |
+| 2.6 | Spot-check 3 trace chains for logical consistency | 3/3 spot-checks logically consistent | {fill-in: format "trace_id(pass/fail), trace_id(pass/fail), trace_id(pass/fail)"} | {✅/❌} |
 
 ### Procedure C: Call Chain Completeness
 | # | Check Item | Expected | Actual | Status |

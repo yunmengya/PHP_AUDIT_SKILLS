@@ -29,6 +29,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST confirm entity expansion by observing file content or OOB callback — DTD acceptance alone does not confirm XXE | FAIL — parser accepts DTD but does not expand entities |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 11 Attack Rounds
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -81,6 +82,9 @@ Target: `/etc/passwd`, `/etc/hostname`, `/proc/self/environ`, application config
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2 - Parameter Entity Recursion
 
@@ -104,6 +108,9 @@ Target: `/etc/passwd`, `/etc/hostname`, `/proc/self/environ`, application config
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3 - Blind XXE (Out-of-Band)
 
@@ -131,6 +138,9 @@ Use the OOB listener within the Docker environment instead of an external server
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4 - CDATA Wrapping to Bypass WAF
 
@@ -155,6 +165,9 @@ Use the OOB listener within the Docker environment instead of an external server
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5 - Encoding Bypass (UTF-7/UTF-16)
 
@@ -174,6 +187,9 @@ Re-encode XML to bypass UTF-8 input validation that checks for `<!DOCTYPE`/`<!EN
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6 - XInclude Attack
 
@@ -194,6 +210,9 @@ When unable to control the full XML document but can inject values:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R7 - SVG/DOCX/XLSX XML Carriers
 
@@ -215,6 +234,9 @@ DOCX/XLSX: Decompress, inject into `[Content_Types].xml` or `word/document.xml`,
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R8 - Chained (XXE → SSRF → Internal Data)
 
@@ -236,6 +258,9 @@ Path: XXE → Cloud metadata → IAM credentials → Internal API → Sensitive 
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R9 - PHP-Specific XXE Techniques
 
@@ -265,6 +290,9 @@ Path: XXE → Cloud metadata → IAM credentials → Internal API → Sensitive 
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R10 - JSON → XML Content-Type Switching
 
@@ -294,6 +322,9 @@ Objective: Send XML Content-Type requests to JSON API endpoints to test for XML 
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R11 - XXE in File Parsing Libraries
 

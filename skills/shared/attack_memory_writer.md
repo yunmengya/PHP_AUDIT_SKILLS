@@ -48,7 +48,27 @@ Fill in for successfully exploited sinks:
 | status | `confirmed` |
 | successful_round | {Round number where exploitation succeeded} |
 | payload_type | {Category of the successful payload — e.g., `wildcard_bypass`, `union_injection`} |
-| bypass_technique | {Specific technique that bypassed defenses — describe exactly what was bypassed and how} |
+| bypass_technique | {MUST use `{technique}: {detail}` format where technique is from the enum below, detail describes the specific defense bypassed} |
+
+**bypass_technique enum** (first token MUST be one of these):
+
+| Technique ID | Description |
+|-------------|-------------|
+| encoding_bypass | URL/hex/unicode/double/wide-byte encoding bypassed input filter |
+| whitespace_bypass | $IFS, tab, newline, or other whitespace substitution bypassed space filter |
+| comment_injection | SQL/PHP comment syntax bypassed keyword filter |
+| case_variation | Mixed case or alternate casing bypassed case-sensitive filter |
+| null_byte | Null byte (%00) bypassed extension or path check |
+| type_juggling | PHP loose comparison or type coercion bypassed validation |
+| second_order | Stored payload triggered in different context bypassed input filter |
+| concatenation | String concatenation or variable interpolation bypassed keyword filter |
+| wildcard_bypass | Glob wildcards (?, *) bypassed command argument filter |
+| protocol_switch | Alternative protocol (gopher://, dict://) bypassed URL scheme filter |
+| deserialization_chain | POP/gadget chain bypassed deserialization protection |
+| header_injection | Injected via HTTP header that lacked filtering |
+| multipart_bypass | Multipart boundary or filename manipulation bypassed upload filter |
+| truncation | String length or integer overflow bypassed validation |
+| no_defense | No filtering/sanitization was present on the vulnerable path |
 | strategy | {Strategy identifier used — e.g., `wildcard_and_whitespace_bypass`} |
 | sink_function | {The vulnerable function — e.g., `system()`, `mysqli_query()`} |
 | notes | {Additional context — what defense was missing or misconfigured} |

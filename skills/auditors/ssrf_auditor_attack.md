@@ -29,6 +29,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST use OOB callback (DNS/HTTP to listener) or internal-only content in response to confirm SSRF — redirect following alone is insufficient | FAIL — false positive on client-side redirects |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 8 Rounds of Attack
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -84,6 +85,9 @@ Inject into all parameters passed to target functions. Send requests testing bot
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2 - IP Encoding Bypass
 
@@ -108,6 +112,9 @@ Resolve ssrf-target's IP and apply the same encoding variants. Test each form on
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3 - Cloud Metadata Access
 
@@ -130,6 +137,9 @@ When direct access is blocked, apply R2's IP encoding to 169.254.169.254. Analyz
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4 - Protocol Switching
 
@@ -154,6 +164,9 @@ Gopher is the most powerful protocol in SSRF, capable of sending arbitrary bytes
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5 - DNS Rebinding
 
@@ -176,6 +189,9 @@ Use services such as rebind.network or set up a custom DNS server.
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6 - 302 Redirect Bypass
 
@@ -203,6 +219,9 @@ Send redirect requests to test whether the application only validates the initia
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R7 - URL Parsing Differential Exploitation
 
@@ -227,6 +246,9 @@ Exploit differences between `parse_url()`, `filter_var()`, and cURL's actual URL
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R8 - SSRF → Redis RCE Chain
 
@@ -260,6 +282,9 @@ Alternative chains:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R9 - Cloud Service Specific Exploitation (Enhanced)
 
@@ -288,6 +313,9 @@ Alternative chains:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R10 - SSRF → FastCGI RCE
 
@@ -314,6 +342,9 @@ Direct attack on the PHP-FPM FastCGI interface:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R11 - SSRF → Internal API Enumeration
 
@@ -335,6 +366,9 @@ Systematically probe internal microservices:
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R12 - Blind SSRF Advanced Techniques
 

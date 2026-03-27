@@ -29,6 +29,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST verify file was actually written by reading it back via a separate request — upload response alone is insufficient | FAIL — file processed but not persisted |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 8-Round Attack
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -81,6 +82,9 @@ Test all parameters that control the output filename in file_put_contents, fwrit
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2 - Encoded Filename Bypass
 
@@ -103,6 +107,9 @@ Target filters that use `pathinfo()` or regex-based extension matching. Confirm 
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3 - .htaccess Modification
 
@@ -123,6 +130,9 @@ Then upload `shell_proof.jpg` containing PHP code. Confirmed if the server proce
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4 - Double Extension & MIME Confusion
 
@@ -144,6 +154,9 @@ Also test MIME type mismatch: set Content-Type to `image/jpeg` but upload PHP co
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5 - Case Variation & Alternative Extension Bypass
 
@@ -165,6 +178,9 @@ Test each variant against upload filters. On Linux, filenames are case-sensitive
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6 - Image Polyglot File (GIF89a + PHP)
 
@@ -187,6 +203,9 @@ Can bypass `getimagesize()`, `mime_content_type()`, and `finfo_file()` analysis.
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R7 - Race Condition Upload
 
@@ -214,6 +233,9 @@ Use 50-100 concurrent threads for both upload and access.
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R8 - ZIP Path Traversal & Combination Attack
 
@@ -240,6 +262,9 @@ Also test: symlinks in ZIP pointing to `/etc/passwd`, tar path traversal (if tar
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R9 - ImageMagick / GD Library Exploitation
 
@@ -268,6 +293,9 @@ Goal: Achieve file write or command execution through image processing libraries
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R10 - Log File Write → RCE
 
@@ -291,6 +319,9 @@ Goal: Write malicious code via controllable log content.
 | payload | `{payload from this round's strategy}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R11 - Temporary File Exploitation
 

@@ -76,7 +76,7 @@ If `downgrade_reason` is a code, map to Chinese:
 | timeout | 测试超时未完成 |
 | ambiguous_response | 响应模糊，无法判断是否成功 |
 | rate_limited | 触发速率限制，测试中断 |
-| (other) | Use `downgrade_reason` value directly |
+| (other) | ⚠️ UNRECOGNIZED CODE — map to `"原因未归类: {raw_value}"` and log warning. MUST NOT pass through raw free-text. |
 
 ### Procedure C: Map Suggested Actions
 

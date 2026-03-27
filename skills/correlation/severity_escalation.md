@@ -92,6 +92,35 @@ The `explanation` field MUST follow this template — free-form paragraphs are Q
  Escalation justified because [neither finding alone achieves final_outcome]."
 ```
 
+#### Placeholder Constraint Reference (MANDATORY)
+
+**[capability_A] / [capability_B]** — MUST use one from this enum:
+
+| Category | Allowed Values |
+|----------|---------------|
+| Information | user_enumeration / config_exposure / version_disclosure / path_disclosure / source_code_leak |
+| Injection | xss_execution / sqli_read / sqli_write / command_injection / template_injection / ldap_injection |
+| Access | auth_bypass / session_hijack / privilege_escalation / idor_access / csrf_action |
+| Network | ssrf_internal / ssrf_cloud_metadata / dns_rebind |
+| Crypto | token_prediction / weak_hash_crack / signature_forge |
+| File | arbitrary_file_read / arbitrary_file_write / file_upload_rce |
+| Logic | race_condition_exploit / business_rule_bypass / rate_limit_bypass |
+
+**[step_1] / [step_2]** — MUST use one from this enum:
+
+| Category | Allowed Values |
+|----------|---------------|
+| Recon | enumerate_users / discover_endpoints / extract_config / identify_version |
+| Exploit | inject_payload / steal_cookie / forge_token / upload_shell / read_file / write_file |
+| Escalate | login_as_admin / access_metadata / obtain_iam_creds / pivot_to_internal |
+| Impact | exfiltrate_data / modify_records / execute_commands / takeover_account / deploy_backdoor |
+
+**[final_outcome]** — MUST use one from this enum:
+
+| Allowed Values |
+|---------------|
+| full_server_control / database_full_access / mass_account_takeover / cloud_resource_takeover / admin_panel_control / sensitive_data_exfiltration / financial_loss / persistent_backdoor / internal_network_pivot |
+
 | Pattern Name | Explanation Template Example |
 |-------------|----------------------------|
 | Mass Account Takeover | "[F-001] at /api/users provides user list of {N} accounts. [F-002] at /login has no rate limit. Combined: attacker can enumerate → brute-force → takeover all {N} accounts. Escalation justified because enumeration alone is informational and no-rate-limit alone is low risk." |

@@ -285,6 +285,51 @@ ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 **CR-DESC**: Sink type description MUST use the template above. Fill in {variables} from exploit data. MUST NOT write free-form descriptions.
 
+### Placeholder Constraint Reference (MANDATORY)
+
+**{endpoint_type}** — MUST use one of these enum values:
+
+| Value | When to Use |
+|-------|-------------|
+| API接口 | Route returns JSON/XML (REST API, GraphQL endpoint) |
+| Web页面 | Route renders HTML page (view/template) |
+| 后台管理页面 | Route is part of admin/backend panel |
+| 文件上传接口 | Route handles file upload (multipart form) |
+| AJAX端点 | Route handles asynchronous XMLHttpRequest/fetch |
+| 命令行入口 | CLI command, artisan task, cron job |
+| WebSocket端点 | WebSocket or long-polling handler |
+
+**{user_input}** — MUST be extracted verbatim from `exploit_result.json → evidence.request` fields. Use the actual parameter name (e.g., `$_POST['cmd']`, `GET参数id`, `Cookie值session`). MUST NOT fabricate parameter names.
+
+**{sink_func}** — MUST be extracted verbatim from `exploit_result.json → sink_location`. Use the actual function name with parentheses (e.g., `system()`, `mysqli_query()`, `eval()`). MUST NOT fabricate function names.
+
+**{consequence}** — MUST use the per-sink-type enum below (pick the most matching option):
+
+| sink_type | Allowed consequence Values (pick one) |
+|-----------|--------------------------------------|
+| sqli | "窃取数据库敏感数据" / "修改或删除数据库记录" / "绕过身份验证" / "读取系统文件(LOAD_FILE)" |
+| xss | "窃取用户Cookie和会话" / "劫持用户操作" / "钓鱼窃取凭据" / "传播蠕虫" |
+| rce | "获取服务器完全控制权" / "读取敏感文件并安装后门" / "横向渗透内网" |
+| lfi | "服务器敏感配置文件(如/etc/passwd、.env)" / "应用程序源代码" / "日志文件中的敏感数据" |
+| ssrf | "内网服务和管理接口" / "云元数据获取IAM凭证" / "内部数据库和缓存服务" |
+| xxe | "读取服务器文件" / "执行SSRF访问内网" / "造成拒绝服务(Billion Laughs)" |
+| csrf | "执行敏感操作(如修改密码、转账)" / "篡改账户设置" / "以管理员身份执行危险操作" |
+| deserialization | "执行任意代码(POP链)" / "读取或删除任意文件" / "注入恶意对象" |
+| filewrite | "写入Webshell获取控制权" / "覆盖配置文件" / "写入定时任务获取持久化" |
+| crlf | "恶意HTTP头部实现会话固定" / "响应拆分进行XSS" / "缓存投毒" |
+| ldap | "绕过LDAP认证" / "泄露目录信息" / "修改LDAP查询获取未授权数据" |
+| nosql | "绕过认证逻辑" / "提取数据库全部数据" / "执行服务端JavaScript" |
+| ssti | "执行任意代码获取服务器控制权" / "读取服务器敏感文件" / "获取应用配置和密钥" |
+| race_condition | "实现余额双花" / "绕过一次性操作限制" / "获取多份优惠券/奖励" |
+| authz | "访问其他用户数据(水平越权)" / "获取管理员权限(垂直越权)" / "操作未授权资源" |
+| session | "劫持其他用户会话" / "固定会话实现账户接管" / "绕过登录状态检查" |
+| crypto | "解密敏感数据" / "伪造签名或令牌" / "降级加密算法实现中间人攻击" |
+| config | "获取数据库连接凭据" / "获取API密钥和第三方服务凭证" / "获取应用密钥用于伪造会话" |
+| infoleak | "为后续攻击提供侦察信息" / "泄露用户隐私数据" / "暴露系统架构和版本信息" |
+| logging | "注入伪造日志混淆审计" / "泄露敏感数据到日志" / "通过日志注入实现代码执行" |
+| business_logic | "绕过业务规则获取非法利益" / "操纵价格或数量" / "绕过审批流程" |
+| wordpress | "获取WordPress管理后台控制权" / "修改站点内容植入恶意代码" / "窃取用户数据" |
+
 ### Impact Analysis Mapping Template
 
 When writing `impact_analysis`, use the following lookup table based on severity score:

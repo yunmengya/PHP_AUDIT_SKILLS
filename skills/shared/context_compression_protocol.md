@@ -66,7 +66,7 @@ After each compression, update `{sink_id}_plan.json` with the new compressed rou
 | Field | Fill-in Value |
 |-------|--------------|
 | compressed_rounds[].range | {Round range, e.g. `R1-R3`} |
-| compressed_rounds[].summary | {One-line summary of what was tried, e.g. `Basic injection/encoding/wildcards all failed`} |
+| compressed_rounds[].summary | {Mandatory format: "{strategy_list} → {outcome}: {key_finding}" — e.g. `"basic_injection/encoding_bypass/wildcard_bypass → all_failed: WAF blocks all special chars"` or `"basic_sqli → confirmed_R2: UNION injection returned password hashes"`} |
 | compressed_rounds[].eliminated | {Array of eliminated strategy names, e.g. `["basic_separators", "url_encoding"]`} |
 | compressed_rounds[].discoveries | {Array of key=value findings, e.g. `["waf_type=ModSecurity_CRS", "blind_possible=true"]`} |
 | compressed_rounds[].next_hint | {Suggested strategy for next round, e.g. `Try time-based blind injection or OOB`} |

@@ -24,6 +24,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST demonstrate practical exploitation (crack hash, forge token, predict random) — theoretical weakness without PoC is `potential` not `confirmed` | FAIL — theoretical attack reported as confirmed |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 8 Attack Rounds
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -95,6 +96,9 @@ Dynamic Testing:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2 - Random Number Predictability
 
@@ -134,6 +138,9 @@ Dynamic Testing:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3 - Encryption Algorithm Audit
 
@@ -172,6 +179,9 @@ Checklist:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4 - JWT Security Audit
 
@@ -219,6 +229,9 @@ Dynamic Testing:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5 - Session / CSRF Token Security
 
@@ -248,6 +261,9 @@ Attack:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6 - Signature & Integrity Verification
 
@@ -283,6 +299,9 @@ Attack:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R7 - Key Management Audit
 
@@ -316,6 +335,9 @@ Analysis:
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R8 - Combined Attack Chains
 

@@ -32,7 +32,7 @@
 | CR-6 | MUST-PASS items: route_map exists, ast_sinks exists, priority_queue reasonable | Failure of any → immediate FAIL |
 | CR-7 | MAY-WARN items: auth_matrix coverage, context_pack breakpoint rate, route coverage, scanner completeness | Failure only degrades — does not block gate |
 | CR-8 | Auth matrix coverage < 60% | FAIL — auth_auditor requires redo |
-| CR-9 | Auth matrix coverage threshold ≥ 80%, route coverage ≥ 90%, sink scan coverage ≥ 85% | Required for full PASS |
+| CR-9a | Auth matrix coverage threshold ≥ 80%, route coverage ≥ 90%, sink scan coverage ≥ 85% | Required for full PASS |
 
 ## Fill-in Procedure
 
@@ -42,7 +42,7 @@
 | 1.1 | `route_map.json` exists and `routes` array length > 0 | file exists and route count > 0 | `{fill-in: route count}` | `{✅/❌}` |
 | 1.2 | Each route has required fields: `id`, `url`, `method`, `controller`, `file`, `line`, `params`, `param_sources`, `middleware`, `auth_level`, `route_type` | all 11 required fields present per route | `{fill-in: missing fields list}` | `{✅/❌}` |
 | 1.3 | Route IDs follow pattern `^route_(\d+\|synth_\d+)$` | all IDs match pattern | `{fill-in: invalid IDs}` | `{✅/❌}` |
-| 1.4 | Spot-check 3 routes: `controller` file + `file:line` exists in source code | 3/3 spot-checks pass | `{fill-in: spot-check results}` | `{✅/❌}` |
+| 1.4 | Spot-check 3 routes: `controller` file + `file:line` exists in source code | 3/3 spot-checks pass | `{fill-in: format "route_id(pass/fail), route_id(pass/fail), route_id(pass/fail)"}` | `{✅/❌}` |
 
 ### Procedure B: Auth Matrix Consistency
 | # | Check Item | Expected | Actual | Status |
@@ -68,7 +68,7 @@
 | 4.1 | At least 2 of 4 scanner outputs exist: `psalm_taint.json`, `progpilot.json`, `semgrep.json`, `phpstan.json` | ≥ 2 scanner files present | `{fill-in: files found list}` | `{✅/❌}` |
 | 4.2 | Existing scanner files are valid JSON (even with `status: "failed"`) | all scanner files parse as valid JSON | `{fill-in: invalid files}` | `{✅/❌}` |
 | 4.3 | `ast_sinks.json` exists with sink count > 0, each sink has `file` and `line` | file exists, sink count > 0, each has `file` + `line` | `{fill-in: sink count}` | `{✅/❌}` |
-| 4.4 | Spot-check 3 sinks: confirm function call exists at source location | 3/3 spot-checks pass | `{fill-in: spot-check results}` | `{✅/❌}` |
+| 4.4 | Spot-check 3 sinks: confirm function call exists at source location | 3/3 spot-checks pass | `{fill-in: format "sink_id(pass/fail), sink_id(pass/fail), sink_id(pass/fail)"}` | `{✅/❌}` |
 
 ### Procedure E: Context Packs Coverage
 | # | Check Item | Expected | Actual | Status |

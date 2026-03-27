@@ -28,7 +28,7 @@
 | CR-6 | `exploitability_judgment = "not_exploitable"` → `final_verdict` capped at `potential`, `confidence` capped at `low` | FAIL — exploitability/verdict mismatch |
 | CR-7 | Severity score formula: `score = R×0.40 + I×0.35 + C×0.25`; CVSS = `(score / 3.0) × 10.0` | FAIL — recalculate and resubmit |
 | CR-8 | MUST-PASS: Checks 1–5 (Exploit Integrity, Verdict Validity, EVID Chain, Severity Scoring, Prerequisites) | FAIL if any MUST-PASS check fails |
-| CR-9 | MAY-WARN: HTTP format, evidence_score consistency, filter bypass records, auditor coverage | WARN only — does not block gate |
+| CR-9c | MAY-WARN: HTTP format, evidence_score consistency, filter bypass records, auditor coverage | WARN only — does not block gate |
 
 ## Fill-in Procedure
 

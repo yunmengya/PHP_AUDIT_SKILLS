@@ -29,7 +29,27 @@
 | Field | Fill-in Value |
 |-------|--------------|
 | round | {integer: round number, 1-8 or extended rounds} |
-| strategy | {string: short identifier for attack strategy, e.g., "basic_cmd_injection", "encoding_bypass"} |
+| strategy | {string: MUST use a value from the Strategy Identifier Enum below} |
+
+### Strategy Identifier Enum (MANDATORY)
+
+The `strategy` field MUST use one of these identifiers. Do NOT invent new names.
+
+| Category | Valid Strategy IDs |
+|----------|-------------------|
+| Basic injection | `basic_injection`, `basic_cmd_injection`, `basic_sqli`, `basic_xss`, `basic_lfi`, `basic_ssrf`, `basic_xxe` |
+| Encoding bypass | `url_encoding`, `double_url_encoding`, `hex_encoding`, `unicode_encoding`, `wide_byte_injection`, `base64_encoding` |
+| Filter evasion | `encoding_bypass`, `comment_obfuscation`, `case_variation`, `whitespace_bypass`, `wildcard_bypass`, `null_byte_injection` |
+| Typing abuse | `type_juggling`, `numeric_bypass`, `truncation_overflow`, `scientific_notation` |
+| Second-order | `second_order_injection`, `stored_payload_trigger` |
+| Advanced | `stacked_queries`, `out_file_write`, `dns_exfiltration`, `time_based_blind`, `error_based_blind`, `boolean_blind` |
+| Context-specific | `orderby_injection`, `limit_injection`, `groupby_injection`, `subquery_injection` |
+| Protocol | `protocol_switch`, `dns_rebinding`, `gopher_ssrf`, `dict_ssrf` |
+| Deserialization | `pop_chain`, `gadget_chain`, `phar_deserial` |
+| Auth/session | `session_fixation`, `cookie_manipulation`, `jwt_forge`, `token_prediction` |
+| File ops | `path_traversal`, `double_extension`, `null_byte_extension`, `mime_bypass`, `webshell_upload` |
+| Race | `toctou_race`, `double_spending`, `parallel_request` |
+| Framework | `laravel_debug_rce`, `thinkphp_rce`, `wordpress_plugin_exploit`, `symfony_profiler` |
 | payload | {string: exact payload string sent to the target, verbatim} |
 | injection_point | {string: where payload was injected — e.g., "GET param 'id'", "POST body param 'name'", "Cookie 'session'", "Header 'X-Forward'"} |
 | request | {string: full HTTP request in Burp-style format including method, path, Host, Cookie, other headers, and body} |

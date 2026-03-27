@@ -24,6 +24,7 @@
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST verify injected header appears in HTTP response headers (not body) — `%0d%0a` in response body is URL-encoded echo, not CRLF injection | FAIL — body reflection falsely reported as header injection |
+| CR-PAYLOAD | MUST test payloads in priority order (1→2→3→4) within each round — MUST NOT skip Priority 1 to try creative payloads directly | FAIL — uncontrolled payload selection, wastes rounds on low-probability attacks |
 
 ## 6 Rounds of Attack
 **Payload Selection Rule (CR-PAYLOAD)**:
@@ -96,6 +97,9 @@ Inject the above payloads into all identified Sink parameters. Analyze whether `
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R2 - Encoding Bypass
 
@@ -144,6 +148,9 @@ Test the decoding order of each encoding before and after the filter. Some frame
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R3 - HTTP Response Splitting
 
@@ -197,6 +204,9 @@ Objective: Achieve response splitting by injecting a complete HTTP response, con
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R4 - Cache Poisoning
 
@@ -263,6 +273,9 @@ Objective: Exploit CRLF injection to tamper with cache-related headers, poisonin
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R5 - Mail Header Injection
 
@@ -321,6 +334,9 @@ user@example.com%0d%0aContent-Type: multipart/mixed; boundary="EVIL"%0d%0a%0d%0a
 | payload | {payload from this round's strategy} |
 | evidence_command | {docker exec or curl command to verify} |
 | expected_evidence | {what confirms success} |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R6 - Advanced Combination Attacks
 

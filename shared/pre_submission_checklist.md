@@ -30,7 +30,7 @@
 | P4 | **File:line citations verified** | Every cited file exists; line numbers are accurate | {count verified / total citations} | {✅/❌} |
 | P5 | **Output saved to correct path** | Path matches Output Contract exactly | {actual path written} | {✅/❌} |
 | P6 | **Degradation check completed** | Step 0 table filled (per `shared/degradation_check.md`) | {done / N/A if Phase-1 agent} | {✅/❌} |
-| P7 | **No fabricated data** | Every claim backed by source code or tool output | {describe evidence basis} | {✅/❌} |
+| P7 | **No fabricated data** | Every claim backed by source code or tool output | {format: "checked N citations: file1.php:L42(✅), file2.php:L15(✅), ..."} | {✅/❌} |
 | P8 | **Field value ranges valid** | Enums use allowed values; numbers in valid ranges | {describe: checked against schema} | {✅/❌} |
 
 ### On ❌ Failure
