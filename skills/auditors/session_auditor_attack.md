@@ -19,7 +19,7 @@
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | Every `confirmed` verdict MUST have physical HTTP evidence: request URL + method + payload + response status + observable outcome | FAIL — evidence fabrication, finding rejected by QC |
-| CR-2 | MUST NOT exceed 8 attack rounds — if stuck after round 6, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
+| CR-2 | MUST NOT exceed 6 attack rounds — if stuck after round 4, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
@@ -559,7 +559,7 @@ The following code patterns indicate potential Session/Cookie security weaknesse
 
 ## Key Insight
 
-> **Key Point**: Session security is not a single-point issue but a lifecycle issue. Every stage from creation (`session_start()`) → binding (post-login `regenerate`) → usage (cookie flags) → destruction (logout) can have defects. The highest risks are Session Fixation (PHP does not enable strict mode by default; `session.use_strict_mode` defaults to `0`) and missing Cookie flags (`HttpOnly`/`Secure` require explicit configuration; PHP defaults both to off). When auditing, you SHOULD first analyze lifecycle integrity, then drill into each stage.
+> **Key Point**: Session security is not a single-point issue but a lifecycle issue. Every stage from creation (`session_start()`) → binding (post-login `regenerate`) → usage (cookie flags) → destruction (logout) can have defects. The highest risks are Session Fixation (PHP does not enable strict mode by default; `session.use_strict_mode` defaults to `0`) and missing Cookie flags (`HttpOnly`/`Secure` require explicit configuration; PHP defaults both to off). When auditing, you MUST first analyze lifecycle integrity, then drill into each stage.
 
 ### Smart Pivot (Stuck Detection)
 
@@ -575,7 +575,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger Smart Pivot:
 
 ## Prerequisites & Scoring (MUST be filled)
 
-The output `exploits/{sink_id}.json` MUST include the following two objects:
+The output `exploit_results/{sink_id}_result.json` MUST include the following two objects:
 
 ### prerequisite_conditions
 ```json
@@ -599,7 +599,7 @@ The output `exploits/{sink_id}.json` MUST include the following two objects:
   "score": "R×0.40+I×0.35+C×0.25",
   "cvss": "(score/3.0)×10.0",
   "level": "C|H|M|L",
-  "vuln_id": "C-RCE-001"
+  "vuln_id": "C-SESSION-001"
 }
 ```
 - All reason fields MUST contain specific justification and MUST NOT be empty
@@ -628,7 +628,7 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write; SQLite WAL mode aut
 
 ## Output
 
-After completing all rounds, write the final results to `$WORK_DIR/exploits/{sink_id}.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
+After completing all rounds, write the final results to `$WORK_DIR/exploit_results/{sink_id}_result.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
 
 > The `## Per-Round Record Format` above is the internal per-round record format; the final output MUST be aggregated into the exploit_result.json structure.
 
@@ -664,7 +664,7 @@ Read the shared findings database before starting the attack phase, leveraging t
 - Session file reading is ONLY for analyzing permission issues; MUST NOT extract real user data
 - Concurrency testing MUST limit request count (≤ 50 requests/round) to avoid DoS
 - Deserialization testing MUST use harmless payloads (e.g., `phpinfo()`); MUST NOT execute destructive operations
-- Session Upload Progress testing SHOULD only analyze feasibility; MUST NOT actually deploy Webshells
+- Session Upload Progress testing MUST only analyze feasibility; MUST NOT actually deploy Webshells
 - All Session IDs and Cookie values in evidence MUST be redacted in reports
 
 

@@ -30,7 +30,7 @@
 Before starting the attack phase, read the shared findings store:
 
 ```bash
-cat $WORK_DIR/audit_session.db
+bash tools/audit_db.sh query-shared-findings
 ```
 
 Scan for the following intelligence types:

@@ -22,7 +22,7 @@
 | CR-3 | After skip, auditor MUST still produce final `exploits/{sink_id}.json` with all attempted rounds recorded | Missing records break audit completeness and traceability |
 | CR-4 | All three activation conditions must be met simultaneously (round ≥ R4, ≥ 3 consecutive failures, clear defense identified) | Partial conditions do not justify skip |
 | CR-5 | Skip justification must include all three components: attempted strategies list, analysis conclusion, bypass infeasibility reasoning | Incomplete justification invalidates the skip request |
-| CR-6 | Smart Pivot (S-103) SHOULD be attempted before requesting skip | Skip without pivot attempt may miss alternative attack vectors |
+| CR-6 | Smart Pivot (S-103) MUST be attempted before requesting skip | Skip without pivot attempt may miss alternative attack vectors |
 
 ## Fill-in Procedure
 

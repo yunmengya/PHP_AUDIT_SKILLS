@@ -352,7 +352,7 @@ done
 }
 ```
 
-When dispatching tasks, Trace-Dispatcher SHOULD specify the list of roles to test for each route, in order to discover privilege escalation vulnerabilities:
+When dispatching tasks, Trace-Dispatcher MUST specify the list of roles to test for each route, in order to discover privilege escalation vulnerabilities:
 - Admin endpoints → Test with `editor` / `subscriber` credentials for vertical privilege escalation
 - User endpoints → Test with other same-level user credentials for horizontal privilege escalation
 - Public endpoints → Test with `anonymous` to confirm no authentication is required

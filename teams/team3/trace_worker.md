@@ -168,7 +168,7 @@ After extracting a Trace, the Worker MUST assess result quality to determine whe
 
 ## Trace and Context Pack Cross-Validation
 
-Dynamic Traces and static Context Packs SHOULD cross-validate each other to improve analysis confidence:
+Dynamic Traces and static Context Packs MUST cross-validate each other to improve analysis confidence:
 
 - **Path consistency check**: Compare the actual `call_chain` in the Trace with the call path inferred by static analysis in the Context Pack. If both match, confidence is high; if they differ, use the Trace as the source of truth but retain the Context Pack path as an alternative branch
 - **Dynamic binding supplementation**: Traces can resolve the actual targets of `call_user_func` / `$obj->$method()`, and the results SHOULD be backfilled into the Context Pack's `dynamic_bindings` field

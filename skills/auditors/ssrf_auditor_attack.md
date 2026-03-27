@@ -24,7 +24,7 @@
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | Every `confirmed` verdict MUST have physical HTTP evidence: request URL + method + payload + response status + observable outcome | FAIL — evidence fabrication, finding rejected by QC |
-| CR-2 | MUST NOT exceed 8 attack rounds — if stuck after round 6, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
+| CR-2 | MUST NOT exceed 12 attack rounds — if stuck after round 10, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
@@ -369,7 +369,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger Smart Pivot:
 
 ## Prerequisites and Scoring (MUST be filled)
 
-The output `exploits/{sink_id}.json` MUST contain the following two objects:
+The output `exploit_results/{sink_id}_result.json` MUST contain the following two objects:
 
 ### prerequisite_conditions
 ```json
@@ -393,7 +393,7 @@ The output `exploits/{sink_id}.json` MUST contain the following two objects:
   "score": "R×0.40+I×0.35+C×0.25",
   "cvss": "(score/3.0)×10.0",
   "level": "C|H|M|L",
-  "vuln_id": "C-RCE-001"
+  "vuln_id": "C-SSRF-001"
 }
 ```
 - All reason fields MUST contain specific justification and MUST NOT be empty
@@ -423,7 +423,7 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write. SQLite WAL mode aut
 
 ## Output
 
-After all rounds are complete, write the final result to `$WORK_DIR/exploits/{sink_id}.json`.
+After all rounds are complete, write the final result to `$WORK_DIR/exploit_results/{sink_id}_result.json`.
 
 > **Strictly follow the fill-in template in `shared/OUTPUT_TEMPLATE.md` to generate the output file.**
 > JSON structure follows `schemas/exploit_result.schema.json`; field constraints are in `shared/data_contracts.md` Section 9.
@@ -703,7 +703,7 @@ grep -rn 'auth\|password\|token\|apikey' . | grep -i 'elastic\|solr\|memcache'
 
 ### Key Insight
 
-> The real danger of SSRF is not "being able to access the internal network," but that internal services generally lack authentication. Docker API, Redis, Memcached, and Elasticsearch all default to unauthenticated configurations. During auditing, you SHOULD build an internal service inventory (port scan via SSRF) and assess each reachable service's default authentication status and known exploitation chains. Priority order: Docker API (direct RCE) > Redis (file write → RCE) > Elasticsearch/Solr (data leak + potential RCE) > Memcached (session hijacking).
+> The real danger of SSRF is not "being able to access the internal network," but that internal services generally lack authentication. Docker API, Redis, Memcached, and Elasticsearch all default to unauthenticated configurations. During auditing, you MUST build an internal service inventory (port scan via SSRF) and assess each reachable service's default authentication status and known exploitation chains. Priority order: Docker API (direct RCE) > Redis (file write → RCE) > Elasticsearch/Solr (data leak + potential RCE) > Memcached (session hijacking).
 
 ---
 

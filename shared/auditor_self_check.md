@@ -33,7 +33,7 @@
 
 ## Usage
 
-Each Auditor's prompt SHOULD reference this file at the end:
+Each Auditor's prompt MUST reference this file at the end:
 
 ```
 ## Pre-Submission Self-Check (MUST Execute)

@@ -14,7 +14,7 @@ PHASE_TIMEOUT_MIN=25
 echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
-打印: ━━━ 进入 Phase-2: 静态资产侦察 ━━━
+Print: ━━━ 进入 Phase-2: 静态资产侦察 ━━━
 ```
 
 **Step 2 — SPAWN:**
@@ -194,7 +194,7 @@ Agent(
 ```
 Output: $WORK_DIR/route_map.json
 
-**Agent 3: auth-auditor**
+**Agent 9: auth-auditor**
 ```
 Agent(
   name="auth-auditor",
@@ -207,7 +207,7 @@ Agent(
 ```
 Output: $WORK_DIR/auth_matrix.json
 
-**Agent 4: dep-scanner**
+**Agent 10: dep-scanner**
 ```
 Agent(
   name="dep-scanner",
@@ -220,13 +220,13 @@ Agent(
 ```
 Output: $WORK_DIR/dep_risk.json
 
-**Wait for all four to complete.**
+**Wait for all ten to complete.**
 
 ### Sequential Step 1: context-extractor
 
 Read: ${SKILL_DIR}/teams/team2/context_extractor.md
 
-**Agent 5: context-extractor**
+**Agent 11: context-extractor**
 ```
 Agent(
   name="context-extractor",
@@ -244,7 +244,7 @@ Output: $WORK_DIR/context_packs/*.json
 
 Read: ${SKILL_DIR}/teams/team2/risk_classifier.md
 
-**Agent 6: risk-classifier**
+**Agent 12: risk-classifier**
 ```
 Agent(
   name="risk-classifier",
@@ -262,7 +262,7 @@ Output: $WORK_DIR/priority_queue.json
 
 Read: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality_check_templates.md
 
-**Agent 7: quality-checker-2**
+**Agent 13: quality-checker-2**
 ```
 Agent(
   name="quality-checker-2",

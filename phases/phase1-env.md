@@ -12,7 +12,7 @@ PHASE_TIMEOUT_MIN=20
 echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
-打印: ━━━ 进入 Phase-1: 环境智能识别与构建 ━━━
+Print: ━━━ 进入 Phase-1: 环境智能识别与构建 ━━━
 ```
 
 **Step 2 — SPAWN:**
@@ -46,7 +46,7 @@ bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-1" "$WORK_DIR/environment_stat
 ```bash
 # Version alert warnings (print only, do not block):
 ALERTS=$(cat "$WORK_DIR/environment_status.json" | jq -r '.version_alerts[]? | select(.severity == "critical" or .severity == "high") | "⚠️ \(.component) \(.detected_version): \(.cve_id) [\(.severity)]"')
-[ -n "$ALERTS" ] && echo "━━━ 版本安全预判警告 ━━━" && echo "$ALERTS"
+[ -n "$ALERTS" ] && echo "━━━ Version Security Warning (版本安全预判警告) ━━━" && echo "$ALERTS"
 ```
 
 **Step 5 — EXIT:**

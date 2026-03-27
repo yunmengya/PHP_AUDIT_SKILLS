@@ -120,7 +120,7 @@ jq '.agent_states["AGENT_ID"].status = "passed" | .agent_states["AGENT_ID"].comp
 ### Procedure D: Resume Detection
 | Field | Fill-in Value |
 |-------|---------------|
-| Search path | `${HOME}/.php_audit/${PROJECT_NAME}/` |
+| Search path | `/tmp/${PROJECT_NAME}/` |
 | Previous checkpoint found | ______ (yes/no) |
 | Previous checkpoint path | ______ |
 | User chose to resume | ______ (yes/no/not-asked) |
@@ -216,7 +216,7 @@ git rev-parse --git-dir 2>/dev/null
 **Step 2 — Decision logic:**
 - Not a Git repo → skip incremental, run full audit
 - Is a Git repo:
-  1. Find most recent `${HOME}/.php_audit/${PROJECT_NAME}/*/checkpoint.json` with `current=done`
+  1. Find most recent `/tmp/${PROJECT_NAME}/*/checkpoint.json` with `current=done`
   2. Read `git_commit_hash` field from it
   3. Compare: `git diff --name-only {old_hash} HEAD -- "*.php"`
   4. If changed files < 10 and no new route files → ask user to confirm incremental mode

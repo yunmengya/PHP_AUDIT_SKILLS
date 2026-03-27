@@ -18,7 +18,7 @@ PHASE_TIMEOUT_MIN=20
 echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
-打印: ━━━ 进入 Phase-3: 鉴权模拟与动态追踪 ━━━
+Print: ━━━ 进入 Phase-3: 鉴权模拟与动态追踪 ━━━
 ```
 
 **Step 2 — SPAWN:**
@@ -50,7 +50,7 @@ bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-3" "$WORK_DIR/credentials.json
 #                  Write degraded flag:
 #                  jq '.phases.phase3.mode = "degraded" | .phases.phase3.degradation_reason = "auth simulation failed"' \
 #                      "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" && mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
-#                  Print: "⚠️ Phase-3 degraded: 鉴权模拟失败，退回静态分析模式"
+#                  Print: "⚠️ Phase-3 degraded: auth simulation failed, falling back to static analysis mode"
 #                  ⚠️ DOWNSTREAM IMPACT: Phase-4 auditors MUST tag all auth-dependent
 #                     conclusions with [NOT_VERIFIED: Missing auth credentials].
 #                     Inject flag into each Phase-4 auditor prompt:

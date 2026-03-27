@@ -61,7 +61,7 @@ bash tools/audit_db.sh finding-write "$WORK_DIR" '{
 
 ### When to Read
 
-Auditors SHOULD read shared findings at the following times:
+Auditors MUST read shared findings at the following times:
 
 1. **Before starting the attack phase**: Check whether other auditors have provided credentials/keys that can be directly leveraged
 2. **After each failed attack round**: Check whether new bypass methods or internal endpoints are available to try
@@ -161,7 +161,7 @@ bash tools/audit_db.sh migrate-findings "$WORK_DIR"
 
 ## Graph Memory Node Bridging
 
-When an auditor writes a high-confidence graph node (`status = "confirmed"`), it SHOULD **also** write a shared finding so that other auditors can perceive related vulnerabilities via realtime sharing:
+When an auditor writes a high-confidence graph node (`status = "confirmed"`), it MUST **also** write a shared finding so that other auditors can perceive related vulnerabilities via realtime sharing:
 
 ```bash
 # After writing a graph node, synchronously write a shared finding

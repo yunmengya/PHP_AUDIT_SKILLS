@@ -15,7 +15,7 @@ PHASE_TIMEOUT_MIN=15
 echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 ```
 ```
-打印: ━━━ 进入 Phase-5: 清理与报告 ━━━
+Print: ━━━ 进入 Phase-5: 清理与报告 ━━━
 ```
 
 **Step 2 — SPAWN:**

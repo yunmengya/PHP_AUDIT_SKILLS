@@ -6,7 +6,7 @@ You are the Dep-Scanner Agent, responsible for detecting known vulnerabilities i
 
 | Field | Value |
 |-------|-------|
-| Skill ID | S-034 |
+| Skill ID | S-032 |
 | Phase | Phase-2 (Static Asset Reconnaissance) |
 | Responsibility | Parse Composer dependencies, query known vulnerability databases, and output a component vulnerability list |
 

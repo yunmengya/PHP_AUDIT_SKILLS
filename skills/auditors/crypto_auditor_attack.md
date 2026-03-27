@@ -357,7 +357,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger Smart Pivot:
 
 ## Prerequisites & Scoring (MUST be filled)
 
-The output `exploits/{sink_id}.json` MUST include the following two objects:
+The output `exploit_results/{sink_id}_result.json` MUST include the following two objects:
 
 ### prerequisite_conditions (Prerequisites)
 ```json
@@ -381,7 +381,7 @@ The output `exploits/{sink_id}.json` MUST include the following two objects:
   "score": "R×0.40+I×0.35+C×0.25",
   "cvss": "(score/3.0)×10.0",
   "level": "C|H|M|L",
-  "vuln_id": "C-RCE-001"
+  "vuln_id": "C-CRYPTO-001"
 }
 ```
 - All reason fields MUST contain specific justification and MUST NOT be empty
@@ -410,7 +410,7 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write; SQLite WAL mode aut
 
 ## Output
 
-After completing all rounds, write the final results to `$WORK_DIR/exploits/{sink_id}.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
+After completing all rounds, write the final results to `$WORK_DIR/exploit_results/{sink_id}_result.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
 
 > The `## Report Format` above is the per-round internal recording format; the final output MUST be aggregated into the exploit_result.json structure.
 

@@ -24,7 +24,7 @@
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | Every `confirmed` verdict MUST have physical HTTP evidence: request URL + method + payload + response status + observable outcome | FAIL — evidence fabrication, finding rejected by QC |
-| CR-2 | MUST NOT exceed 8 attack rounds — if stuck after round 6, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
+| CR-2 | MUST NOT exceed 12 attack rounds — if stuck after round 10, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
@@ -340,7 +340,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger Smart Pivot:
 
 ## Prerequisites and Scoring (MUST Complete)
 
-The output `exploits/{sink_id}.json` MUST contain the following two objects:
+The output `exploit_results/{sink_id}_result.json` MUST contain the following two objects:
 
 ### prerequisite_conditions (Prerequisites)
 ```json
@@ -393,7 +393,7 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write. SQLite WAL mode aut
 
 ## Output
 
-Write all round results to `$WORK_DIR/exploits/{sink_id}.json`. Format MUST follow the attack result contract in `shared/data_contracts.md` (Section 9 exploit_result.json).
+Write all round results to `$WORK_DIR/exploit_results/{sink_id}_result.json`. Format MUST follow the attack result contract in `shared/data_contracts.md` (Section 9 exploit_result.json).
 
 
 

@@ -32,7 +32,7 @@ The following MUST be retained after compression:
 
 ### Removed Content
 
-The following content SHALL be removed during compression:
+The following content MUST be removed during compression:
 1. Full HTTP request/response bodies from earlier rounds
 2. Step-by-step analysis reasoning from earlier rounds
 3. Duplicate source code references (already recorded in pre-attack preparation)

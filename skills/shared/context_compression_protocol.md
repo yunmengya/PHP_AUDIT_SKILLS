@@ -19,7 +19,7 @@
 | CR-1 | Compression MUST be performed after every **3 completed attack rounds** (after R3, R6, R9, …) | Context window overflow, loss of analysis capacity for subsequent rounds |
 | CR-2 | Round summary table, eliminated paths list, key findings, and full details of the most recent round MUST be retained after compression | Loss of critical intelligence needed for subsequent round strategy selection |
 | CR-3 | Strategies listed in the eliminated paths list MUST NOT be retried in subsequent rounds | Wasted rounds repeating proven-ineffective strategies |
-| CR-4 | Full HTTP request/response bodies, step-by-step reasoning, duplicate source code refs, and raw tool output from earlier rounds SHALL be removed during compression | Token budget exhausted, insufficient space for new rounds |
+| CR-4 | Full HTTP request/response bodies, step-by-step reasoning, duplicate source code refs, and raw tool output from earlier rounds MUST be removed during compression | Token budget exhausted, insufficient space for new rounds |
 | CR-5 | The `compressed_rounds` field in `{sink_id}_plan.json` MUST be updated after each compression | Plan file becomes stale, round tracking and strategy continuity breaks |
 
 ## Fill-in Procedure

@@ -242,7 +242,7 @@ Synthetic routes use the same `route_map.json` format as HTTP routes, with addit
 }
 ```
 
-> **Important**: The `auth_level` for synthetic routes defaults to `"system"` (assuming server access is required), but if the command can be triggered via the web (e.g., via cron + web panel), it SHOULD be downgraded to the appropriate level.
+> **Important**: The `auth_level` for synthetic routes defaults to `"system"` (assuming server access is required), but if the command can be triggered via the web (e.g., via cron + web panel), it MUST be downgraded to the appropriate level.
 
 ### Procedure F: Auth Gap Analysis
 

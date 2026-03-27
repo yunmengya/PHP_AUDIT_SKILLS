@@ -85,7 +85,7 @@ df -h /var/lib/docker 2>/dev/null || df -h /tmp
 - docker compose not installed → prompt user to install docker-compose-plugin
 - Disk space < 5GB → warn insufficient space
 
-**tmux hint** (optional): If user is not running in tmux, print "建议在 tmux 会话中运行以获得分屏效果（`Shift+Up/Down` 切换 teammate 视图）". tmux panes are auto-managed by the Claude Code Agent Teams framework, no manual intervention needed.
+**tmux hint** (optional): If user is not running in tmux, print "建议在 tmux 会话中运行 (Recommended: run in tmux session for split-pane view)（`Shift+Up/Down` 切换 teammate 视图）". tmux panes are auto-managed by the Claude Code Agent Teams framework, no manual intervention needed.
 
 ### Step 2: Target Path Validation
 
@@ -246,7 +246,7 @@ On gate FAIL: Level 1 (auto retry, max 2) → Level 2 (degraded, continue) → L
 
 ---
 
-### Phase-1: 环境智能识别与构建
+### Phase-1: Environment Setup (环境智能识别与构建)
 
 > 📄 **Full orchestration + agent dispatch**: `phases/phase1-env.md`
 > 📋 Reference flow: `references/phase1_environment.md`
@@ -258,7 +258,7 @@ State transition: INIT → PHASE_1 → GATE_1_PASS. Timeout: 20min. QC: 3 retrie
 
 ---
 
-### Phase-2: 静态资产侦察
+### Phase-2: Static Reconnaissance (静态资产侦察)
 
 > 📄 **Full orchestration + agent dispatch**: `phases/phase2-recon.md`
 > 📄 Dynamic task template: `phases/phase2-tasks-dynamic.md`
@@ -296,7 +296,7 @@ State transition: CREATE_DYNAMIC_TASKS → PHASE_3 → GATE_3_PASS. Timeout: 20m
 
 ---
 
-### Phase-4: 深度对抗审计（并行分析 + 串行攻击）
+### Phase-4: Deep Adversarial Audit (深度对抗审计)
 
 > 📄 **Full orchestration + agent dispatch**: `phases/phase4-exploit.md`
 > 📋 Reference flow: `references/phase4_attack_logic.md`
@@ -315,7 +315,7 @@ Key orchestrator responsibilities (details in phase4-exploit.md):
 
 ---
 
-### Phase-4.5: 后渗透智能分析
+### Phase-4.5: Post-Exploitation Analysis (后渗透智能分析)
 
 > 📄 **Full orchestration + agent dispatch**: `phases/phase45-post.md`
 > 📋 Reference flow: `references/phase4_5_correlation.md`
@@ -328,7 +328,7 @@ State transition: GATE_4_PASS → PHASE_4_5 → GATE_4_5_PASS. Timeout: 15min. N
 
 ---
 
-### Phase-5: 清理与报告
+### Phase-5: Cleanup & Reporting (清理与报告)
 
 > 📄 **Full orchestration + agent dispatch**: `phases/phase5-report.md`
 > 📋 Reference flow: `references/phase5_reporting.md`
@@ -336,7 +336,7 @@ State transition: GATE_4_PASS → PHASE_4_5 → GATE_4_5_PASS. Timeout: 15min. N
 Execute `phases/phase5-report.md` following the 5-Step Pattern.
 State transition: GATE_4_5_PASS → PHASE_5 → DONE. Timeout: 15min. QC: 2 retries, then force output.
 
-Phase-5 includes file reorganization: all intermediate artifacts → 原始数据/.
+Phase-5 includes file reorganization: all intermediate artifacts are moved to the 原始数据/ directory.
 
 **🚫 ONLY after Phase-5 Step 5 completes may you show ANY vulnerability findings or fix suggestions to the user.**
 
@@ -359,9 +359,9 @@ Tiered limits: Single Agent 15min | Phase-1 20min | Phase-2 25min | Phase-3 20mi
 
 At each ENTER step, record `phase_start_time`. During WAIT, check elapsed vs limit. On timeout: shutdown agent → mark timed_out → continue (MANDATORY). On global timeout: save checkpoint → partial report → prompt resume.
 
-## 输出
+## Output (输出)
 
-最终输出目录结构:
+Final output directory structure:
 ```
 $WORK_DIR/
 ├── 报告/

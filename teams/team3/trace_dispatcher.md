@@ -51,7 +51,7 @@ On top of basic priority sorting, apply intelligent scheduling strategies:
 Group routes with the same Sink type to facilitate batch processing by Phase 4 specialized auditors:
 - RCE group: All routes involving RCE Sinks
 - SQLi group: All routes involving SQL Sinks
-- And so on
+- see shared/sink_definitions.md for complete list
 
 ### Adaptive Concurrency
 Dynamically adjust concurrency based on container resources:
@@ -376,7 +376,7 @@ Xdebug available?
    │  └─ No (PHP < 7.0)
    │     └─ Approach C (strace/ltrace system-level tracing)
    └─ Note: Approach B/C trace precision is lower than Xdebug;
-      subsequent Phase 4 auditing SHOULD supplement with context_pack static analysis
+      subsequent Phase 4 auditing MUST supplement with context_pack static analysis
 ```
 
 ---

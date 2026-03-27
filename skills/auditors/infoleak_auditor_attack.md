@@ -24,7 +24,7 @@
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | Every `confirmed` verdict MUST have physical HTTP evidence: request URL + method + payload + response status + observable outcome | FAIL — evidence fabrication, finding rejected by QC |
-| CR-2 | MUST NOT exceed 8 attack rounds — if stuck after round 6, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
+| CR-2 | MUST NOT exceed 12 attack rounds — if stuck after round 10, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
 | CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
@@ -324,7 +324,7 @@ The following code patterns indicate potential information leakage vulnerabiliti
 
 ## Key Insight (Critical Judgment Basis)
 
-> **Key point**: Information leakage itself usually does not directly cause harm, but it is the "intelligence gathering" phase of an attack chain — a leaked APP_KEY makes deserialization RCE feasible, leaked database credentials turn SQLi into direct access, and leaked internal paths help LFI precisely locate targets. During auditing, each information leakage finding SHOULD be cross-referenced with other vulnerability categories to assess combined impact.
+> **Key point**: Information leakage itself usually does not directly cause harm, but it is the "intelligence gathering" phase of an attack chain — a leaked APP_KEY makes deserialization RCE feasible, leaked database credentials turn SQLi into direct access, and leaked internal paths help LFI precisely locate targets. During auditing, each information leakage finding MUST be cross-referenced with other vulnerability categories to assess combined impact.
 
 ### Smart Pivot (Stuck Detection)
 
@@ -337,7 +337,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger a Smart Pivot:
 
 ## Prerequisites and Scoring (MUST be filled)
 
-The output `exploits/{sink_id}.json` MUST include the following two objects:
+The output `exploit_results/{sink_id}_result.json` MUST include the following two objects:
 
 ### prerequisite_conditions (Prerequisites)
 ```json
@@ -361,7 +361,7 @@ The output `exploits/{sink_id}.json` MUST include the following two objects:
   "score": "R×0.40+I×0.35+C×0.25",
   "cvss": "(score/3.0)×10.0",
   "level": "C|H|M|L",
-  "vuln_id": "C-RCE-001"
+  "vuln_id": "C-INFOLEAK-001"
 }
 ```
 - All reason fields MUST be filled with specific justification; MUST NOT be empty
@@ -390,7 +390,7 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write; SQLite WAL mode aut
 
 ## Output
 
-After completing all rounds, write the final results to `$WORK_DIR/exploits/{sink_id}.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
+After completing all rounds, write the final results to `$WORK_DIR/exploit_results/{sink_id}_result.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
 
 > The `## Report Format` above is the per-round internal recording format; the final output MUST be consolidated into the exploit_result.json structure.
 

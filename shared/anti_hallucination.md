@@ -115,7 +115,7 @@ The following 17 rules are hard constraints for all Agents. Violating any single
 
 ## Rule 14: Cryptographic Vulnerabilities MUST Consider Practical Exploitability
 
-- Weak hashing algorithms (MD5/SHA1) SHOULD only be marked as vulnerabilities when **used for password storage or signature verification**
+- Weak hashing algorithms (MD5/SHA1) MUST only be marked as vulnerabilities when **used for password storage or signature verification**
 - MD5 used for cache keys, file checksums, or other non-security contexts ≠ cryptographic vulnerability
 - Predictable random numbers: MUST prove that the **prediction window is exploitable in a realistic attack scenario**
 - JWT weak keys: MUST **actually crack the key** or prove `alg:none` is accepted; MUST NOT rely solely on theoretical possibility
