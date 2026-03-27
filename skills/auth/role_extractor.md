@@ -128,7 +128,7 @@ Write per-role credentials into the `roles` section of `credentials.json`.
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `roles` section | Per-role tokens with permission lists |
+| Credentials file | `$WORK_DIR/credentials.json` → `roles` section | Per-role tokens with permission lists |
 
 Example output fragment:
 ```json

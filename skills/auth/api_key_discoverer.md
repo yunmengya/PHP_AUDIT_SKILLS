@@ -112,7 +112,7 @@ Write discovered keys into the `api_keys` section of `credentials.json`.
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `api_keys` section | Keys labeled by privilege level |
+| Credentials file | `$WORK_DIR/credentials.json` → `api_keys` section | Keys labeled by privilege level |
 
 Example output fragment:
 ```json

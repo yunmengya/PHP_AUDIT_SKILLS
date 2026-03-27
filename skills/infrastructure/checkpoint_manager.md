@@ -128,7 +128,7 @@ jq '.agent_states["AGENT_ID"].status = "passed" | .agent_states["AGENT_ID"].comp
 
 Logic:
 - Previous checkpoint NOT found → fresh start
-- Previous checkpoint found → read checkpoint, ask user whether to resume from breakpoint
+- Previous checkpoint found → read checkpoint, print prompt `Resume from previous audit? (y/n):` to stdout. If no response within 30 seconds or stdin unavailable, default to fresh start
   - User says No → use new WORK_DIR, fresh start
   - User says Yes → execute **Procedure E: Resume Protocol**
 

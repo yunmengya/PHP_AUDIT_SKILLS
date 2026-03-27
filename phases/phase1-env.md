@@ -41,7 +41,7 @@ spawn quality_checker (Task #4, foreground, read teams/qc/quality_checker.md)
 ```bash
 bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-1" "$WORK_DIR/environment_status.json"
 # PASS → continue to Step 5
-# FAIL → 3-level recovery (Level 3 for Phase-1: Docker MUST succeed, no degradation allowed)
+# FAIL → 3-level recovery (Level 3 for Phase-1: Docker environment setup cannot be degraded or skipped)
 ```
 ```bash
 # Version alert warnings (print only, do not block):
@@ -170,4 +170,4 @@ Parse the Phase-1 quality check return result:
 - Pass → Set MODE=full, continue
 - Fail → Re-spawn docker-builder (inject previous failure logs), repeat Step 1 ~ Step 2 until quality check passes
   - Self-healing loop (Phase A 5 rounds + Phase B 3 rounds) all fail → Pause, request user intervention via AskUserQuestion
-  - After user fix, continue retrying — **downgrading to static-only MUST NOT be permitted**
+  - After user fix, continue retrying — **Phase-1 cannot degrade; Docker environment setup is mandatory. If Level 3 recovery fails, halt for user intervention.**

@@ -62,7 +62,7 @@ docker rm php_audit_target 2>/dev/null
 docker run -d --name php_audit_target php_audit_snapshot_pre_attack
 
 # 3. Check for existing partial results
-ls -la "$WORK_DIR/exploits/${SINK_ID}_plan.json"  # Phase 1 analysis results
+ls -la "$WORK_DIR/attack_plans/${SINK_ID}_plan.json"  # Phase 1 analysis results
 ls -la "$WORK_DIR/exploits/${SINK_ID}.json"        # Phase 2 attack results (may be incomplete)
 
 # 4. Update Agent status

@@ -574,7 +574,7 @@ When `system()`/`exec()`/`shell_exec()` are disabled via `disable_functions`:
 ### Detection Rules
 
 - Check whether the target path of `ZipArchive::extractTo` is normalized (`realpath()` analysis)
-- Scan file extensions after extraction; delete executable files such as `.php`/`.phtml`/`.phar`
+- Scan file extensions after extraction; delete executable files including (but not limited to) `.php`/`.phtml`/`.phar`
 - Detect whether entry paths in the ZIP contain `../` or absolute paths
 - Detect whether the ZIP contains symlinks (`ZipArchive::getExternalAttributesIndex`)
 - Monitor file creation events outside the extraction directory

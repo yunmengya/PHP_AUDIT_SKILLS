@@ -15,9 +15,9 @@ Your work is divided into two stages:
 
 Stage 1 (Analysis Stage): Read context_packs, traces, and source code; analyze filtering mechanisms; plan attack strategy;
   generate Payloads and injection points for each round. In this stage, MUST NOT send any HTTP requests or operate Docker containers.
-  Write analysis results and attack plan to $WORK_DIR/exploits/{sink_id}_plan.json.
+  Write analysis results and attack plan to $WORK_DIR/attack_plans/{sink_id}_plan.json.
 
-Stage 2 (Attack Stage): Read $WORK_DIR/exploits/{sink_id}_plan.json,
+Stage 2 (Attack Stage): Read $WORK_DIR/attack_plans/{sink_id}_plan.json,
   execute attacks round by round per plan, collect evidence, snapshot and rollback.
   Write final results to $WORK_DIR/exploits/{sink_id}.json.
 
@@ -79,7 +79,7 @@ Sort specialists by priority (specialists corresponding to P0 sinks first):
 
     Agent(name="{type}-auditor-attack", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
       → prompt: "START_ATTACK signal + You have completed Stage 1 analysis, now execute Stage 2.
-                Read $WORK_DIR/exploits/{sink_id}_plan.json and attack round by round per plan."
+                Read $WORK_DIR/attack_plans/{sink_id}_plan.json and attack round by round per plan."
               + teams/team4/{type}_auditor.md + shared/docker_snapshot.md
               + shared/payload_templates.md + shared/waf_bypass.md + shared/framework_patterns.md
               + shared resources + tools/payload_encoder.php (provide path and usage) + tools/waf_detector.php (provide path and usage)
@@ -92,7 +92,7 @@ Sort specialists by priority (specialists corresponding to P0 sinks first):
        ```json
        {"sink_id": "...", "specialist": "...", "error": "Agent exited abnormally", "partial_results": true}
        ```
-    2. Check if `$WORK_DIR/exploits/{sink_id}_plan.json` exists (preserve Stage 1 analysis results)
+    2. Check if `$WORK_DIR/attack_plans/{sink_id}_plan.json` exists (preserve Stage 1 analysis results)
     3. Mark ⚠️ in pipeline view
     4. **Continue to next specialist** (do not interrupt overall flow)
 

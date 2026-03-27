@@ -106,7 +106,7 @@ Write the extracted credential into the `admin` section of `credentials.json`.
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `admin` section | Method (cookie/bearer), token/cookie value, user_id, username |
+| Credentials file | `$WORK_DIR/credentials.json` → `admin` section | Method (cookie/bearer), token/cookie value, user_id, username |
 
 Example output fragment:
 ```json

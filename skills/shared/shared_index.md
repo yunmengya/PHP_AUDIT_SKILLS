@@ -16,3 +16,11 @@ This index lists all 9 shared protocol skills that standardize auditor behavior 
 | S-106 | `second_order_tracking.md` | Enable cross-auditor intelligence sharing and track second-order vulnerability patterns |
 | S-107 | `context_compression_protocol.md` | Manage token budget during multi-round attack loops by compressing completed rounds into summaries |
 | S-108 | `general_self_check.md` | Define 8 universal self-check items (G1–G8) every Phase-4 auditor must execute before submission |
+
+## Terminology Mapping
+
+| Concept | round_record_format (S-101) | exploit result (final) | prerequisite_scoring_3d (S-105) |
+|---------|---------------------------|----------------------|-------------------------------|
+| Vulnerability confirmed exploitable | `result: "confirmed"` | `final_verdict: "CONFIRMED"` | `exploitability_judgment: "exploitable"` |
+| Suspicious but unverified | `result: "suspected"` | `final_verdict: "SUSPECTED"` | `exploitability_judgment: "conditionally_exploitable"` |
+| Defense prevents exploitation | `result: "failed"` | `final_verdict: "FAILED"` | `exploitability_judgment: "not_exploitable"` |

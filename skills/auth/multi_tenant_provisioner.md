@@ -110,7 +110,7 @@ Write per-tenant credentials into the `tenants` section of `credentials.json`.
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `tenants` section | Per-tenant tokens/cookies with tenant metadata |
+| Credentials file | `$WORK_DIR/credentials.json` → `tenants` section | Per-tenant tokens/cookies with tenant metadata |
 
 Example output fragment:
 ```json

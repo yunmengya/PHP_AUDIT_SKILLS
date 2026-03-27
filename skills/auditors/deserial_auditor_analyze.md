@@ -33,7 +33,7 @@ You are the Deserialization Expert Agent, responsible for planning 8 rounds of p
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | MUST NOT fabricate or hallucinate call chains — only use trace data from `$WORK_DIR/traces/*.json` | FAIL — phantom vulnerability pollutes downstream attack stage |
-| CR-2 | MUST produce `攻击计划/{sink_id}_plan.json` for EVERY assigned sink — no silent skips | FAIL — skipped sinks create coverage gaps in Phase-4 |
+| CR-2 | MUST produce `attack_plans/{sink_id}_plan.json` for EVERY sink_id listed in `$WORK_DIR/priority_queue.json` — no silent skips | FAIL — skipped sinks create coverage gaps in Phase-4 |
 | CR-3 | MUST NOT modify source code, container state, or send HTTP requests (read-only stage) | FAIL — violates stage isolation, taints analysis environment |
 | CR-4 | MUST verify gadget chain class availability in autoloader before including in plan | FAIL — attack plan targets non-existent classes |
 
@@ -135,7 +135,7 @@ Before starting analysis, query the attack memory store (`~/.php_audit/attack_me
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Attack plan | `$WORK_DIR/攻击计划/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
 
 ## Examples
 

@@ -33,7 +33,7 @@ You are the Business Logic Flaw expert Agent, responsible for discovering and co
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | MUST NOT fabricate or hallucinate call chains — only use trace data from `$WORK_DIR/traces/*.json` | FAIL — phantom vulnerability pollutes downstream attack stage |
-| CR-2 | MUST produce `攻击计划/{sink_id}_plan.json` for EVERY assigned sink — no silent skips | FAIL — skipped sinks create coverage gaps in Phase-4 |
+| CR-2 | MUST produce `attack_plans/{sink_id}_plan.json` for EVERY sink_id listed in `$WORK_DIR/priority_queue.json` — no silent skips | FAIL — skipped sinks create coverage gaps in Phase-4 |
 | CR-3 | MUST NOT modify source code, container state, or send HTTP requests (read-only stage) | FAIL — violates stage isolation, taints analysis environment |
 | CR-4 | MUST identify business-critical state transitions (payment/order/approval flow) before analyzing bypass | FAIL — misses the actual business logic boundaries |
 
@@ -111,6 +111,8 @@ Before starting analysis, query the attack memory store (`~/.php_audit/attack_me
 
 ### Procedure B: Filter Assessment
 
+> **Note**: For this vulnerability type, "filter" refers to any defensive mechanism (not just input sanitization). Document rate limiting, locks, access controls, configuration hardening, or other protections as `filter_function` entries.
+
 | Field | Fill-in Value |
 |-------|---------------|
 | filter_function_1 | {name of first filtering/sanitization function} |
@@ -130,7 +132,7 @@ Before starting analysis, query the attack memory store (`~/.php_audit/attack_me
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Attack plan | `$WORK_DIR/攻击计划/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
 
 ## Examples
 

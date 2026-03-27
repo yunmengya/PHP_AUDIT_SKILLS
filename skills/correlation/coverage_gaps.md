@@ -27,6 +27,7 @@
 | CR-2 | Cross-project queries MUST only be used for pattern suggestions, NOT for severity determination | Using historical matches to set severity produces unreliable risk ratings |
 | CR-3 | Admin endpoints without exploit results MUST always be flagged as `high` risk | Missing an untested admin endpoint leaves the highest-privilege attack surface unverified |
 | CR-4 | P0/P1 sinks with only `potential_risk` annotation MUST be flagged for active testing | Static analysis annotations alone are insufficient for high-priority sinks |
+| CR-5 | Coverage gap entries MUST be marked with `"confidence": "gap_only"` and MUST NOT appear in severity-ordered vulnerability lists without human review | Prevents unverified gaps from being treated as confirmed vulnerabilities |
 
 ## Fill-in Procedure
 

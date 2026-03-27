@@ -91,7 +91,7 @@ If multiple auth types are detected, list all and mark the primary mechanism (mo
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Auth type report | `$WORK_DIR/输出结果/auth_type_report.json` | JSON with detected types, matched files, recommended strategies |
+| Auth type report | `$WORK_DIR/auth_type_report.json` | JSON with detected types, matched files, recommended strategies |
 
 Example output:
 ```json

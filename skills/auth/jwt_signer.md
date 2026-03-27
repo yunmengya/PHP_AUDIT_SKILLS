@@ -28,7 +28,7 @@
 |---|------|-------------|
 | CR-1 | MUST NOT use hardcoded credentials — only use credentials discovered from source code analysis or `$WORK_DIR/credentials.json` | FAIL — test uses fabricated credentials, results unreliable |
 | CR-2 | MUST write output to `$WORK_DIR/auth/` directory conforming to output contract schema | FAIL — downstream Phase-3/4 agents cannot locate auth artifacts |
-| CR-3 | MUST attempt multiple JWT attacks (none algorithm, key confusion, weak secret brute-force) and report which succeeded — single attempt is insufficient | FAIL — misses exploitable JWT weakness |
+| CR-3 | MUST execute all three JWT attack categories (none algorithm exploit, key confusion attack, weak secret brute-force) and report which succeeded — testing only one category is insufficient | FAIL — misses exploitable JWT weakness |
 
 ---
 
@@ -111,7 +111,7 @@ Write each token into the appropriate section of `credentials.json`.
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `authenticated` + `admin` sections | Self-signed JWT tokens per privilege level |
+| Credentials file | `$WORK_DIR/credentials.json` → `authenticated` + `admin` sections | Self-signed JWT tokens per privilege level |
 
 Example output fragment:
 ```json

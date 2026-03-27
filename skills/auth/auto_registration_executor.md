@@ -94,7 +94,7 @@ Write the extracted credential into the `authenticated` section of `credentials.
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `authenticated` section | Method (cookie/bearer), token/cookie value, user_id, username |
+| Credentials file | `$WORK_DIR/credentials.json` → `authenticated` section | Method (cookie/bearer), token/cookie value, user_id, username |
 
 Example output fragment:
 ```json

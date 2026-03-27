@@ -15,7 +15,7 @@
 ## 🚨 CRITICAL Rules
 | # | Rule | Consequence |
 |---|------|-------------|
-| CR-1 | ALL 12 subdirectories must be created (5 internal + 6 user-visible + .audit_state) | Missing directories cause agent write failures in later phases |
+| CR-1 | ALL 13 subdirectories must be created (6 internal + 6 user-visible + .audit_state) | Missing directories cause agent write failures in later phases |
 | CR-2 | User-visible directories MUST use Chinese names: `报告/`, `PoC脚本/`, `修复补丁/`, `经验沉淀/`, `质量报告/`, `原始数据/` | English names violate output contract and break Phase-5 report assembly |
 | CR-3 | Generated scripts (gate_check.sh, phase_transition.sh) MUST be chmod +x | Non-executable scripts block all phase gate checks |
 | CR-4 | PROJECT_NAME must be sanitized — only `a-zA-Z0-9._-` allowed | Unsanitized names cause path injection or broken directory creation |
@@ -46,15 +46,16 @@ WORK_DIR="/tmp/${PROJECT_NAME}/${TIMESTAMP}"
 | Field | Fill-in Value |
 |-------|---------------|
 | WORK_DIR created | ______ (yes/no) |
-| Internal dirs created | `.audit_state/`, `exploits/`, `context_packs/`, `traces/`, `research/` → ______ (all yes/no) |
+| Internal dirs created | `.audit_state/`, `exploits/`, `attack_plans/`, `context_packs/`, `traces/`, `research/` → ______ (all yes/no) |
 | User-visible dirs created | `报告/`, `PoC脚本/`, `修复补丁/`, `经验沉淀/`, `质量报告/`, `原始数据/` → ______ (all yes/no) |
-| Total directories | ______ (must be 12) |
+| Total directories | ______ (must be 13) |
 
 ```bash
 mkdir -p "$WORK_DIR" || { echo "🛑 Cannot create working directory: $WORK_DIR"; exit 1; }
 # Agent working directories (internal, agents write to these paths)
 mkdir -p "$WORK_DIR/.audit_state"
 mkdir -p "$WORK_DIR/exploits"
+mkdir -p "$WORK_DIR/attack_plans"
 mkdir -p "$WORK_DIR/context_packs"
 mkdir -p "$WORK_DIR/traces"
 mkdir -p "$WORK_DIR/research"
@@ -185,7 +186,7 @@ chmod +x "$WORK_DIR/.audit_state/phase_transition.sh"
 ## Output Contract
 | Output File | Path | Schema | Description |
 |-------------|------|--------|-------------|
-| Working directory tree | `$WORK_DIR/` | — | 12 subdirectories created |
+| Working directory tree | `$WORK_DIR/` | — | 13 subdirectories created |
 | gate_check.sh | `$WORK_DIR/.audit_state/gate_check.sh` | — | Gate validation script (executable) |
 | phase_transition.sh | `$WORK_DIR/.audit_state/phase_transition.sh` | — | State machine transition script (executable) |
 | current_phase | `$WORK_DIR/.audit_state/current_phase` | Plain text | Contains "INIT" |
@@ -203,6 +204,7 @@ $WORK_DIR = /tmp/my_laravel_app/20240101_120000/
 │   ├── gate_check.sh          → executable, 50 lines
 │   └── phase_transition.sh    → executable, 15 lines
 ├── exploits/
+├── attack_plans/
 ├── context_packs/
 ├── traces/
 ├── research/
@@ -220,7 +222,7 @@ Explanation: All 12 directories created, Chinese names used for user-visible dir
 $WORK_DIR = /tmp/my_app/20240101/
 ├── exploits/
 └── reports/            ← WRONG: should be 报告/ (Chinese)
-                        ← MISSING: .audit_state/, context_packs/, traces/, research/, PoC脚本/, 修复补丁/, 经验沉淀/, 质量报告/, 原始数据/
+                        ← MISSING: .audit_state/, attack_plans/, context_packs/, traces/, research/, PoC脚本/, 修复补丁/, 经验沉淀/, 质量报告/, 原始数据/
 ```
 Violates CR-1 (missing directories) and CR-2 (English name instead of Chinese) ❌
 

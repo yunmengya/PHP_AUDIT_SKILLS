@@ -433,7 +433,7 @@ Read the shared findings store before starting the attack phase to leverage leak
 
 ## Constraints
 
-- Password hash brute-forcing is ONLY for confirming hash type; MUST NOT attempt to recover real passwords
+- Password hash brute-forcing is permitted SOLELY for confirming hash type (e.g., MD5 vs bcrypt). Do NOT attempt to crack or recover actual user passwords under any circumstances
 - Timing attacks require a low-latency environment (Docker internal network); results MUST have statistical significance
 - JWT brute-forcing uses a limited dictionary (top 10000); MUST NOT perform exhaustive search
 - MUST NOT export or store any real user passwords

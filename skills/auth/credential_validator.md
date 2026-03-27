@@ -125,8 +125,8 @@ If a credential fails validation:
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Validation results | `$WORK_DIR/输出结果/credential_validation.json` | Per-credential validity status |
-| Updated credentials | `$WORK_DIR/输出结果/credentials.json` | Invalid credentials set to `null` with reason in notes |
+| Validation results | `$WORK_DIR/credential_validation.json` | Per-credential validity status |
+| Updated credentials | `$WORK_DIR/credentials.json` | Invalid credentials set to `null` with reason in notes |
 
 Example validation output:
 ```json

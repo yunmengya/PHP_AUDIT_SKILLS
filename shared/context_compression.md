@@ -65,7 +65,7 @@ Next suggestion: Try time-based blind injection (sleep 5) or OOB (DNS/HTTP callb
 
 ## Output Format Requirements
 
-After each compression, update the `compressed_rounds` field in `$WORK_DIR/exploits/{sink_id}_plan.json`:
+After each compression, update the `compressed_rounds` field in `$WORK_DIR/attack_plans/{sink_id}_plan.json`:
 
 ```json
 {

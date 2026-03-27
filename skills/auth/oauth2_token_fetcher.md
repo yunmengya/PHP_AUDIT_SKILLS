@@ -102,7 +102,7 @@ Write all tokens into the `oauth_tokens` section of `credentials.json`.
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `oauth_tokens` section | Tokens keyed by scope label |
+| Credentials file | `$WORK_DIR/credentials.json` → `oauth_tokens` section | Tokens keyed by scope label |
 
 Example output fragment:
 ```json

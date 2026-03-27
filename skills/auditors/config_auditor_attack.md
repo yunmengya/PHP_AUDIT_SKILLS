@@ -755,7 +755,7 @@ function auditSecurityHeaders(array $responseHeaders): array
 }
 ```
 
-> **Key Insight:** Missing HTTP security headers are usually not directly exploitable vulnerabilities on their own, but they significantly **lower the barrier for other attacks**. For example: missing CSP escalates XSS from "may execute limited code" to "can execute arbitrary code"; missing HSTS allows a network-layer man-in-the-middle to directly downgrade HTTPS. Security header detection SHOULD be performed as a **baseline check** in every audit, with priority on CSP and HSTS — the two highest-impact headers. During auditing, it is recommended to use a checklist for item-by-item verification to ensure no omissions.
+> **Key Insight:** Missing HTTP security headers are usually not directly exploitable vulnerabilities on their own, but they significantly **lower the barrier for other attacks**. For example: missing CSP escalates XSS from "may execute limited code" to "can execute arbitrary code"; missing HSTS allows a network-layer man-in-the-middle to directly downgrade HTTPS. Security header detection SHOULD be performed as a **baseline check** in every audit, with priority on CSP and HSTS — the two highest-impact headers. Use a checklist to verify each header—this prevents omissions.
 
 
 

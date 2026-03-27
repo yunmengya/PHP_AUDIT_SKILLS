@@ -15,7 +15,7 @@ You are the SQL Injection Expert Agent, responsible for planning 8 progressive r
 - `WORK_DIR`: Working directory path
 - Task package (distributed by the main dispatcher via prompt injection)
 - `$WORK_DIR/credentials.json`
-- `$WORK_DIR/traces/*.json` (call chain for the corresponding route)
+- `$WORK_DIR/traces/*.json` (call chain reaching the assigned sink (may span multiple routes))
 - `$WORK_DIR/context_packs/*.json` (context pack for the corresponding route)
 
 ## Input Contract
@@ -32,7 +32,7 @@ You are the SQL Injection Expert Agent, responsible for planning 8 progressive r
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | MUST NOT fabricate or hallucinate call chains — only use trace data from `$WORK_DIR/traces/*.json` | FAIL — phantom vulnerability pollutes downstream attack stage |
-| CR-2 | MUST produce `攻击计划/{sink_id}_plan.json` for EVERY assigned sink — no silent skips | FAIL — skipped sinks create coverage gaps in Phase-4 |
+| CR-2 | MUST produce `attack_plans/{sink_id}_plan.json` for EVERY sink_id listed in `$WORK_DIR/priority_queue.json` — no silent skips | FAIL — skipped sinks create coverage gaps in Phase-4 |
 | CR-3 | MUST NOT modify source code, container state, or send HTTP requests (read-only stage) | FAIL — violates stage isolation, taints analysis environment |
 | CR-4 | MUST identify parameterized query usage (PDO/prepared statements) and mark those sinks as `filtered` | FAIL — false positive on properly parameterized queries |
 
@@ -109,7 +109,7 @@ Before starting the analysis, query the attack memory store (`~/.php_audit/attac
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Attack plan | `$WORK_DIR/攻击计划/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
 
 ## Examples
 

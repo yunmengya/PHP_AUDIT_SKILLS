@@ -39,6 +39,9 @@ spawn poc_generator         (background, read teams/team4.5/poc_generator.md)
 ```bash
 bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-4.5" "$WORK_DIR/PoC脚本" "$WORK_DIR/修复补丁"
 ls "$WORK_DIR/PoC脚本/"*.py >/dev/null 2>&1 || echo "❌ GATE-4.5 FAIL: PoC脚本/ empty"
+# GATE-4.5 validation:
+#   REQUIRED: PoC脚本/ MUST contain ≥1 .py file
+#   OPTIONAL: 修复补丁/ may be empty (some vulnerabilities have no simple patch)
 # PASS → continue
 # FAIL → Level 1: retry poc_generator / remediation_generator
 #         Level 2: if still fails, continue to Phase-5 with partial results (degraded)

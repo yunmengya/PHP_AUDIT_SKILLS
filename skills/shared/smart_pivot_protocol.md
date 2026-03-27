@@ -21,7 +21,7 @@
 | CR-1 | Smart Pivot activates ONLY when **both**: ≥ 3 consecutive rounds failed AND current round ≥ R4 | Triggering too early wastes pivot resources on normal exploration; too late wastes rounds on hallucinated results |
 | CR-2 | Execute all 4 pivot steps **in order** — do NOT skip steps | Skipping Re-Reconnaissance or Cross-Intelligence may miss viable paths, leading to premature termination |
 | CR-3 | Smart Pivot MUST be attempted **before** requesting Smart Skip (S-102) | If pivot finds a new path → continue (no skip); if no paths found → proceed to Smart Skip with full documentation |
-| CR-4 | If Steps 1-3 yield no viable paths, **terminate early** — do NOT continue with rounds that have no realistic chance | Continuing produces hallucinated "successful" attacks that waste downstream review effort |
+| CR-4 | If Steps 1-3 yield no viable paths, set outcome to `early_termination` and proceed to Smart Skip (S-102) — do NOT continue with rounds that have no realistic chance of success | Continuing produces hallucinated "successful" attacks that waste downstream review effort |
 | CR-5 | `outcome` MUST be exactly one of `pivot_to_new_strategy` or `early_termination` — no other values allowed | Downstream consumers rely on this enum to decide next action |
 
 ## Fill-in Procedure

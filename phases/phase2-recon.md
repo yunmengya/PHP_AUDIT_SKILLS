@@ -52,9 +52,9 @@ bash "$WORK_DIR/.audit_state/gate_check.sh" "GATE-2" \
   "$WORK_DIR/priority_queue.json" \
   "$WORK_DIR/context_packs"
 # PASS → continue
-# FAIL → Level 1: retry context_extractor/risk_classifier
-#         Level 2: if still fails, continue with partial context_packs (degraded)
-#         Level 3: if priority_queue.json missing entirely → USER HALT
+# FAIL → Level 1: retry the specific failing component (context_extractor or risk_classifier), max 2 retries
+#         Level 2: if retries exhausted and priority_queue.json EXISTS → mark as degraded, continue
+#         Level 3: if priority_queue.json is MISSING entirely → USER HALT (cannot proceed without task queue)
 ```
 
 **Step 5 — EXIT:**
