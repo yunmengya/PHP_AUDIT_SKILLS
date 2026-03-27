@@ -22,6 +22,11 @@ Read $WORK_DIR/priority_queue.json and create Phase-4 specialist tasks by sink t
 | md5/sha1/rand/weak cryptography | crypto-auditor | teams/team4/crypto_auditor.md |
 | wp_ajax/xmlrpc/shortcode | wp-auditor | teams/team4/wordpress_auditor.md |
 | Price tampering/flow bypass/business logic | bizlogic-auditor | teams/team4/business_logic_auditor.md |
+| form without token/AJAX without X-CSRF/state-change GET | csrf-auditor | teams/team4/csrf_auditor.md |
+| session_start/session_regenerate_id/cookie flags | session-auditor | teams/team4/session_auditor.md |
+| ldap_search/ldap_bind/ldap_modify | ldap-auditor | teams/team4/ldap_auditor.md |
+| header()/setcookie()/Location redirect injection | crlf-auditor | teams/team4/crlf_auditor.md |
+| error_log/syslog/Log::info/sensitive data in logs | logging-auditor | teams/team4/logging_auditor.md |
 
 ## Framework-Adaptive Dispatch
 
