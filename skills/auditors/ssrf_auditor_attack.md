@@ -31,6 +31,23 @@
 | CR-6 | MUST use OOB callback (DNS/HTTP to listener) or internal-only content in response to confirm SSRF — redirect following alone is insufficient | FAIL — false positive on client-side redirects |
 
 ## 8 Rounds of Attack
+**Payload Selection Rule (CR-PAYLOAD)**:
+
+Within each round, test payloads in the following priority order:
+
+| Priority | Condition | Action |
+|----------|-----------|--------|
+| 1 (try first) | Simplest/most direct payload for this technique | Test baseline vulnerability existence |
+| 2 | Encoding/evasion variant of Priority 1 | Test if filters block Priority 1 |
+| 3 | Framework-specific or context-adaptive payload | Test framework-aware bypasses |
+| 4 (try last) | Complex/chained payload | Test advanced exploitation |
+
+- MUST test Priority 1 before trying Priority 2-4
+- If Priority 1 succeeds → record evidence and proceed to next round (do NOT test remaining payloads)
+- If Priority 1 fails → try Priority 2, then 3, then 4
+- If ALL priorities fail → fill Round Fill-in with `failure_reason` and proceed to next round
+- MUST NOT skip Priority 1 to try "creative" payloads directly
+
 
 #### Round Fill-in
 
@@ -38,9 +55,12 @@
 |-------|---------------|
 | target_url | `{URL from attack plan}` |
 | injection_point | `{parameter name from plan}` |
-| payload | `{payload from this round's strategy}` |
+| selected_priority | `{1 / 2 / 3 / 4}` |
+| payload | `{payload from this round's strategy — must match selected_priority}` |
 | evidence_command | `{docker exec or curl command to verify}` |
 | expected_evidence | `{what confirms success}` |
+| result | `{success / fail}` |
+| failure_reason | `{if fail: waf_blocked / filter_effective / auth_required / timeout / not_applicable}` |
 
 ### R1 - Basic Internal Service Probing
 
