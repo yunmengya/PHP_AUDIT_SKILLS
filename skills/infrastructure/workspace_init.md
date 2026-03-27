@@ -75,7 +75,7 @@ mkdir -p "$WORK_DIR/原始数据"
 | Graph DB init result | ______ (success/warning) |
 
 ```bash
-bash tools/audit_db.sh init-memory  # Attack memory database
+bash tools/audit_db.sh init-memory  # Attack memory store
 bash tools/audit_db.sh init-graph   # Relationship graph database
 ```
 

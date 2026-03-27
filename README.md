@@ -60,7 +60,7 @@ RCE · SQLi · 反序列化 · LFI · 文件写入 · SSRF · XSS/SSTI · XXE ·
 | 阶段 | Agent 数 | 核心功能 | 关键产物 |
 |------|---------|---------|---------|
 | **Phase 1: 环境构建** | 3 | 框架识别、Schema 重建、Docker 构建 + 自愈 | `environment_status.json` |
-| **Phase 2: 静态侦察** | 6 | 工具扫描、路由映射、鉴权矩阵、上下文抽取、风险定级 | `priority_queue.json`、`context_packs/` |
+| **Phase 2: 静态侦察** | 12 | 工具扫描（7 种）、路由映射、鉴权矩阵、依赖扫描、上下文抽取、风险定级 | `priority_queue.json`、`context_packs/` |
 | **Phase 3: 动态追踪** | 3+N | 鉴权模拟、Xdebug 追踪、调用链校验 | `traces/*.json`、`credentials.json` |
 | **Phase 4: 深度利用** | 21+1 | 21 类漏洞专家审计 + Mini-Researcher | `exploits/*.json`、`research/*.json` |
 | **Phase 4.5: 后渗透** | 4 | 攻击图谱、关联分析、Patch 生成、PoC 生成 | `attack_graph.json`、`PoC脚本/*.py` |

@@ -45,7 +45,7 @@ The following documents are injected into the Agent prompt by role (L2 resources
 
 ### Context Compression
 
-Follow the compression protocol in `shared/context_compression.md`:
+Follow the compression protocol in `shared/context_compression_protocol.md`:
 - After every 3 completed attack rounds, compress previous rounds into a summary table
 - Retain the excluded paths list and key findings
 - Keep only the most recent round's full details
@@ -89,7 +89,7 @@ Each confirmed CSRF vulnerability MUST provide one of the following evidence typ
 
 ### Historical Memory Query
 
-Before starting the analysis, query the attack memory database (`~/.php_audit/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
+Before starting the analysis, query the attack memory store (`~/.php_audit/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
 - If confirmed records exist → promote their successful strategies to R1
 - If failed records exist → skip their excluded strategies
 - If no match → execute in default round order

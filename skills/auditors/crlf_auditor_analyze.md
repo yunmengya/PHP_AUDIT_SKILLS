@@ -45,7 +45,7 @@ The following documents are injected into the Agent prompt by role (L2 resources
 
 ### Context Compression
 
-Follow the compression protocol in `shared/context_compression.md`:
+Follow the compression protocol in `shared/context_compression_protocol.md`:
 - After completing every 3 rounds of attacks, compress previous rounds into a summary table
 - Retain the list of excluded paths and key findings
 - Keep only the most recent round's full details

@@ -617,7 +617,7 @@ Missing required EVID → Conclusion automatically downgraded (confirmed→suspe
 
 ### Attack Memory Writing
 
-After the attack cycle ends, write experience to the attack memory database (see `shared/attack_memory.md` write protocol for format):
+After the attack cycle ends, write experience to the attack memory store (see `shared/attack_memory.md` write protocol for format):
 
 - ✅ confirmed: Record successful payload type + bypass technique + successful round
 - ❌ failed (≥3 rounds): Record all excluded strategies + failure reasons

@@ -45,7 +45,7 @@ The following documents are injected into the Agent prompt by role (L2 resources
 
 ### Context Compression
 
-Follow the compression protocol in `shared/context_compression.md`:
+Follow the compression protocol in `shared/context_compression_protocol.md`:
 - After every 3 attack rounds, compress previous rounds into a summary table
 - Retain the excluded paths list and key findings
 - Keep only the most recent round's full details
@@ -115,7 +115,7 @@ The following scenarios **MUST** provide evidence (no evidence = no vulnerabilit
 
 ### History Memory Query
 
-Before starting analysis, query the attack memory database (`~/.php_audit/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
+Before starting analysis, query the attack memory store (`~/.php_audit/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
 - If confirmed records exist → Prioritize their successful strategies to R1
 - Has failed records → Skip their excluded strategies
 - No matches → Execute in the default round order
