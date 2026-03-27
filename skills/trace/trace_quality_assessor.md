@@ -32,7 +32,19 @@ against static Context Packs to establish confidence levels.
 | CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
 | CR-3 | MUST assess trace completeness against route count — quality score without coverage ratio is meaningless | FAIL — high quality score on incomplete trace data |
 
+| CR-DEG | Step 0 Degradation Check MUST be completed before any processing — empty table = QC FAIL | Degraded data treated as complete |
+| CR-PRE | Pre-Submission Checklist MUST be completed before output — any ❌ MUST be fixed before submitting | Known-bad output wastes QC cycle |
 ## Fill-in Procedure
+
+### Step 0 — Upstream Degradation Check (MANDATORY)
+
+Per `shared/degradation_check.md`, fill the degradation status table before any data processing:
+
+| Upstream Phase | Flag Variable | Value | Affected Input Files |
+|---------------|---------------|-------|---------------------|
+| Phase-2 | PHASE2_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+
+IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "suspected", add [DEGRADED INPUT] prefix).
 
 ### Step 1 — Quality Assessment Rules
 
@@ -143,6 +155,23 @@ Produce a quality assessment object:
   "action": "proceed_to_phase4"
 }
 ```
+
+## Pre-Submission Checklist (MUST Execute)
+
+Before submitting output, complete the self-check per `shared/pre_submission_checklist.md`:
+
+| # | Check Item | Your Result | Pass |
+|---|-----------|-------------|------|
+| P1 | JSON syntax valid | {result} | {✅/❌} |
+| P2 | All required fields present | {result} | {✅/❌} |
+| P3 | Zero placeholder text | {result} | {✅/❌} |
+| P4 | File:line citations verified | {result} | {✅/❌} |
+| P5 | Output saved to correct path | {result} | {✅/❌} |
+| P6 | Degradation check completed | {result} | {✅/❌} |
+| P7 | No fabricated data | {result} | {✅/❌} |
+| P8 | Field value ranges valid | {result} | {✅/❌} |
+
+ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 

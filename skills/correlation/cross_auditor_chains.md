@@ -27,7 +27,22 @@
 | CR-3 | `speculative` confidence chains MUST NOT trigger severity escalation — record only | Speculative chains that escalate produce false critical alerts |
 | CR-4 | If a chain duplicates a severity escalation rule (S-072) pattern, use the higher severity and do NOT create duplicate entries | Duplicate entries cause double-counting in the final report |
 
+| CR-DEG | Step 0 Degradation Check MUST be completed before any processing — empty table = QC FAIL | Degraded data treated as complete |
+| CR-REF | All cross-file ID references MUST be verified against source files before output — unverified references MUST be removed | Broken references cause downstream parse failures and phantom findings |
+| CR-PRE | Pre-Submission Checklist MUST be completed before output — any ❌ MUST be fixed before submitting | Known-bad output wastes QC cycle |
 ## Fill-in Procedure
+
+### Step 0 — Upstream Degradation Check (MANDATORY)
+
+Per `shared/degradation_check.md`, fill the degradation status table before any data processing:
+
+| Upstream Phase | Flag Variable | Value | Affected Input Files |
+|---------------|---------------|-------|---------------------|
+| Phase-2 | PHASE2_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+| Phase-3 | PHASE3_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+| Phase-4 | PHASE4_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+
+IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "suspected", add [DEGRADED INPUT] prefix).
 
 ### Procedure A: Load and Group Findings by Auditor
 
@@ -101,6 +116,33 @@ For each discovered chain, assign a confidence level:
 ### Procedure E: Deduplication
 
 If the same chain is already covered by the severity escalation rules (S-072) — e.g., SSRF→Cloud Takeover — use the higher severity determination and do NOT record duplicates (CR-4).
+
+## Reference Integrity Check (MUST Execute)
+
+Per `shared/reference_integrity_check.md`, verify all cross-file references before output:
+
+| # | My Output Field | Value | Source File | Verified | Evidence |
+|---|----------------|-------|-------------|----------|----------|
+| 1 | {field} | {id value} | {source file} | {✅/❌} | {jq query result or line content} |
+
+CR-REF-1: Any ❌ → remove from output. MUST NOT include unverified references.
+
+## Pre-Submission Checklist (MUST Execute)
+
+Before submitting output, complete the self-check per `shared/pre_submission_checklist.md`:
+
+| # | Check Item | Your Result | Pass |
+|---|-----------|-------------|------|
+| P1 | JSON syntax valid | {result} | {✅/❌} |
+| P2 | All required fields present | {result} | {✅/❌} |
+| P3 | Zero placeholder text | {result} | {✅/❌} |
+| P4 | File:line citations verified | {result} | {✅/❌} |
+| P5 | Output saved to correct path | {result} | {✅/❌} |
+| P6 | Degradation check completed | {result} | {✅/❌} |
+| P7 | No fabricated data | {result} | {✅/❌} |
+| P8 | Field value ranges valid | {result} | {✅/❌} |
+
+ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 

@@ -28,7 +28,22 @@
 | CR-3 | Sanitization type MUST be validated against the use context, not just presence/absence | A store point with `htmlspecialchars` feeding a SQL concatenation use point is still vulnerable despite sanitization existing |
 | CR-4 | Both `store_point` and `use_point` MUST be fully populated with all fields in each candidate entry | Incomplete entries prevent downstream auditors from locating and testing the candidate |
 
+| CR-DEG | Step 0 Degradation Check MUST be completed before any processing — empty table = QC FAIL | Degraded data treated as complete |
+| CR-REF | All cross-file ID references MUST be verified against source files before output — unverified references MUST be removed | Broken references cause downstream parse failures and phantom findings |
+| CR-PRE | Pre-Submission Checklist MUST be completed before output — any ❌ MUST be fixed before submitting | Known-bad output wastes QC cycle |
 ## Fill-in Procedure
+
+### Step 0 — Upstream Degradation Check (MANDATORY)
+
+Per `shared/degradation_check.md`, fill the degradation status table before any data processing:
+
+| Upstream Phase | Flag Variable | Value | Affected Input Files |
+|---------------|---------------|-------|---------------------|
+| Phase-2 | PHASE2_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+| Phase-3 | PHASE3_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+| Phase-4 | PHASE4_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+
+IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "suspected", add [DEGRADED INPUT] prefix).
 
 ### Procedure A: Load Store and Use Points
 
@@ -80,6 +95,33 @@ Consume graph data from `attack_memory.db` to discover additional second-order c
 3. Mark as **data flow attack chain candidate**, escalate `target_node` priority
 4. **Do NOT escalate based on `speculative` confidence edges** (CR-2) — record in `pattern_matches` only
 5. Example: SQLi writes to `users.bio` (confirmed) → XSS renders `users.bio` (potential) → escalate to Stored XSS (probable)
+
+## Reference Integrity Check (MUST Execute)
+
+Per `shared/reference_integrity_check.md`, verify all cross-file references before output:
+
+| # | My Output Field | Value | Source File | Verified | Evidence |
+|---|----------------|-------|-------------|----------|----------|
+| 1 | {field} | {id value} | {source file} | {✅/❌} | {jq query result or line content} |
+
+CR-REF-1: Any ❌ → remove from output. MUST NOT include unverified references.
+
+## Pre-Submission Checklist (MUST Execute)
+
+Before submitting output, complete the self-check per `shared/pre_submission_checklist.md`:
+
+| # | Check Item | Your Result | Pass |
+|---|-----------|-------------|------|
+| P1 | JSON syntax valid | {result} | {✅/❌} |
+| P2 | All required fields present | {result} | {✅/❌} |
+| P3 | Zero placeholder text | {result} | {✅/❌} |
+| P4 | File:line citations verified | {result} | {✅/❌} |
+| P5 | Output saved to correct path | {result} | {✅/❌} |
+| P6 | Degradation check completed | {result} | {✅/❌} |
+| P7 | No fabricated data | {result} | {✅/❌} |
+| P8 | Field value ranges valid | {result} | {✅/❌} |
+
+ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 

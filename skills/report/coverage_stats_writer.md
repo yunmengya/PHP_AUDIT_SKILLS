@@ -31,7 +31,21 @@
 | CR-4 | Skipped routes MUST be listed with skip reason | Unexplained skips raise quality questions |
 | CR-5 | Percentages MUST use one decimal place (e.g., `85.7%`) | Inconsistent formatting looks unprofessional |
 
+| CR-DEG | Step 0 Degradation Check MUST be completed before any processing — empty table = QC FAIL | Degraded data treated as complete |
+| CR-PRE | Pre-Submission Checklist MUST be completed before output — any ❌ MUST be fixed before submitting | Known-bad output wastes QC cycle |
 ## Fill-in Procedure
+
+### Step 0 — Upstream Degradation Check (MANDATORY)
+
+Per `shared/degradation_check.md`, fill the degradation status table before any data processing:
+
+| Upstream Phase | Flag Variable | Value | Affected Input Files |
+|---------------|---------------|-------|---------------------|
+| Phase-2 | PHASE2_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+| Phase-3 | PHASE3_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+| Phase-4 | PHASE4_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+
+IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "suspected", add [DEGRADED INPUT] prefix).
 
 ### Procedure A: Calculate Route Coverage
 
@@ -117,6 +131,23 @@ Read `exploit_summary.json → per_auditor[]` or `checkpoint.json → auditor_st
 
 {If no skipped routes: "> ✅ 所有路由均已纳入审计范围"}
 ````
+
+## Pre-Submission Checklist (MUST Execute)
+
+Before submitting output, complete the self-check per `shared/pre_submission_checklist.md`:
+
+| # | Check Item | Your Result | Pass |
+|---|-----------|-------------|------|
+| P1 | JSON syntax valid | {result} | {✅/❌} |
+| P2 | All required fields present | {result} | {✅/❌} |
+| P3 | Zero placeholder text | {result} | {✅/❌} |
+| P4 | File:line citations verified | {result} | {✅/❌} |
+| P5 | Output saved to correct path | {result} | {✅/❌} |
+| P6 | Degradation check completed | {result} | {✅/❌} |
+| P7 | No fabricated data | {result} | {✅/❌} |
+| P8 | Field value ranges valid | {result} | {✅/❌} |
+
+ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 

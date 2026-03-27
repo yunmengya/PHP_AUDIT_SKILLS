@@ -31,7 +31,19 @@ to capture the real call chain, not to exploit.
 | CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
 | CR-3 | MUST include all required parameters discovered from route analysis — missing parameters cause HTTP 400/422 in trace execution | FAIL — incomplete requests produce unusable traces |
 
+| CR-DEG | Step 0 Degradation Check MUST be completed before any processing — empty table = QC FAIL | Degraded data treated as complete |
+| CR-PRE | Pre-Submission Checklist MUST be completed before output — any ❌ MUST be fixed before submitting | Known-bad output wastes QC cycle |
 ## Fill-in Procedure
+
+### Step 0 — Upstream Degradation Check (MANDATORY)
+
+Per `shared/degradation_check.md`, fill the degradation status table before any data processing:
+
+| Upstream Phase | Flag Variable | Value | Affected Input Files |
+|---------------|---------------|-------|---------------------|
+| Phase-2 | PHASE2_DEGRADED | {true/false/not_set} | {files consumed from this phase} |
+
+IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "suspected", add [DEGRADED INPUT] prefix).
 
 ### Step 1 — Read Route Parameters
 
@@ -115,6 +127,23 @@ Produce a request specification containing:
 ```
 
 > **Critical**: The `Cookie` header MUST always include `XDEBUG_TRIGGER=1` to activate trace generation.
+
+## Pre-Submission Checklist (MUST Execute)
+
+Before submitting output, complete the self-check per `shared/pre_submission_checklist.md`:
+
+| # | Check Item | Your Result | Pass |
+|---|-----------|-------------|------|
+| P1 | JSON syntax valid | {result} | {✅/❌} |
+| P2 | All required fields present | {result} | {✅/❌} |
+| P3 | Zero placeholder text | {result} | {✅/❌} |
+| P4 | File:line citations verified | {result} | {✅/❌} |
+| P5 | Output saved to correct path | {result} | {✅/❌} |
+| P6 | Degradation check completed | {result} | {✅/❌} |
+| P7 | No fabricated data | {result} | {✅/❌} |
+| P8 | Field value ranges valid | {result} | {✅/❌} |
+
+ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 

@@ -30,6 +30,7 @@
 | CR-4 | audit_date MUST use the current date in `YYYY-MM-DD` format | Misleading audit timestamp |
 | CR-5 | If environment_status.json is missing, extract project_name from `$WORK_DIR` directory name | Cover page still generated with partial data |
 
+| CR-PRE | Pre-Submission Checklist MUST be completed before output — any ❌ MUST be fixed before submitting | Known-bad output wastes QC cycle |
 ## Fill-in Procedure
 
 ### Procedure A: Extract Project Metadata
@@ -88,6 +89,23 @@ Fill all values into the following fixed template:
 *本报告由 AI 辅助生成，所有漏洞均经过自动化验证。*
 *报告生成时间: {audit_date}*
 ````
+
+## Pre-Submission Checklist (MUST Execute)
+
+Before submitting output, complete the self-check per `shared/pre_submission_checklist.md`:
+
+| # | Check Item | Your Result | Pass |
+|---|-----------|-------------|------|
+| P1 | JSON syntax valid | {result} | {✅/❌} |
+| P2 | All required fields present | {result} | {✅/❌} |
+| P3 | Zero placeholder text | {result} | {✅/❌} |
+| P4 | File:line citations verified | {result} | {✅/❌} |
+| P5 | Output saved to correct path | {result} | {✅/❌} |
+| P6 | Degradation check completed | {result} | {✅/❌} |
+| P7 | No fabricated data | {result} | {✅/❌} |
+| P8 | Field value ranges valid | {result} | {✅/❌} |
+
+ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 

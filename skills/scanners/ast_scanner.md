@@ -25,6 +25,7 @@
 | CR-2 | Output MUST be wrapped in `{"tool": "ast_sinks", "status": "...", "results": [...]}` | Downstream aggregation fails without standard wrapper |
 | CR-3 | `sink_type` MUST use standard categories (RCE, SQLi, XSS, SSRF, FileOp, Deserial, LFI, XXE, AuthBypass, CRLF, LDAP, NoSQLi) | Non-standard types break vulnerability classification |
 
+| CR-PRE | Pre-Submission Checklist MUST be completed before output — any ❌ MUST be fixed before submitting | Known-bad output wastes QC cycle |
 ## Fill-in Procedure
 
 ### Procedure A: Install PHP Parser
@@ -57,6 +58,23 @@
 | output_path | `$WORK_DIR/ast_sinks.json` |
 | entry_fields | `file`, `line`, `sink_function`, `sink_type`, `arg_safety` |
 | arg_safety_values | `safe` / `needs_trace` / `suspicious` |
+
+## Pre-Submission Checklist (MUST Execute)
+
+Before submitting output, complete the self-check per `shared/pre_submission_checklist.md`:
+
+| # | Check Item | Your Result | Pass |
+|---|-----------|-------------|------|
+| P1 | JSON syntax valid | {result} | {✅/❌} |
+| P2 | All required fields present | {result} | {✅/❌} |
+| P3 | Zero placeholder text | {result} | {✅/❌} |
+| P4 | File:line citations verified | {result} | {✅/❌} |
+| P5 | Output saved to correct path | {result} | {✅/❌} |
+| P6 | Degradation check completed | {result} | {✅/❌} |
+| P7 | No fabricated data | {result} | {✅/❌} |
+| P8 | Field value ranges valid | {result} | {✅/❌} |
+
+ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 
