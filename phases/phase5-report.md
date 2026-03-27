@@ -1,5 +1,7 @@
 # Phase 5: Cleanup & Report
 
+> 📄 **Report chapter skills**: `skills/report/` (S-090a~S-090g)
+
 The main dispatcher has set variables: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_RESOURCES
 Refer to the prompt template in phase1-env.md.
 Dynamic TASK_ID mappings were recorded during the phase2-tasks-dynamic.md stage.
@@ -22,9 +24,20 @@ spawn cleanup_agent (foreground, read teams/team5/env_cleaner.md)
   — Stop Docker containers, clean temp files
 → WAIT for cleanup completed
 
-spawn report_writer (foreground, read teams/team5/report_writer.md)
-  inject: exploit_summary.json + exploits/*.json + PoC脚本/*.py + 修复补丁/*.php
-→ WAIT for report completed
+# 7 chapter writers run in parallel (see skills/report/report_index.md)
+spawn cover_page_writer     (background, read skills/report/cover_page_writer.md)     → S-090a
+spawn vuln_summary_writer   (background, read skills/report/vuln_summary_writer.md)   → S-090b
+spawn vuln_detail_writer    (background, read skills/report/vuln_detail_writer.md)     → S-090c
+spawn attack_chain_writer   (background, read skills/report/attack_chain_writer.md)    → S-090d
+spawn coverage_stats_writer (background, read skills/report/coverage_stats_writer.md)  → S-090e
+spawn risk_pool_writer      (background, read skills/report/risk_pool_writer.md)       → S-090f
+spawn lessons_writer        (background, read skills/report/lessons_writer.md)         → S-090g
+  inject: exploit_summary.json + exploits/*.json + traces/*.json + 修复补丁/*.diff + attack_graph.json
+→ WAIT for all 7 chapter writers completed
+→ Assemble chapters sequentially: 00→01→02→03→04→05 → 审计报告.md
+
+spawn sarif_exporter (background, read teams/team5/sarif_exporter.md)
+→ WAIT for sarif completed
 ```
 
 **Step 3 — WAIT + Final QC:**
@@ -89,14 +102,21 @@ Print pipeline: ALL ✅
 
 ## Execution Steps
 
-### Parallel Step: Cleanup + Report + SARIF
+### Parallel Step: Cleanup + Report Chapters + SARIF
 
 Read the following file contents:
 - ${SKILL_DIR}/teams/team5/env_cleaner.md
-- ${SKILL_DIR}/teams/team5/report_writer.md
+- ${SKILL_DIR}/skills/report/report_index.md (master index for chapter assembly order)
+- ${SKILL_DIR}/skills/report/cover_page_writer.md
+- ${SKILL_DIR}/skills/report/vuln_summary_writer.md
+- ${SKILL_DIR}/skills/report/vuln_detail_writer.md
+- ${SKILL_DIR}/skills/report/attack_chain_writer.md
+- ${SKILL_DIR}/skills/report/coverage_stats_writer.md
+- ${SKILL_DIR}/skills/report/risk_pool_writer.md
+- ${SKILL_DIR}/skills/report/lessons_writer.md
 - ${SKILL_DIR}/teams/team5/sarif_exporter.md
 
-Spawn three Agents simultaneously (background mode, mutually independent):
+Spawn Agents simultaneously (background mode, mutually independent):
 
 **Agent 1: env-cleaner**
 ```
@@ -111,20 +131,34 @@ Agent(
 ```
 Responsibilities: Stop Xdebug, restore code, clean up traces, reset database
 
-**Agent 2: report-writer**
+**Agents 2-8: Report Chapter Writers (7 parallel agents)**
+
+Each chapter writer runs as an independent background agent reading from shared Phase-4 outputs:
+
+```
+# All 7 spawn simultaneously — no dependencies between chapters
+Agent(name="cover-page-writer",     skill=cover_page_writer.md,     TASK_ID=N+2)  → S-090a
+Agent(name="vuln-summary-writer",   skill=vuln_summary_writer.md,   TASK_ID=N+3)  → S-090b
+Agent(name="vuln-detail-writer",    skill=vuln_detail_writer.md,    TASK_ID=N+4)  → S-090c
+Agent(name="attack-chain-writer",   skill=attack_chain_writer.md,   TASK_ID=N+5)  → S-090d
+Agent(name="coverage-stats-writer", skill=coverage_stats_writer.md, TASK_ID=N+6)  → S-090e
+Agent(name="risk-pool-writer",      skill=risk_pool_writer.md,      TASK_ID=N+7)  → S-090f
+Agent(name="lessons-writer",        skill=lessons_writer.md,        TASK_ID=N+8)  → S-090g
+```
+
+Each agent config:
 ```
 Agent(
-  name="report-writer",
+  name="{chapter-name}",
   team_name="php-audit",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
-  prompt= Prompt template(TASK_ID=N+2) + report_writer.md contents
+  prompt= Prompt template(TASK_ID=N+X) + {chapter_skill}.md contents
 )
 ```
-Output: $WORK_DIR/报告/审计报告.md
 
-**Agent 3: sarif-exporter**
+**Agent 9: sarif-exporter**
 ```
 Agent(
   name="sarif-exporter",
@@ -132,18 +166,23 @@ Agent(
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
-  prompt= Prompt template(TASK_ID=N+3) + sarif_exporter.md contents
+  prompt= Prompt template(TASK_ID=N+9) + sarif_exporter.md contents
 )
 ```
 Output: $WORK_DIR/报告/audit_report.sarif.json
 
-**Wait for all three to complete.**
+**Wait for all 9 agents to complete (1 env-cleaner + 7 chapter writers + 1 sarif-exporter).**
+
+After all chapter writers complete, assemble chapters sequentially into final report:
+```
+cat 00_封面.md 01_漏洞汇总表.md 02_漏洞详情_*.md 03_攻击链分析.md 04_覆盖率统计.md 05_未验证风险池.md > 审计报告.md
+```
 
 ### Sequential Step: quality-checker-final
 
 Read: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality_check_templates.md
 
-**Agent 4: quality-checker-final**
+**Agent 10: quality-checker-final**
 ```
 Agent(
   name="quality-checker-final",
