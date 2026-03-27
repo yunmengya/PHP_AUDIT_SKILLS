@@ -35,6 +35,8 @@ You are the Cross-Site Request Forgery (CSRF) expert Agent, responsible for plan
 | CR-2 | MUST produce `attack_plans/{sink_id}_plan.json` for EVERY sink_id listed in `$WORK_DIR/priority_queue.json` — no silent skips | FAIL — skipped sinks create coverage gaps in Phase-4 |
 | CR-3 | MUST NOT modify source code, container state, or send HTTP requests (read-only stage) | FAIL — violates stage isolation, taints analysis environment |
 | CR-4 | MUST check for existing CSRF token mechanisms (WordPress nonce, Laravel `@csrf`, custom tokens) | FAIL — false positive on protected forms |
+| CR-DEG | Step 0 Degradation Check per `shared/degradation_check.md` MUST be completed before processing | Degraded data treated as complete |
+| CR-PRE | Pre-Submission Checklist per `shared/pre_submission_checklist.md` MUST pass before output | Known-bad output wastes QC cycle |
 
 ## Shared Resources
 
@@ -104,7 +106,7 @@ Before starting the analysis, query the attack memory store (`~/.php_audit/attac
 | source_function | {the entry point function receiving user input} |
 | sink_function | {the dangerous function at end of chain} |
 | chain_depth | {number of function calls between source and sink} |
-| chain_status | {complete / broken_at_depth / uncertain} |
+| chain_status | {complete / partial / broken / unverified} |
 
 ### Procedure B: Filter Assessment
 
@@ -113,21 +115,21 @@ Before starting the analysis, query the attack memory store (`~/.php_audit/attac
 | filter_function_1 | {name of first filtering/sanitization function} |
 | filter_position | {before_sink / after_source / inline} |
 | bypass_potential | {high / medium / low / none} |
-| bypass_technique | {specific technique if potential > none} |
+| bypass_technique | {encoding_bypass / filter_evasion / type_juggling / second_order / protocol_switch / none} |
 
 ### Procedure C: Attack Vector Prioritization
 
 | Vector # | Strategy | Round Assignment | Confidence |
 |-----------|----------|-----------------|------------|
-| 1 | {primary attack strategy} | R1 | {high/medium/low} |
-| 2 | {fallback strategy} | R2 | {high/medium/low} |
+| 1 | {primary attack strategy} | R1 | {high / medium / low} |
+| 2 | {fallback strategy} | R2 | {high / medium / low} |
 | ... | ... | ... | ... |
 
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | `schemas/exploit_plan.schema.json` | Vectors, filter analysis, round assignments |
 
 ## Examples
 

@@ -109,9 +109,9 @@ ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| 00_封面.md | `$WORK_DIR/报告/00_封面.md` | Audit report cover page with project metadata and vulnerability statistics |
+| Output File | Path | Description | Schema |
+|-------------|------|-------------|--------|
+| 00_封面.md | `$WORK_DIR/报告/00_封面.md` | Audit report cover page with project metadata and vulnerability statistics | N/A (Markdown output) |
 
 ## Examples
 

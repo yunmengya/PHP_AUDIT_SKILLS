@@ -151,9 +151,9 @@ ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| 04_覆盖率统计.md | `$WORK_DIR/报告/04_覆盖率统计.md` | Audit coverage statistics with route, priority, and auditor breakdowns |
+| Output File | Path | Description | Schema |
+|-------------|------|-------------|--------|
+| 04_覆盖率统计.md | `$WORK_DIR/报告/04_覆盖率统计.md` | Audit coverage statistics with route, priority, and auditor breakdowns | N/A (Markdown output) |
 
 ## Examples
 

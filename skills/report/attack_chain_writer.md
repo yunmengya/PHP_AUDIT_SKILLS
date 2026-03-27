@@ -156,9 +156,9 @@ ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| 03_攻击链分析.md | `$WORK_DIR/报告/03_攻击链分析.md` | Attack chain analysis with Mermaid diagrams |
+| Output File | Path | Description | Schema |
+|-------------|------|-------------|--------|
+| 03_攻击链分析.md | `$WORK_DIR/报告/03_攻击链分析.md` | Attack chain analysis with Mermaid diagrams | N/A (Markdown output) |
 
 ## Examples
 

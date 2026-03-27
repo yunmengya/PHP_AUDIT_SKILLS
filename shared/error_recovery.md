@@ -70,10 +70,21 @@ jq --arg agent "$AGENT_NAME" \
    '.agent_states[$agent].status = "timeout" | .agent_states[$agent].error = "Agent crashed, snapshot restored"' \
    "$WORK_DIR/checkpoint.json" > /tmp/cp.json && mv /tmp/cp.json "$WORK_DIR/checkpoint.json"
 
-# 5. Decision
-# - If _plan.json exists → can re-spawn Agent to execute Phase 2 only
-# - If _plan.json does not exist → requires full re-spawn (from Phase 1)
-# - If partial exploit results exist → mark as partial, continue to next Auditor
+# 5. Recovery Decision Table (MANDATORY — fill before re-spawning)
+
+| # | Check Item | Command | Result | Decision |
+|---|-----------|---------|--------|----------|
+| 1 | Attack plan exists | `ls $WORK_DIR/attack_plans/${SINK_ID}_plan.json` | {exists/missing} | — |
+| 2 | Exploit result exists | `ls $WORK_DIR/exploits/${SINK_ID}.json` | {exists/missing} | — |
+| 3 | Redo count | `jq '.agent_states["AGENT"].redo_count' checkpoint.json` | {0/1/2} | — |
+
+| Plan | Exploit | Redo < 2 | → Action |
+|------|---------|----------|----------|
+| ✅ exists | ❌ missing | ✅ yes | Re-spawn Stage-2 only (skip analysis) |
+| ✅ exists | ⚠️ partial | ✅ yes | Mark partial as `"confidence": "low"`, re-spawn Stage-2 to retry |
+| ❌ missing | ❌ missing | ✅ yes | Full re-spawn from Stage-1 |
+| ✅ exists | ✅ complete | — | No re-spawn needed — results already exist |
+| any | any | ❌ no (≥2) | Stop — mark as `"status": "degraded"`, retain partial results |
 ```
 
 ### Notes

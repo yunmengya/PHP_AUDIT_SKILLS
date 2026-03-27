@@ -54,6 +54,17 @@
 |---|------------|----------|--------|--------|
 | 1 | Each `confirmed` finding references all required EVID_* points per `shared/evidence_contract.md` | ≥ 1 EVID_* reference per confirmed finding | {fill-in: missing EVID references} | {✅/❌} |
 | 2 | EVID references contain actual data — not empty strings or placeholders | 0 empty/placeholder EVID values | {fill-in: empty EVID count} | {✅/❌} |
+
+**Evidence Data Validation Reference** (use when checking EVID field #2):
+
+| EVID Field Type | Valid Example | Invalid Examples | Verification Method |
+|-----------------|---------------|-----------------|---------------------|
+| EVID_HTTP_REQUEST | `"POST /api/exec HTTP/1.1\nHost: target.local\nCookie: sess=abc\n\ncmd=id"` | `""`, `"request"`, `"[placeholder]"`, `"TODO"` | Length > 30 chars AND contains "HTTP/" |
+| EVID_HTTP_RESPONSE | `"HTTP/1.1 200 OK\nContent-Type: text/html\n\nuid=33(www-data)"` | `""`, `"200"`, `"OK"`, `"[response]"` | Length > 20 chars AND contains "HTTP/1." or status code pattern |
+| EVID_CODE_SNIPPET | `"$query = \"SELECT * FROM users WHERE id=\" . $_GET['id'];"` | `""`, `"vulnerable code"`, `"see source"` | Length > 10 chars AND contains at least one PHP/code token ($, ->, ::, function) |
+| EVID_OBSERVABLE | `"alert(1) dialog appeared with title 'XSS PoC' in Chrome DevTools"` | `""`, `"XSS worked"`, `"vulnerable"` | Length > 20 chars AND describes specific observable behavior |
+| EVID_FILE_LINE | `"app/Http/Controllers/UserController.php:42"` | `""`, `"some file"`, `"controller"` | Matches pattern `*.php:\d+` |
+| EVID_TRACE | `"$_GET['id'] → UserController::show($id) → DB::raw($id) → mysql_query()"` | `""`, `"tainted"`, `"user input to sink"` | Contains → or -> indicating flow direction |
 | 3 | Missing EVID points annotated `EVID_XXX: [Not obtained: reason]` and verdict auto-downgraded | all missing EVIDs annotated + verdict downgraded | {fill-in: unannotated missing EVID count} | {✅/❌} |
 | 4 | HTTP requests in Burp format: `METHOD URL HTTP/1.1` + Headers + Body — directly replayable | Burp-compatible request format | {fill-in: non-compliant request count} | {✅/❌} |
 | 5 | HTTP responses include status code + key response body (evidence portion, not truncated) | status code + evidence body present | {fill-in: incomplete response count} | {✅/❌} |

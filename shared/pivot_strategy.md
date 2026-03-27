@@ -173,6 +173,44 @@ Decision path:
 
 ## Pivot Result Handling
 
+### Pivot Decision Fill-in Table (MANDATORY)
+
+Before executing any pivot, fill the following table to document the decision:
+
+| # | Decision Item | Fill-in Value |
+|---|--------------|---------------|
+| 1 | Failure pattern classification | {A: WAF/Filter / B: Parameter Filtered / C: Blind / D: Auth Block / E: Unreachable} |
+| 2 | Consecutive failure rounds | {count, e.g. 3} |
+| 3 | Failure evidence summary | {HTTP status + response pattern, e.g. "R3-R5 all returned 403 with WAF block page"} |
+| 4 | Step 1 (Re-Recon) result | {new_info_found / no_new_info / skipped_reason} |
+| 5 | Step 2 (Cross-Intel) result | {related_finding_id or "no relevant findings"} |
+| 6 | Decision tree path taken | {e.g. "Pattern A → encoding bypass attempted=Yes → WAF-specific=No → load waf_bypass.md"} |
+| 7 | Selected pivot action | {encoding_bypass / protocol_switch / alt_parameter / blind_technique / privilege_change / early_termination} |
+| 8 | Pivot payload/technique | {specific payload or technique to try next} |
+| 9 | Expected outcome indicator | {what response would confirm success, e.g. "HTTP 200 with command output in body"} |
+
+### Failure Pattern → Recommended Pivot Lookup Table
+
+| Failure Pattern | Sub-condition | Priority 1 Pivot | Priority 2 Pivot | Priority 3 Pivot | Termination Condition |
+|----------------|---------------|------------------|------------------|------------------|-----------------------|
+| A: WAF Block (403/406) | Encoding not tried | Double/Unicode/wide-byte encoding | Protocol-layer bypass (method/content-type switch) | SSRF relay via internal network | All encoding + protocol + relay failed |
+| A: WAF Block | Encoding tried, WAF-specific not tried | Load WAF ruleset from waf_bypass.md | Chunked transfer encoding | HTTP/2 feature exploitation | WAF-specific + chunked + H2 all failed |
+| A: WAF Block | All WAF bypasses tried | Check shared_findings for SSRF relay | Try alternate endpoint for same sink | Early termination | No SSRF + no alternate endpoint |
+| B: Filtered (200 but ineffective) | htmlspecialchars | Attribute/event injection | CSS injection context | DOM-based (no server reflection) | All 3 contexts tested |
+| B: Filtered | addslashes | Wide-byte (%bf%27) | Numeric/subquery injection | Second-order (stored+read) | All 3 techniques failed |
+| B: Filtered | preg_replace | Regex analysis + equivalent payload | Alternative parameter (Step 1.2) | Second-order path | Regex unbypassable + no alt param |
+| B: Filtered | Custom blocklist | Char-by-char testing | Alternative parameter | Encoding combinations | All critical chars blocked + no alt |
+| B: Filtered | Filter type unknown | Re-reconnaissance (Step 1.1) | Try all filter-specific pivots | Early termination | Re-recon found nothing new |
+| C: Blind (200 no echo) | Time-based not tried | sleep(5) / pg_sleep(5) | Boolean-based comparison | OOB DNS/HTTP callback | All 3 blind techniques failed |
+| C: Blind | Time-based tried | Boolean-based | OOB (DNS → HTTP → File) | Error-based (syntax error diffs) | All 4 techniques exhausted |
+| D: Auth Block (401/403) | Higher credentials available | Switch to higher-privilege credential | IDOR (replace user_id/resource_id) | HTTP method tampering | All credentials + IDOR + method failed |
+| D: Auth Block | No higher credentials | Check shared_findings for auth bypass | IDOR parameter tampering | X-Original-URL header | No bypass found in cross-intel |
+| E: Unreachable | Precondition unmet | Set up required state (session/cart/form) | Check async/queue execution path | Downgrade to "potential" | Confirmed unreachable after state setup |
+
+**CR-PIVOT-1**: MUST fill the Pivot Decision table BEFORE executing the pivot — empty table = QC FAIL.
+**CR-PIVOT-2**: MUST follow Priority 1 → 2 → 3 order. Skipping priorities MUST be justified in field 6.
+**CR-PIVOT-3**: When Termination Condition is met, MUST stop and record early_termination=true.
+
 ### Pivot Succeeded (New Path Found)
 
 ```

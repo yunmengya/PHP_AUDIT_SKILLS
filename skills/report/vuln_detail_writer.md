@@ -164,7 +164,7 @@ For each confirmed vulnerability, output:
 
 ### 影响分析
 
-{impact_analysis — based on severity scoring: what can an attacker achieve, what data/systems are at risk}
+{impact_analysis — based on severity scoring: what can an attacker achieve, what data/systems are at risk; MUST use Impact Analysis Mapping Template below}
 
 ### 攻击链
 
@@ -256,11 +256,61 @@ Before submitting output, complete the self-check per `shared/pre_submission_che
 
 ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
+### Sink Type Description Templates
+
+| sink_type | Chinese Description Template |
+|-----------|----------------------------|
+| sqli | "该{endpoint_type}接收{user_input}并拼接到{sink_func}中执行，无参数化处理，攻击者可注入SQL语句{consequence}。" |
+| xss | "该{endpoint_type}将{user_input}直接输出到HTML页面，未经编码过滤，攻击者可注入恶意脚本{consequence}。" |
+| rce | "该{endpoint_type}将{user_input}传入{sink_func}执行，攻击者可注入任意系统命令{consequence}。" |
+| lfi | "该{endpoint_type}使用{user_input}作为文件路径参数，未限制目录遍历，攻击者可读取{consequence}。" |
+| ssrf | "该{endpoint_type}使用{user_input}作为请求URL，未限制目标地址，攻击者可访问{consequence}。" |
+| xxe | "该{endpoint_type}解析{user_input}提供的XML数据，未禁用外部实体，攻击者可{consequence}。" |
+| csrf | "该{endpoint_type}执行{operation}操作时未验证请求来源，攻击者可构造恶意页面诱导用户{consequence}。" |
+| deserialization | "该{endpoint_type}对{user_input}进行反序列化操作，攻击者可构造恶意对象链{consequence}。" |
+| filewrite | "该{endpoint_type}允许{user_input}控制文件写入路径或内容，攻击者可{consequence}。" |
+| crlf | "该{endpoint_type}将{user_input}写入HTTP头部，未过滤换行符，攻击者可注入{consequence}。" |
+| ldap | "该{endpoint_type}将{user_input}拼接到LDAP查询中，攻击者可修改查询逻辑{consequence}。" |
+| nosql | "该{endpoint_type}将{user_input}传入NoSQL查询，未做类型校验，攻击者可{consequence}。" |
+| ssti | "该{endpoint_type}将{user_input}嵌入模板引擎渲染，攻击者可注入模板表达式{consequence}。" |
+| race_condition | "该{endpoint_type}的{operation}操作存在时间窗口，攻击者可通过并发请求{consequence}。" |
+| authz | "该{endpoint_type}的权限校验存在缺陷，攻击者可{consequence}。" |
+| session | "该{endpoint_type}的会话管理存在缺陷，攻击者可{consequence}。" |
+| crypto | "该{endpoint_type}使用{crypto_detail}，存在密码学弱点，攻击者可{consequence}。" |
+| config | "该{endpoint_type}暴露了{config_detail}配置信息，攻击者可利用此信息{consequence}。" |
+| infoleak | "该{endpoint_type}泄露了{leak_detail}，攻击者可利用此信息{consequence}。" |
+| logging | "该{endpoint_type}的日志记录{logging_detail}，可能导致{consequence}。" |
+| business_logic | "该{endpoint_type}的业务逻辑{logic_detail}，攻击者可{consequence}。" |
+| wordpress | "该WordPress{wp_component}存在{wp_vuln_type}漏洞，攻击者可{consequence}。" |
+
+**CR-DESC**: Sink type description MUST use the template above. Fill in {variables} from exploit data. MUST NOT write free-form descriptions.
+
+### Impact Analysis Mapping Template
+
+When writing `impact_analysis`, use the following lookup table based on severity score:
+
+| Severity Score Range | CVSS Level | Mandatory Impact Elements | Template |
+|---------------------|------------|--------------------------|----------|
+| ≥ 9.0 | CRITICAL | scope_of_access + data_at_risk + auth_requirement + recoverability | "攻击者可通过 {attack_method} 获取 {scope_of_access}，影响 {data_at_risk}，{auth_requirement}，{recoverability}。" |
+| 7.0 – 8.9 | HIGH | scope_of_access + data_at_risk + auth_requirement | "攻击者可通过 {attack_method} {scope_of_access}，影响 {data_at_risk}，{auth_requirement}。" |
+| 4.0 – 6.9 | MEDIUM | data_at_risk + auth_requirement | "在 {auth_requirement} 条件下，攻击者可 {attack_method}，影响 {data_at_risk}。" |
+| 0.1 – 3.9 | LOW | data_at_risk | "该漏洞影响范围有限，可能导致 {data_at_risk}。" |
+
+| Template Variable | Source Field | Example |
+|-------------------|-------------|---------|
+| attack_method | exploit_result.evidence.technique | "SQL注入" / "远程命令执行" / "跨站脚本" |
+| scope_of_access | exploit_result.prerequisite_conditions.exploitability_judgment | "服务器完全控制权" / "数据库读取权限" / "用户会话劫持" |
+| data_at_risk | Derived from sink_type + confirmed data | "全部用户数据" / "管理员凭证" / "敏感配置信息" |
+| auth_requirement | exploit_result.prerequisite_conditions.auth_requirement | "无需认证即可利用" / "需要普通用户权限" |
+| recoverability | If CRITICAL: always include | "受损后难以完全恢复" / "需要全面安全审查" |
+
+**CR-IMP**: Impact analysis MUST use the template matching the severity score range. Free-form paragraphs without template variables are QC FAIL.
+
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| 02_漏洞详情_{sink_id}.md | `$WORK_DIR/报告/02_漏洞详情_{sink_id}.md` | One detail page per confirmed vulnerability |
+| Output File | Path | Description | Schema |
+|-------------|------|-------------|--------|
+| 02_漏洞详情_{sink_id}.md | `$WORK_DIR/报告/02_漏洞详情_{sink_id}.md` | One detail page per confirmed vulnerability | N/A (Markdown output) |
 
 ## Examples
 

@@ -143,9 +143,9 @@ ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| 05_未验证风险池.md | `$WORK_DIR/报告/05_未验证风险池.md` | Table of unconfirmed/suspected findings for manual review |
+| Output File | Path | Description | Schema |
+|-------------|------|-------------|--------|
+| 05_未验证风险池.md | `$WORK_DIR/报告/05_未验证风险池.md` | Table of unconfirmed/suspected findings for manual review | N/A (Markdown output) |
 
 ## Examples
 

@@ -79,7 +79,24 @@ For each matched pattern, fill in:
 | `condition_b.original_severity` | {Original severity of Condition B} |
 | `combined_severity` | {Escalated Severity from the pattern table — must be justified per CR-1} |
 | `combined_impact` | {Combined Impact description from the pattern table} |
-| `explanation` | {Reasoning for why these findings combine to escalate} |
+| `explanation` | {Use mandatory format below} |
+
+**Explanation Mandatory Format** (CR-ESC):
+
+The `explanation` field MUST follow this template — free-form paragraphs are QC FAIL:
+
+```
+"[Finding_A_ID] at [endpoint_A] provides [capability_A] (evidence: [EVID_ref_A]).
+ [Finding_B_ID] at [endpoint_B] provides [capability_B] (evidence: [EVID_ref_B]).
+ Combined: attacker can [step_1] → [step_2] → [final_outcome].
+ Escalation justified because [neither finding alone achieves final_outcome]."
+```
+
+| Pattern Name | Explanation Template Example |
+|-------------|----------------------------|
+| Mass Account Takeover | "[F-001] at /api/users provides user list of {N} accounts. [F-002] at /login has no rate limit. Combined: attacker can enumerate → brute-force → takeover all {N} accounts. Escalation justified because enumeration alone is informational and no-rate-limit alone is low risk." |
+| Session Hijacking Chain | "[F-003] at /search provides reflected XSS execution. [F-004] shows no HttpOnly flag on session cookie. Combined: attacker can inject script → steal cookie → hijack session. Escalation justified because XSS alone requires cookie access and missing HttpOnly alone has no direct exploit." |
+| SSRF → Cloud Takeover | "[F-005] at /proxy provides SSRF to internal network. [F-006] confirms AWS environment. Combined: attacker can request 169.254.169.254 → get IAM credentials → control cloud resources. Escalation justified because SSRF to internal-only is medium and cloud env info is informational." |
 
 ### Procedure C: Graph-Based Escalation (if attack_memory.db available)
 

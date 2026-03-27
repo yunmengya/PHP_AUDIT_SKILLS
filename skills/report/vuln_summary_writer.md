@@ -148,9 +148,9 @@ ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| 01_漏洞汇总表.md | `$WORK_DIR/报告/01_漏洞汇总表.md` | Summary table of all confirmed vulnerabilities |
+| Output File | Path | Description | Schema |
+|-------------|------|-------------|--------|
+| 01_漏洞汇总表.md | `$WORK_DIR/报告/01_漏洞汇总表.md` | Summary table of all confirmed vulnerabilities | N/A (Markdown output) |
 
 ## Examples
 

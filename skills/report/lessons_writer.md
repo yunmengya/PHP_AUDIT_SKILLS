@@ -55,9 +55,9 @@ Read `environment_status.json` for framework info, then scan all exploit results
 |-------|---------------|
 | framework_name | `environment_status.json → framework` |
 | framework_version | `environment_status.json → framework_version` |
-| security_features | List of security mechanisms observed during audit (e.g., CSRF tokens, ORM parameterization, middleware auth) |
-| bypass_susceptible | Which features were bypassed or had gaps |
-| effective_protections | Which features successfully blocked attacks |
+| security_features | List of security mechanisms observed during audit — use enum values: `{csrf_token, orm_parameterization, middleware_auth, input_validation, output_encoding, rate_limiting, session_management, file_upload_restriction, waf, csp_header, cors_policy, other: [specify]}` |
+| bypass_susceptible | Which features were bypassed — format: `{feature_name}: {bypass_method}` per item. Example: `"csrf_token: token not validated on POST /api/delete"` |
+| effective_protections | Which features successfully blocked attacks — format: `{feature_name}: blocked {attack_type}` per item |
 
 ### Procedure B: Successful Bypass Techniques
 
@@ -69,7 +69,7 @@ Iterate exploit results where `final_verdict == "confirmed"`:
 | target_sink_type | `sink_type` |
 | payload_example | Actual payload used (from `iterations[]` where `success == true`) |
 | effectiveness_label | `[实测高效]` — confirmed working in this audit |
-| context | Brief note on when/why this technique works |
+| context | Mandatory format: `"{technique_name} works on {framework} {version} when {precondition}, bypasses {filter_type}, requires {prerequisites}."` Example: `"Wide-byte injection works on ThinkPHP 5.x when MySQL charset=GBK, bypasses addslashes(), requires non-UTF8 database connection."` |
 
 ### Procedure C: Failed Approaches (踩坑记录)
 
@@ -79,8 +79,8 @@ Iterate exploit results where `final_verdict == "not_vulnerable"` or iterate `it
 |-------|---------------|
 | approach_name | `iteration.strategy` or technique description |
 | target | `sink_type` + `route` |
-| failure_reason | `iteration.failure_reason` or `exploit → failure_reason` |
-| lesson | What was learned — why this approach doesn't work in this context |
+| failure_reason | `iteration.failure_reason` or `exploit → failure_reason` — must use structured format from exploit_result schema pattern |
+| lesson | Mandatory format: `"{approach_name} fails on {framework/context} because {root_cause}. Alternative: {recommended_alternative}."` Example: `"Double encoding fails on Laravel 10 because middleware decodes before routing. Alternative: try Unicode normalization bypass."` |
 | effectiveness_label | `[实测低效]` |
 
 ### Procedure D: Security Recommendations
@@ -183,9 +183,9 @@ ANY ❌ → fix before submitting. MUST NOT submit with ❌.
 
 ## Output Contract
 
-| Output File | Path | Description |
-|-------------|------|-------------|
-| lessons_learned.md | `$WORK_DIR/经验沉淀/lessons_learned.md` | Audit lessons learned with framework patterns, bypasses, failures, and recommendations |
+| Output File | Path | Description | Schema |
+|-------------|------|-------------|--------|
+| lessons_learned.md | `$WORK_DIR/经验沉淀/lessons_learned.md` | Audit lessons learned with framework patterns, bypasses, failures, and recommendations | N/A (Markdown output) |
 
 ## Examples
 
