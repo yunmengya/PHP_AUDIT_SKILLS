@@ -773,7 +773,7 @@ include("/pages/" . $file);  // shell.php/. is still resolved
 - id: bypass_hidden_file_access
   pattern: '(file|page|path|include)=\.[a-zA-Z]'
   severity: medium
-  description: "Detect direct hidden file access via parameters (.htaccess, .env, etc.)"
+  description: "Detect direct hidden file access via parameters (.htaccess, .env, .git/config, wp-config.php, .dockerenv)"
 
 - id: bypass_pathinfo_trailing
   pattern: '\.php[/\.\%]'
@@ -831,7 +831,7 @@ Represent single-byte characters with multi-byte sequences to bypass byte-level 
 ../  → %c0%2e%c0%2e%c0%af
 ```
 
-Note: Modern PHP/web servers mostly reject overlong encoding, but older versions of Tomcat, IIS, etc. may still accept it.
+Note: Modern PHP/web servers mostly reject overlong encoding, but older versions of Tomcat, IIS, older Apache modules may still accept it.
 
 ### Mixed Slashes
 

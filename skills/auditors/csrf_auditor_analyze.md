@@ -59,7 +59,7 @@ The following Sink types MUST be covered during CSRF auditing:
 - Form Actions that accept cross-origin requests
 - AJAX endpoints lacking Origin/Referer validation
 - API endpoints using Cookie authentication without CSRF protection
-- Framework CSRF middleware exclusion routes (`VerifyCsrfToken::$except`, `csrf_exempt`, `WITHOUT_CSRF`, etc.)
+- Framework CSRF middleware exclusion routes (`VerifyCsrfToken::$except`, `csrf_exempt`, `WITHOUT_CSRF`, `@csrf_exempt` decorator, `$this->middleware('web')->except()`)
 - State-changing GET requests (anti-pattern: `GET /delete/{id}`, `GET /logout`)
 - Native PHP endpoints using `session_start()` + `$_COOKIE` for authentication without CSRF protection
 - File upload endpoints (`multipart/form-data`) lacking Token validation

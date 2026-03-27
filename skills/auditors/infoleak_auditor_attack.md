@@ -318,7 +318,7 @@ The following code patterns indicate potential information leakage vulnerabiliti
 - Pattern 1: `var_dump($user)` / `print_r($config)` / `dd($request)` — Debug output left in production code
 - Pattern 2: `catch(Exception $e) { echo $e->getMessage(); }` — Exception details returned directly to the client, leaking stack traces, file paths, SQL
 - Pattern 3: `$apiKey = "sk-proj-xxxx..."` / `define('DB_PASS', 'hardcoded')` — Hardcoded keys/credentials in source code
-- Pattern 4: `return response()->json($user)` without field filtering — API returns complete Model data (including password_hash, token, etc.)
+- Pattern 4: `return response()->json($user)` without field filtering — API returns complete Model data (including password_hash, token, api_key, secret_key, credit_card)
 - Pattern 5: `phpinfo()` / `server-status` / `/_profiler` — Information leakage endpoints exposed in production
 - Pattern 6: `.git/` / `.env` / `composer.lock` accessible via HTTP — Version control and configuration files exposed
 
@@ -405,7 +405,7 @@ After completing all rounds, write the final results to `$WORK_DIR/exploit_resul
 When the following information is discovered, it **MUST** be written to the shared findings store (`$WORK_DIR/audit_session.db`) (format per `shared/realtime_sharing.md`):
 - Hardcoded credentials (DB passwords, API keys, JWT Secrets) → `finding_type: credential/secret_key`
 - Internal IPs/URLs → `finding_type: internal_url`
-- Leaked configuration values (APP_KEY, etc.) → `finding_type: config_value`
+- Leaked configuration values (APP_KEY, DB_PASSWORD, AWS_SECRET_ACCESS_KEY, MAIL_PASSWORD) → `finding_type: config_value`
 
 ### Shared Read
 Read the shared findings store before starting the attack phase to leverage credentials and endpoints discovered by other auditors.

@@ -220,7 +220,7 @@ Explanation: All 12 directories created, Chinese names used for user-visible dir
 $WORK_DIR = /tmp/my_app/20240101/
 ├── exploits/
 └── reports/            ← WRONG: should be 报告/ (Chinese)
-                        ← MISSING: .audit_state/, context_packs/, traces/, etc.
+                        ← MISSING: .audit_state/, context_packs/, traces/, research/, PoC脚本/, 修复补丁/, 经验沉淀/, 质量报告/, 原始数据/
 ```
 Violates CR-1 (missing directories) and CR-2 (English name instead of Chinese) ❌
 

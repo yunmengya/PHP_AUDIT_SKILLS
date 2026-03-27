@@ -56,7 +56,7 @@ Check each of the following chain patterns against the grouped findings:
 
 #### Chain 3: LFI + Log Writable → Log Poisoning RCE
 
-- **Trigger**: LFI auditor discovers file include vulnerability (`include($_GET['page'])` etc.) + RCE auditor discovers log file is writable and path is known
+- **Trigger**: LFI auditor discovers file include vulnerability (`include($_GET['page'])` and similar include/require with user input) + RCE auditor discovers log file is writable and path is known
 - **Correlation logic**: Attacker first injects PHP code into the log via User-Agent/Referer, then uses LFI to include the log file to trigger code execution
 - **Escalation**: Medium(LFI limited) + Low(log path known) → **Critical (RCE)**
 

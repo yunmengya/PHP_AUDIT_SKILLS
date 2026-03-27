@@ -155,5 +155,5 @@ Example output fragment:
 | No API key tables found in database | Search config files and source code only |
 | Keys in database are hashed | Check if plain-text version exists in related columns or logs; if not, generate a new key and insert it |
 | API key is IP-restricted | Note the restriction in output; test from within the Docker network |
-| Key format is unknown (UUID, hex, etc.) | Inspect existing keys in DB to determine format; generate matching format if inserting new ones |
+| Key format is unknown (UUID, hex, base64, alphanumeric) | Inspect existing keys in DB to determine format; generate matching format if inserting new ones |
 | No key extraction pattern found in code | Try common header names (`X-API-Key`, `Authorization`, `X-Auth-Token`) by brute-force testing |

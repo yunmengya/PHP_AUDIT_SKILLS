@@ -60,7 +60,7 @@ docker exec php php /tmp/trace_filter.php \
 | Trace file > 10 MB | Automatically trim output to ≤ 500 lines |
 | Sink-related call stacks | **Keep** — any call chain that includes or leads to the sink function |
 | User-input propagation chains | **Keep** — chains originating from `$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`, `$_FILES`, `php://input` |
-| Filter / sanitisation functions | **Keep** — `htmlspecialchars`, `intval`, `addslashes`, `prepared statements`, `htmlentities`, `strip_tags`, etc. |
+| Filter / sanitisation functions | **Keep** — `htmlspecialchars`, `intval`, `addslashes`, `prepared statements`, `htmlentities`, `strip_tags`, `filter_var`, `preg_replace`, `mysqli_real_escape_string` |
 | Framework bootstrap | **Discard** — Composer autoload, Kernel boot, service provider registration |
 | Autoload calls | **Discard** — `spl_autoload_call`, Composer class map lookups |
 | Event dispatching internals | **Discard** — framework event loop plumbing |

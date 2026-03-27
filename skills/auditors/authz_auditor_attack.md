@@ -510,7 +510,7 @@ Expanded JWT attack surface, covering all known JWT implementation flaws.
 
 #### Detection Rules
 - Search JWT verification code, analyze whether `alg: none` is allowed
-- Search JWT library version (older `firebase/php-jwt < 6.0` etc. have this vulnerability)
+- Search JWT library version (older `firebase/php-jwt < 6.0`, `lcobucci/jwt < 4.0`, `namshi/jose < 7.0` have this vulnerability)
 - Search `jwt_decode`, `JWT::decode`, `Jose\*` calls, analyze whether algorithm is strictly specified
 
 #### Attack Steps

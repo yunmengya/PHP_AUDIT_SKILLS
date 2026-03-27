@@ -66,7 +66,7 @@ If a finding contradicts an active framework protection, fill in:
 Check whether a global WAF or middleware has blocked the attack but the auditor did not account for it:
 
 1. Look for evidence of WAF/middleware in the application configuration
-2. If the exploit evidence shows the payload was blocked (HTTP 403, WAF error page, etc.) but the finding is still marked `confirmed`, fill in:
+2. If the exploit evidence shows the payload was blocked (HTTP 403, WAF error page, rate limit response, CAPTCHA challenge) but the finding is still marked `confirmed`, fill in:
 
 | Field | Fill-in Value |
 |-------|--------------|

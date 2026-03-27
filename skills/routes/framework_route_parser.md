@@ -84,7 +84,7 @@ For **every** route discovered, fill in this entry:
 | Field | Fill-in Value |
 |-------|--------------|
 | url_rules | {parse `'urlManager' => ['rules' => [...]]` in `config/web.php`} |
-| controller_actions | {identify `action*` methods: `actionIndex`, `actionView`, etc.} |
+| controller_actions | {identify `action*` methods: `actionIndex`, `actionView`, `actionCreate`, `actionUpdate`, `actionDelete`} |
 | module_configs | {check `modules/*/config.php` for module route configurations} |
 
 #### B.4 — Native PHP Routes

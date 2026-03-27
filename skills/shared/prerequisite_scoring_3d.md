@@ -35,7 +35,7 @@ Fill in the `prerequisite_conditions` object for the exploit output:
 |-------|--------------|
 | auth_requirement | {`anonymous` \| `authenticated` \| `admin` \| `internal_network` — MUST match auth_matrix.json auth_level for this route} |
 | bypass_method | {Description of how authentication can be bypassed, or `null` if no bypass exists} |
-| other_preconditions | {Array of non-auth prerequisites — PHP config requirements, Composer deps, env vars, specific DB type, etc.} |
+| other_preconditions | {Array of non-auth prerequisites — PHP config requirements, Composer deps, env vars, specific DB type, writable directories, network access} |
 | exploitability_judgment | {`directly_exploitable` \| `conditionally_exploitable` \| `not_exploitable`} |
 
 **Exploitability Impact on Verdict:**

@@ -385,7 +385,7 @@ During each attack round, the following evidence MUST be collected:
 For cache poisoning scenarios:
 - Response from the initial request (with payload)
 - Response from subsequent clean requests (confirming whether cache was poisoned)
-- Cache header changes (`X-Cache`, `Age`, `Cache-Control`, etc.)
+- Cache header changes (`X-Cache`, `Age`, `Cache-Control`, `Pragma`, `Expires`, `Vary`)
 
 For mail header injection scenarios:
 - Email raw source (with complete headers)
@@ -429,7 +429,7 @@ The following code patterns indicate possible CRLF injection vulnerabilities:
 - Pattern 4: `mail($to, $subject, $body, $headers)` where `$headers` contains user input — Mail additional headers can be injected with extra recipients or Content-Type tampering
 - Pattern 5: `$response->header($key, $value)` with unvalidated `$value` in framework header setters — Framework wrappers may bypass PHP 7.0+'s native newline check
 - Pattern 6: `header("Content-Disposition: attachment; filename=\"" . $_GET['filename'] . "\"")` — Filename parameter injection, can insert newline characters to split headers
-- Pattern 7: `$url` parameter in redirect functions not sanitized for newline characters — `Response::redirect($url)`, `wp_redirect($url)`, `redirect()->to($url)`, etc.
+- Pattern 7: `$url` parameter in redirect functions not sanitized for newline characters — `Response::redirect($url)`, `wp_redirect($url)`, `redirect()->to($url)`, `header("Location: $url")`, `HttpResponse::redirect($url)` (and similar redirect wrappers)
 - Pattern 8: User input in log writing functions may contain `\r\n` — `error_log($userInput)`, `file_put_contents($logFile, $userInput)` leading to log forgery/injection
 
 ## Key Insight

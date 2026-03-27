@@ -63,7 +63,7 @@ This auditor focuses on the following logging-related sink functions and compone
 - `ini_set('display_errors', ...)` — Controls whether errors are displayed to the client
 
 ### Framework-Level Logging Components
-- **Monolog handlers** — `StreamHandler`, `RotatingFileHandler`, `SyslogHandler`, etc.
+- **Monolog handlers** — `StreamHandler`, `RotatingFileHandler`, `SyslogHandler`, `FirePHPHandler`, `ChromePHPHandler`, `ErrorLogHandler`, `NullHandler`
 - **Laravel `Log::*`** — `Log::info()`, `Log::error()`, `Log::warning()`, `Log::debug()`, `Log::critical()`
 - **Symfony Logger** — `LoggerInterface` implementations, `monolog` bundle
 - **log4php** — `Logger::getLogger()`, `LoggerAppenderFile`

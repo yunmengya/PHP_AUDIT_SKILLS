@@ -67,7 +67,7 @@ Fill in for each candidate (all fields required — see CR-4):
 |-------|--------------|
 | `store_point` | {full store point object with table, column, endpoint, sanitization} |
 | `use_point` | {full use point object with table, column, endpoint, context, sanitization} |
-| `vuln_type` | {`"second_order_sqli"` / `"stored_xss"` / `"second_order_cmdi"` / etc., based on use context} |
+| `vuln_type` | {`"second_order_sqli"` / `"stored_xss"` / `"second_order_cmdi"` / "second_order_lfi" / "second_order_ssrf", based on use context} |
 | `risk_level` | {`"high"` if both unsanitized or sanitization mismatched; `"medium"` if partially sanitized; `"low"` if minor mismatch} |
 | `sanitization_gap` | {description of the sanitization mismatch or absence, e.g. `"Store uses htmlspecialchars but use context is SQL concatenation"`} |
 

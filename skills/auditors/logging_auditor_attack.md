@@ -44,7 +44,7 @@ Test whether user input is directly concatenated into log writes at all log writ
 
 **1.1 Newline Injection — Forging Log Entries**
 ```
-# Inject newline characters in user input fields (username/search box/UA, etc.)
+# Inject newline characters in user input fields (username, search box, User-Agent, Referer, Cookie values)
 payload: "normal_input\n[2025-01-01 00:00:00] security.CRITICAL: Admin login from 127.0.0.1"
 
 # URL-encoded variant
@@ -62,7 +62,7 @@ User-Agent: test\x1b[41;37mHACKED\x1b[0m
 
 **1.3 JSON Log Format Corruption**
 ```
-# Targeting JSON-formatted logs (Monolog JsonFormatter, etc.)
+# Targeting JSON-formatted logs (Monolog JsonFormatter, LogstashFormatter, ElasticaFormatter)
 payload: '", "level": "CRITICAL", "message": "FORGED"}//'
 payload: '{"inject": true, "admin": true}'
 ```
@@ -566,7 +566,7 @@ Read the shared findings store before starting the attack phase, leveraging find
 - Log injection tests MUST use harmless markers (e.g., `AUDIT_TEST_MARKER`); MUST NOT inject actual malicious code into production logs
 - LFI exploitation chain tests MUST use only harmless functions like `phpinfo()` or `echo`; MUST NOT execute system commands
 - Sensitive data search results MUST only record existence and location; MUST NOT copy actual data values
-- Log path traversal tests MUST NOT overwrite critical system files (`/etc/passwd`, `/etc/shadow`, etc.)
+- Log path traversal tests MUST NOT overwrite critical system files (`/etc/passwd`, `/etc/shadow`, `/etc/hosts`)
 
 
 ## Output Contract

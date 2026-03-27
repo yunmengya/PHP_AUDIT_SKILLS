@@ -641,7 +641,7 @@ Each round MUST be fully recorded:
 ## Smart Skip
 
 Skip MAY be requested after Round 4, but MUST provide:
-- List of attempted strategies (Token detection, Token bypass, SameSite bypass, etc.)
+- List of attempted strategies (Token detection, Token bypass, SameSite bypass, Content-Type manipulation, Flash-based CSRF)
 - CSRF protection mechanism analysis conclusion (Token type, validation logic, Cookie attributes)
 - Reasoning for why subsequent strategies cannot bypass (e.g., strict Token + SameSite=Strict + Origin validation triple defense)
 

@@ -52,7 +52,7 @@ Evaluate the trace against the following conditions **in order** (first match wi
 | # | Condition | Verdict | Follow-up Action |
 |---|-----------|---------|------------------|
 | 1 | Trace contains the target sink function call | **Valid Trace** | Output normally; proceed to Phase 4 |
-| 2 | Trace contains only framework bootstrap (`autoload`, `Kernel::handle`, etc.) — no business code | **Route Missed** | Verify URL / method / parameters are correct; retry or mark `route_missed` |
+| 2 | Trace contains only framework bootstrap (`autoload`, `Kernel::handle`, `bootstrap`, `middleware pipeline`) — no business code | **Route Missed** | Verify URL / method / parameters are correct; retry or mark `route_missed` |
 | 3 | Trace line count > 10 000 | **Excessive Trace** | Auto-filter with `trace_filter.php`; keep ≤ 500 lines upstream/downstream of sink |
 | 4 | Trace line count = 0 (file empty or missing) | **Tracing Failed** | Switch to fallback approach (Tick / Middleware / strace via S-036f); mark `trace_empty` |
 | 5 | Trace contains `Fatal Error` or unhandled `Exception` **before** the sink | **Execution Interrupted** | Mark `error_before_sink`; switch to context_pack static analysis |

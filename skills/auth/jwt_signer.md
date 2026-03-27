@@ -7,7 +7,7 @@
 | **Skill ID** | S-038d |
 | **Phase** | 3 — Authentication Simulation |
 | **Parent** | S-038 (auth_simulator) |
-| **Responsibility** | When the target application uses JWT-based authentication, extract the signing secret from configuration files or source code and self-sign tokens at various privilege levels (user, admin, etc.) without needing to go through the login flow. |
+| **Responsibility** | When the target application uses JWT-based authentication, extract the signing secret from configuration files or source code and self-sign tokens at various privilege levels (user, admin, moderator, superadmin) without needing to go through the login flow. |
 
 ---
 
@@ -73,8 +73,8 @@ grep -rn "JWT::encode\|jwt_encode\|sign(" $TARGET_PATH/app/ --include="*.php"
 ### Step 3 — Identify Token Structure
 
 Examine existing JWT usage in the codebase to determine:
-- Required payload claims (`sub`, `role`, `iss`, `aud`, `exp`, etc.)
-- Signing algorithm (`HS256`, `RS256`, etc.)
+- Required payload claims (`sub`, `role`, `iss`, `aud`, `exp`, `iat`, `nbf`, `jti`)
+- Signing algorithm (`HS256`, `RS256`, `HS384`, `HS512`, `RS384`, `RS512`, `ES256`, `none`)
 - Token expiry conventions
 
 ### Step 4 — Self-Sign Tokens Inside the Container

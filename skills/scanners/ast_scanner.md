@@ -23,7 +23,7 @@
 |---|------|-------------|
 | CR-1 | Every sink entry MUST include `arg_safety` field | Without `arg_safety`, context_extractor cannot filter and prioritize traces |
 | CR-2 | Output MUST be wrapped in `{"tool": "ast_sinks", "status": "...", "results": [...]}` | Downstream aggregation fails without standard wrapper |
-| CR-3 | `sink_type` MUST use standard categories (RCE, SQLi, XSS, SSRF, FileOp, Deserial, etc.) | Non-standard types break vulnerability classification |
+| CR-3 | `sink_type` MUST use standard categories (RCE, SQLi, XSS, SSRF, FileOp, Deserial, LFI, XXE, AuthBypass, CRLF, LDAP, NoSQLi) | Non-standard types break vulnerability classification |
 
 ## Fill-in Procedure
 

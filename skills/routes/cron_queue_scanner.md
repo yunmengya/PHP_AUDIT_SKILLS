@@ -32,7 +32,7 @@
 | schedule_file | {`app/Console/Kernel.php` → locate `schedule()` method} |
 | task_type | {`command` / `call` / `job` / `exec`} |
 | target | {command name, closure location, job class, or external script path} |
-| frequency | {`daily`, `hourly`, `everyFiveMinutes`, etc.} |
+| frequency | {`daily`, `hourly`, `everyFiveMinutes`, `weekly`, `monthly`, `everyMinute`, `twiceDaily`} |
 | file | {source file path} |
 | line | {line number of schedule registration} |
 

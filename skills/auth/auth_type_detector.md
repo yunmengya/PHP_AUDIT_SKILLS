@@ -16,7 +16,7 @@
 | File | Source | Required | Fields Used |
 |------|--------|----------|-------------|
 | PHP source files | `$TARGET_PATH/**/*.php` | ✅ | Auth patterns, middleware references |
-| Composer config | `$TARGET_PATH/composer.json` | ✅ | Dependency packages (JWT, OAuth, etc.) |
+| Composer config | `$TARGET_PATH/composer.json` | ✅ | Dependency packages (JWT, OAuth2, Sanctum, Passport, tymon/jwt-auth) |
 | Environment file | `$TARGET_PATH/.env*` | Optional | Key names hinting at auth type |
 | Framework config | `$TARGET_PATH/config/*.php` | Optional | Guard definitions, auth driver config |
 

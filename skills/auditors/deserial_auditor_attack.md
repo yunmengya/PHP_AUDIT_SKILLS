@@ -304,7 +304,7 @@ Evidence criteria:
 
 Skipping MAY be requested after round 4; the following MUST be provided:
 - List of searched POP chains and their availability
-- Analysis of deserialization defense mechanisms (allowed_classes parameter, signature verification, etc.)
+- Analysis of deserialization defense mechanisms (allowed_classes parameter, signature verification, HMAC validation, type whitelisting)
 - Reasoning for why subsequent strategies cannot bypass defenses
 
 ## Real-Time Sharing and Second-Order Tracking
@@ -555,7 +555,7 @@ The following functions all trigger metadata deserialization when processing `ph
 | `getimagesize()` | Image processing | High |
 | `exif_read_data()` | EXIF processing | High |
 
-Additionally: `is_readable()`, `is_writable()`, `file_put_contents()` (second argument), `mkdir()`, `rmdir()`, `glob()`, `opendir()`, `scandir()`, `hash_file()`, `md5_file()`, `sha1_file()`, etc.
+Additionally: `is_readable()`, `is_writable()`, `file_put_contents()` (second argument), `mkdir()`, `rmdir()`, `glob()`, `opendir()`, `scandir()`, `hash_file()`, `md5_file()`, `sha1_file()`, `parse_ini_file()`, `simplexml_load_file()`
 
 ### Detection Rule
 

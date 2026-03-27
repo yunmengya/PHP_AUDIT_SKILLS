@@ -1001,7 +1001,7 @@ def audit_orm_injection(file_path, content):
 
 ### Key Insight
 
-> **The root cause of ORM injection is over-trust in ORM security**: developers believe that using ORM eliminates SQL injection, but ORM-provided `raw` series methods, expression injection (ThinkPHP `exp`), DQL string concatenation, etc., all bypass ORM's parameterized protection.
+> **The root cause of ORM injection is over-trust in ORM security**: developers believe that using ORM eliminates SQL injection, but ORM-provided `raw` series methods, expression injection (ThinkPHP `exp`), DQL string concatenation, raw query builders, Eloquent `whereRaw()`, all bypass ORM's parameterized protection.
 >
 > **Common patterns across three major frameworks**:
 > 1. Any method with `Raw` / `raw` / `Native` in its name accepts raw SQL and MUST be paired with parameter binding

@@ -127,7 +127,7 @@ Explanation ✅ Store and use points are correctly linked via `SP-001`. All fiel
 ```json
 {"use_id":"UP-002","related_store_id":"","sink_type":"sqli","retrieval_function":"mysql_query()","retrieval_file":"admin.php","retrieval_line":50,"sink_function":"mysql_query()","sink_file":"admin.php","sink_line":50,"is_sanitized_on_use":false,"concatenation_pattern":"","exploitability":"high","notes":""}
 ```
-What's wrong ❌ Violates **CR-2**: store point uses multi-line JSON instead of single-line JSONL. Violates **CR-4**: `related_store_id` is empty — store and use points are not linked. Store point is missing required fields (`storage_type`, `storage_location`, `write_function`, `write_file`, `write_line`, etc.). Use point has empty `concatenation_pattern` — no evidence of how the data is unsafely used.
+What's wrong ❌ Violates **CR-2**: store point uses multi-line JSON instead of single-line JSONL. Violates **CR-4**: `related_store_id` is empty — store and use points are not linked. Store point is missing required fields (`storage_type`, `storage_location`, `write_function`, `write_file`, `write_line`, `data_type`, `sanitization_applied`). Use point has empty `concatenation_pattern` — no evidence of how the data is unsafely used.
 
 ## Error Handling
 | Error | Action |

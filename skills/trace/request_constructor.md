@@ -48,7 +48,7 @@ From the task package (`route_map.json` entry for the target `route_id`), extrac
 | Field | Description |
 |-------|-------------|
 | `route_url` | URL path (e.g., `/api/user/update`) |
-| `method` | HTTP method (`GET`, `POST`, `PUT`, `DELETE`, etc.) |
+| `method` | HTTP method (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`, `HEAD`) |
 | `params` | Array of parameter names |
 | `param_sources` | Where parameters come from (`query`, `body`, `path`, `header`) |
 | `auth_level` | `anonymous`, `authenticated`, or `admin` |

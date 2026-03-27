@@ -64,7 +64,7 @@ Source mapping:
 | `sink_id` | `priority_queue.json` | Identifier of the target sink |
 | `route_id` | `priority_queue.json` | Identifier of the route |
 | `route_url` | `route_map.json` | URL path (e.g., `/api/user/update`) |
-| `method` | `route_map.json` | HTTP method (`GET`, `POST`, etc.) |
+| `method` | `route_map.json` | HTTP method (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`) |
 | `sink_function` | `priority_queue.json` | Target function name (e.g., `DB::raw`) |
 | `auth_level` | `route_map.json` | `anonymous`, `authenticated`, or `admin` |
 | `params` | `route_map.json` | Array of parameter names |
