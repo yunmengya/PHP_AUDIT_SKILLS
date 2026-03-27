@@ -23,6 +23,14 @@ auditors see the complete taint path.
 | Filtered trace | Trace Filter S-037c (in-memory) | Yes | Call chain containing `dispatch()` or equivalent |
 | Original request | Request Executor S-037b (in-memory) | Yes | Original request details for re-triggering |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST trace queue job dispatch AND handler — dispatch-only trace misses the actual sink execution context | FAIL — async sink execution path untraceable |
+
 ## Fill-in Procedure
 
 ### Step 1 — Identify Async Dispatch Points

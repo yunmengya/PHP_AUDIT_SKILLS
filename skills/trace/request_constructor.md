@@ -23,6 +23,14 @@ to capture the real call chain, not to exploit.
 | `credentials.json` | `$WORK_DIR/credentials.json` | Yes (unless `anonymous`) | Cookie / token per auth level |
 | Task package | From S-036e (in-memory) | Yes | `route_id`, `sink_function` |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST include all required parameters discovered from route analysis — missing parameters cause HTTP 400/422 in trace execution | FAIL — incomplete requests produce unusable traces |
+
 ## Fill-in Procedure
 
 ### Step 1 — Read Route Parameters

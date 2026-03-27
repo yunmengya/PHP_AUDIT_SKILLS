@@ -20,6 +20,14 @@ traced while keeping overall execution time bounded.
 |------|--------|----------|-------------|
 | Sorted task list | Task Priority Sorter S-036a (in-memory) | Yes | Full sorted task list with `priority`, `source_count` |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST preserve at least one representative sink per type when downsampling — zero-coverage for any sink type is forbidden | FAIL — entire vulnerability category eliminated from audit |
+
 ## Fill-in Procedure
 
 ### Step 1 — Count Total Routes

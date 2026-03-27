@@ -22,6 +22,16 @@
 
 ---
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT use hardcoded credentials — only use credentials discovered from source code analysis or `$WORK_DIR/credentials.json` | FAIL — test uses fabricated credentials, results unreliable |
+| CR-2 | MUST write output to `$WORK_DIR/auth/` directory conforming to output contract schema | FAIL — downstream Phase-3/4 agents cannot locate auth artifacts |
+| CR-3 | MUST verify tenant isolation by confirming cross-tenant data access is blocked | FAIL — tenant created but isolation not verified |
+
+---
+
 ## Fill-in Procedure
 
 ### Step 1 — Detect Multi-Tenancy Model

@@ -19,6 +19,14 @@ deterministic execution order so that the highest-risk routes are traced first.
 |------|--------|----------|-------------|
 | `priority_queue.json` | Phase 2 output (`$WORK_DIR/priority_queue.json`) | Yes | `route_id`, `sink_id`, `priority`, `source_count`, `route_url`, `method` |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST sort by severity potential (P0 > P1 > P2) — alphabetical or random order wastes high-value audit slots | FAIL — low-severity sinks processed first, P0 sinks may timeout |
+
 ## Fill-in Procedure
 
 ### Step 1 — Load Priority Queue

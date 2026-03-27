@@ -21,6 +21,14 @@ Phase 4 auditors have a complete, concrete call chain.
 |------|--------|----------|-------------|
 | Filtered trace | Trace Filter S-037c (in-memory) | Yes | Filtered call chain with raw function names |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST resolve `__call`, `__callStatic`, service container bindings, and facade accessors — static analysis alone misses 40%+ of PHP routes | FAIL — dynamic routes invisible to Phase-4 auditors |
+
 ## Fill-in Procedure
 
 ### Step 1 — Scan Trace for Dynamic Patterns

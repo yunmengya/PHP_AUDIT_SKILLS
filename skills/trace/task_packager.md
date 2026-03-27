@@ -22,6 +22,14 @@ stateless and can execute independently.
 | `route_map.json` | `$WORK_DIR/route_map.json` | Yes | `route_url`, `method`, `auth_level`, `params` |
 | `priority_queue.json` | `$WORK_DIR/priority_queue.json` | Yes | `sink_id`, `route_id`, `sink_function` |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST include route metadata (method, URL, parameters, auth requirements) in each task package — auditors cannot operate without context | FAIL — auditor receives empty context, wastes all 8 rounds |
+
 ## Fill-in Procedure
 
 ### Step 1 — Iterate Over Grouped Batches

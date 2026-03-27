@@ -20,6 +20,14 @@ resource exhaustion that would cause unreliable traces or container crashes.
 |------|--------|----------|-------------|
 | Container stats | Docker daemon (`docker stats php --no-stream`) | Yes | `CPUPerc`, `MemPerc` |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST respect target server capacity — concurrency level MUST NOT cause server crash or denial of service | FAIL — audit crashes target server, destroys test environment |
+
 ## Fill-in Procedure
 
 ### Step 1 — Query Container Resource Usage

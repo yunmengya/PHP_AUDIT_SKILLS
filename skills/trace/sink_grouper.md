@@ -21,6 +21,14 @@ locality during analysis.
 |------|--------|----------|-------------|
 | Trimmed task list | Resource Downsampler S-036b (in-memory) | Yes | `sink_function`, `route_id`, `priority`, `source_count` |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST group sinks by BOTH type AND reachability — unreachable sinks MUST be marked `unreachable`, not silently dropped | FAIL — unreachable sinks disappear from coverage metrics |
+
 ## Fill-in Procedure
 
 ### Step 1 — Identify Sink Types

@@ -22,6 +22,14 @@ request and traces the complete file-handling call chain.
 | Task package | From S-036e (in-memory) | Yes | `route_url`, `method`, `params` (file field name) |
 | Credentials | Request Constructor S-037a (in-memory) | Yes | Auth headers/cookies |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST test with actual file upload requests (multipart/form-data) — GET requests to upload endpoints do not trace upload handling | FAIL — upload handler code path not exercised |
+
 ## Fill-in Procedure
 
 ### Step 1 — Prepare Test File

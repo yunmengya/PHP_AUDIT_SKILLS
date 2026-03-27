@@ -22,6 +22,14 @@ analysable trace suitable for Phase 4 auditors.
 | Task package | From S-036e (in-memory) | Yes | `sink_function` |
 | `trace_filter.php` | `tools/trace_filter.php` | Yes | Filtering logic |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST preserve all sinks with user-controllable input — filtering MUST NOT remove potentially exploitable paths | FAIL — exploitable sinks filtered out, missed vulnerabilities |
+
 ## Fill-in Procedure
 
 ### Step 1 — Run `trace_filter.php`

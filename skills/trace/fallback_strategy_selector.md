@@ -22,6 +22,14 @@ fallback list.
 | `environment_status.json` | `$WORK_DIR/environment_status.json` | Yes | `xdebug_available`, `php_version` |
 | Framework detection | `$WORK_DIR/route_map.json` or scan results | No | `framework_type` |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST select fallback strategy based on failure type (timeout→retry, 403→auth refresh, 500→simplify payload) — generic retry wastes attempts | FAIL — wrong fallback strategy, repeated failures |
+
 ## Fill-in Procedure
 
 ### Step 1 — Decision Tree

@@ -22,6 +22,14 @@ resolver call chains.
 | Task package | From S-036e (in-memory) | Yes | `route_url`, `method`, `route_type` (ws/graphql) |
 | Credentials | Request Constructor S-037a (in-memory) | Yes | Auth headers/cookies |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT fabricate or hallucinate file paths, function names, or call chains — only reference code verified to exist in the target source | FAIL — phantom traces create false attack targets in Phase-4 |
+| CR-2 | Output MUST conform to the file's Output Contract schema — non-conformant output breaks downstream consumers | FAIL — downstream agents cannot parse trace results |
+| CR-3 | MUST use appropriate protocol (WebSocket upgrade / GraphQL POST) — HTTP GET to WebSocket/GraphQL endpoints returns nothing useful | FAIL — wrong protocol produces empty traces |
+
 ## Fill-in Procedure
 
 ### Step 1 — WebSocket Request Construction
