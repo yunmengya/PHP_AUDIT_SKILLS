@@ -1,6 +1,10 @@
-> **Skill ID**: S-036a | **Phase**: 3 | **Parent**: S-036 (Trace-Dispatcher)
-> **Input**: `priority_queue.json`
-> **Output**: Sorted task list (P0→P3, secondary by `source_count` descending)
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-036a |
+| Phase | 3 |
+| Responsibility | Sort candidate routes by priority level and source count for deterministic execution order |
 
 # Task Priority Sorter
 
@@ -9,24 +13,37 @@
 Read the priority queue produced by Phase 2 and sort all candidate routes into a
 deterministic execution order so that the highest-risk routes are traced first.
 
-## Procedure
+## Input Contract
 
-### 1. Load Priority Queue
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| `priority_queue.json` | Phase 2 output (`$WORK_DIR/priority_queue.json`) | Yes | `route_id`, `sink_id`, `priority`, `source_count`, `route_url`, `method` |
 
-Read `$WORK_DIR/priority_queue.json`.  Each entry contains at minimum:
+## Fill-in Procedure
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `route_id` | string | Unique route identifier |
-| `sink_id` | string | Associated sink identifier |
-| `priority` | string | One of `P0`, `P1`, `P2`, `P3` |
-| `source_count` | integer | Number of distinct taint sources reaching this sink |
-| `route_url` | string | URL path |
-| `method` | string | HTTP method |
+### Step 1 — Load Priority Queue
 
-### 2. Primary Sort — Priority Level
+Read `$WORK_DIR/priority_queue.json`. Each entry contains at minimum:
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `route_id` | {unique route identifier from queue} |
+| `sink_id` | {associated sink identifier from queue} |
+| `priority` | {P0 / P1 / P2 / P3} |
+| `source_count` | {integer — number of distinct taint sources reaching this sink} |
+| `route_url` | {URL path from queue} |
+| `method` | {HTTP method from queue} |
+
+### Step 2 — Primary Sort — Priority Level
 
 Sort entries by priority in ascending severity order:
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `sort_key_primary` | {priority level: P0 → P1 → P2 → P3} |
+| `sort_direction` | {ascending severity — P0 first} |
+
+Priority level meanings:
 
 | Order | Priority | Meaning |
 |-------|----------|---------|
@@ -35,15 +52,24 @@ Sort entries by priority in ascending severity order:
 | 3 | P2 | Medium — user input reaches sink with partial filtering |
 | 4 | P3 | Low — indirect flow or strong filtering present |
 
-### 3. Secondary Sort — Source Count
+### Step 3 — Secondary Sort — Source Count
 
-Within each priority level, sort by `source_count` **descending** (higher
-confidence / larger attack surface first).
+Within each priority level, sort by `source_count` **descending** (higher confidence / larger attack surface first).
 
-### 4. Dependency-Aware Re-ordering (Optional Refinement)
+| Field | Fill-in Value |
+|-------|---------------|
+| `sort_key_secondary` | {source_count} |
+| `sort_direction` | {descending — highest count first} |
 
-After the base sort, apply the following adjustments without violating primary
-priority order:
+### Step 4 — Dependency-Aware Re-ordering (Optional)
+
+After the base sort, apply the following adjustments without violating primary priority order:
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `auth_endpoint_boost` | {true/false — move auth/login routes toward top within priority band} |
+| `public_entry_boost` | {true/false — prefer anonymous-accessible routes within same priority} |
+| `write_method_boost` | {true/false — promote POST/PUT/DELETE above GET within same priority} |
 
 - **Auth endpoints first**: Move authentication / login routes toward the top
   within their priority band so credential acquisition strategies work early.
@@ -52,22 +78,46 @@ priority order:
 - **Data-write operations first**: `POST` / `PUT` / `DELETE` methods are
   promoted above `GET` within the same priority level (higher impact).
 
-### 5. Emit Sorted List
+### Step 5 — Emit Sorted List
 
-Output the sorted array for downstream consumption by the Resource Downsampler
-(S-036b).
+| Field | Fill-in Value |
+|-------|---------------|
+| `output_format` | {sorted array of route entries} |
+| `downstream_consumer` | {Resource Downsampler S-036b} |
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Phase 2 output | `$WORK_DIR/priority_queue.json` | Yes | `route_id`, `sink_id`, `priority`, `source_count`, `route_url`, `method` |
+Output the sorted array for downstream consumption by the Resource Downsampler (S-036b).
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
+| Output File | Path | Description |
+|-------------|------|-------------|
 | Sorted task list | (in-memory / piped to S-036b) | Array of route entries ordered P0→P3, then by `source_count` desc |
+
+## Examples
+
+### ✅ GOOD — Complete sorted output
+
+```json
+[
+  { "route_id": "route_012", "sink_id": "sink_007", "priority": "P0", "source_count": 5, "route_url": "/api/admin/exec", "method": "POST" },
+  { "route_id": "route_003", "sink_id": "sink_002", "priority": "P0", "source_count": 3, "route_url": "/api/user/login", "method": "POST" },
+  { "route_id": "route_008", "sink_id": "sink_004", "priority": "P1", "source_count": 4, "route_url": "/api/data/export", "method": "GET" },
+  { "route_id": "route_015", "sink_id": "sink_009", "priority": "P2", "source_count": 2, "route_url": "/api/config", "method": "PUT" }
+]
+```
+
+All fields present, P0 before P1 before P2, higher `source_count` first within same priority.
+
+### ❌ BAD — Missing fields / wrong order
+
+```json
+[
+  { "route_id": "route_008", "priority": "P1" },
+  { "route_id": "route_012", "priority": "P0", "source_count": 5 }
+]
+```
+
+Problems: P1 sorted before P0; missing `sink_id`, `source_count`, `route_url`, `method` fields.
 
 ## Error Handling
 

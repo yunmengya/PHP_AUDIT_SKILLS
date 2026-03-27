@@ -1,6 +1,10 @@
-> **Skill ID**: S-036f | **Phase**: 3 | **Parent**: S-036 (Trace-Dispatcher)
-> **Input**: Environment configuration (Xdebug availability, PHP version, framework type)
-> **Output**: Selected tracing approach (Xdebug / Tick Function / Middleware Injection / strace)
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-036f |
+| Phase | 3 |
+| Responsibility | Select best alternative tracing approach when Xdebug is unavailable |
 
 # Fallback Strategy Selector
 
@@ -11,9 +15,24 @@ with production images, Alpine minimal containers, or PHP version
 incompatibilities), select the best alternative tracing approach from a ranked
 fallback list.
 
-## Procedure
+## Input Contract
 
-### 1. Decision Tree
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| `environment_status.json` | `$WORK_DIR/environment_status.json` | Yes | `xdebug_available`, `php_version` |
+| Framework detection | `$WORK_DIR/route_map.json` or scan results | No | `framework_type` |
+
+## Fill-in Procedure
+
+### Step 1 — Decision Tree
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `xdebug_available` | {true / false} |
+| `php_version` | {detected PHP version, e.g., 7.4, 8.1} |
+| `framework_type` | {Laravel / ThinkPHP / WordPress / Other / unknown} |
+| `auto_prepend_available` | {true / false} |
+| `selected_approach` | {xdebug / tick_function / middleware_injection / strace} |
 
 ```
 Xdebug available?
@@ -38,10 +57,17 @@ Xdebug available?
 
 ---
 
-### 2. Approach A — PHP Tick Function Tracing
+### Step 2 — Approach A — PHP Tick Function Tracing
 
-**Prerequisite**: PHP ≥ 7.0; entry file can be modified or `auto_prepend_file`
-is available.
+**Prerequisite**: PHP ≥ 7.0; entry file can be modified or `auto_prepend_file` is available.
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `injection_method` | {auto_prepend_file (recommended) / direct require} |
+| `tracer_script` | {tick_tracer.php} |
+| `tracer_destination` | {/tmp/tick_tracer.php inside container} |
+| `max_trace_entries` | {20000 before flush} |
+| `vendor_filter` | {exclude vendor/composer and vendor/autoload paths} |
 
 Inject `tick_tracer.php` via one of:
 
@@ -91,14 +117,19 @@ declare(ticks=1);
 **Limitations**:
 - ~10–50× performance overhead — single-request tracing only.
 - Cannot capture internal (C-extension) functions; userland only.
-- `declare(ticks=1)` scoped to current file; `auto_prepend_file` needed for
-  global coverage.
+- `declare(ticks=1)` scoped to current file; `auto_prepend_file` needed for global coverage.
 
 ---
 
-### 3. Approach B — Framework Middleware Injection
+### Step 3 — Approach B — Framework Middleware Injection
 
 **Prerequisite**: Target framework identified (Laravel / ThinkPHP / WordPress).
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `framework` | {Laravel / ThinkPHP / WordPress} |
+| `injection_target` | {middleware class / behavior hook / mu-plugins} |
+| `injection_command` | {docker cp + registration command} |
 
 #### Laravel — AuditTraceMiddleware
 
@@ -192,13 +223,18 @@ add_action('shutdown', function() {
 
 ---
 
-### 4. Approach C — strace / ltrace System-Level Tracing
+### Step 4 — Approach C — strace / ltrace System-Level Tracing
 
-**Prerequisite**: PHP < 7.0 **or** code-level injection impossible (read-only
-filesystem, no `auto_prepend_file`).
+**Prerequisite**: PHP < 7.0 **or** code-level injection impossible (read-only filesystem, no `auto_prepend_file`).
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `trace_tool` | {strace / ltrace} |
+| `target_pid` | {PID of php-fpm pool worker} |
+| `syscalls_to_trace` | {open, read, write, connect, execve} |
+| `output_file` | {/tmp/strace_output.txt} |
 
 ```bash
-# strace — trace syscalls (file open, network, exec)
 strace -f -e trace=open,read,write,connect,execve \
   -p $(docker exec php pgrep -f 'php-fpm: pool www' | head -1) \
   -o /tmp/strace_output.txt &
@@ -206,7 +242,6 @@ STRACE_PID=$!
 docker exec php curl -s http://nginx:80/target/route
 kill $STRACE_PID
 
-# Interpret key patterns
 grep -E '(open|execve).*\.(php|inc|tpl)' /tmp/strace_output.txt   # loaded files
 grep 'connect.*:3306' /tmp/strace_output.txt                       # MySQL
 grep 'connect.*:6379' /tmp/strace_output.txt                       # Redis
@@ -220,21 +255,40 @@ grep 'connect.*:6379' /tmp/strace_output.txt                       # Redis
 | `connect(…, sin_port=htons(3306))` | Database operation |
 | `execve("/bin/sh", ["sh", "-c", …])` | Command execution — RCE sink evidence |
 
----
-
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Environment status | `$WORK_DIR/environment_status.json` | Yes | `xdebug_available`, `php_version` |
-| Framework detection | `$WORK_DIR/route_map.json` or scan results | No | `framework_type` |
-
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
+| Output File | Path | Description |
+|-------------|------|-------------|
 | Selected approach | (in-memory) | One of: `xdebug`, `tick_function`, `middleware_injection`, `strace` |
 | Injection artifacts | Container filesystem | Tracer scripts copied into the container |
+
+## Examples
+
+### ✅ GOOD — Complete strategy selection
+
+```json
+{
+  "xdebug_available": false,
+  "php_version": "7.4",
+  "framework_type": "Laravel",
+  "auto_prepend_available": true,
+  "selected_approach": "middleware_injection",
+  "injection_target": "App\\Http\\Middleware\\AuditTraceMiddleware",
+  "fallback_chain": ["middleware_injection", "tick_function", "strace"]
+}
+```
+
+All decision factors documented, approach selected with full context.
+
+### ❌ BAD — No decision context
+
+```json
+{
+  "selected_approach": "strace"
+}
+```
+
+Problems: No evidence of why strace was chosen, missing `xdebug_available`, `php_version`, `framework_type`.
 
 ## Error Handling
 

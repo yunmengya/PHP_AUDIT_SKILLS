@@ -1,14 +1,28 @@
-> **Skill ID**: S-038f | **Phase**: 3 | **Parent**: S-038 (auth_simulator)
-> **Input**: database tables, configuration files, source code
-> **Output**: discovered API keys ready for use in requests
-
 # API Key Extraction & Discovery
 
-## Purpose
+## Identity
 
-Locate API keys stored in the database, configuration files, or source code. Construct authenticated requests using the discovered keys. This covers both dedicated API key tables and hard-coded keys in config.
+| Field | Value |
+|-------|-------|
+| **Skill ID** | S-038f |
+| **Phase** | 3 — Authentication Simulation |
+| **Parent** | S-038 (auth_simulator) |
+| **Responsibility** | Locate API keys stored in the database, configuration files, or source code. Construct authenticated requests using the discovered keys. Covers both dedicated API key tables and hard-coded keys in config. |
 
-## Procedure
+---
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Database | Docker `db` container | ✅ | API key tables (varies) |
+| Config files | `$TARGET_PATH/.env`, `$TARGET_PATH/config/` | ✅ | Hard-coded or env-based keys |
+| Source code | `$TARGET_PATH/app/` | Optional | Key extraction middleware logic |
+| Docker env | Running containers (`php`, `db`) | ✅ | Query + request execution |
+
+---
+
+## Fill-in Procedure
 
 ### Step 1 — Search Database for API Key Tables
 
@@ -48,7 +62,17 @@ Determine how the application expects the API key to be sent:
 
 Search middleware or request handling code for the key extraction logic.
 
-### Step 4 — Construct Test Requests
+### Step 4 — Fill in Discovered API Keys
+
+**Fill in the API key discovery table — one row per key found:**
+
+| Source | Location | Key Value | Valid |
+|--------|----------|-----------|-------|
+| `___` (e.g. `database`) | `___` (e.g. `api_keys table, row id=1`) | `___` (e.g. `ak_live_abc123`) | `___` (✅ / ❌ / untested) |
+| `___` (e.g. `.env file`) | `___` (e.g. `API_KEY=xxx on line 42`) | `___` (e.g. `sk_test_def456`) | `___` (✅ / ❌ / untested) |
+| `___` (e.g. `source code`) | `___` (e.g. `app/Services/PaymentService.php:15`) | `___` (e.g. `hardcoded_key_789`) | `___` (✅ / ❌ / untested) |
+
+### Step 5 — Construct Test Requests
 
 ```bash
 # Header-based
@@ -58,7 +82,7 @@ docker exec php curl -H "X-API-Key: $KEY" http://nginx:80/api/data
 docker exec php curl "http://nginx:80/api/data?api_key=$KEY"
 ```
 
-### Step 5 — Categorize Keys by Privilege Level
+### Step 6 — Categorize Keys by Privilege Level
 
 If multiple keys are found, test each one to determine its permission scope:
 
@@ -68,24 +92,17 @@ If multiple keys are found, test each one to determine its permission scope:
 | Regular user's API key | Authenticated |
 | Service/system key in `.env` | System-level |
 
-### Step 6 — Save to Credentials
+### Step 7 — Save to Credentials
 
 Write discovered keys into the `api_keys` section of `credentials.json`.
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Database | Docker `db` container | ✅ | API key tables (varies) |
-| Config files | `$TARGET_PATH/.env`, `$TARGET_PATH/config/` | ✅ | Hard-coded or env-based keys |
-| Source code | `$TARGET_PATH/app/` | Optional | Key extraction middleware logic |
-| Docker env | Running containers (`php`, `db`) | ✅ | Query + request execution |
+---
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Credentials | `$WORK_DIR/credentials.json` → `api_keys` section | Keys labeled by privilege level |
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `api_keys` section | Keys labeled by privilege level |
 
 Example output fragment:
 ```json
@@ -97,6 +114,29 @@ Example output fragment:
   }
 }
 ```
+
+---
+
+## Examples
+
+### ✅ GOOD — All keys discovered, validated, and categorized
+
+| Source | Location | Key Value | Valid |
+|--------|----------|-----------|-------|
+| database | `api_keys` table, row id=1, user_id=1 (admin) | `ak_live_Xk9mP2` | ✅ (200 on `/api/admin/users`) |
+| database | `api_keys` table, row id=5, user_id=10 (user) | `ak_live_Rn3qW7` | ✅ (200 on `/api/user`, 403 on `/api/admin`) |
+| `.env` file | `INTERNAL_API_KEY=xxx` on line 58 | `sk_internal_abc123` | ✅ (200 on `/api/system/health`) |
+
+### ❌ BAD — Keys found but not tested
+
+| Source | Location | Key Value | Valid |
+|--------|----------|-----------|-------|
+| database | `api_keys` table | (multiple rows) | untested |
+| `.env` file | `API_KEY=` | `some_key` | untested |
+
+> Keys discovered but never validated against actual endpoints. Cannot determine privilege level or usability.
+
+---
 
 ## Error Handling
 

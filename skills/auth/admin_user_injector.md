@@ -1,14 +1,27 @@
-> **Skill ID**: S-038c | **Phase**: 3 | **Parent**: S-038 (auth_simulator)
-> **Input**: DB schema (reconstructed_schema.sql), users table structure
-> **Output**: admin-level credentials (cookie / token)
-
 # Direct Database Admin Insertion
 
-## Purpose
+## Identity
 
-When auto-registration (S-038b) cannot yield admin-level credentials, directly insert an admin user into the database. This bypasses application-layer restrictions to obtain the highest privilege level for security testing.
+| Field | Value |
+|-------|-------|
+| **Skill ID** | S-038c |
+| **Phase** | 3 — Authentication Simulation |
+| **Parent** | S-038 (auth_simulator) |
+| **Responsibility** | When auto-registration (S-038b) cannot yield admin-level credentials, directly insert an admin user into the database. Bypasses application-layer restrictions to obtain the highest privilege level for security testing. |
 
-## Procedure
+---
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| DB schema | `$WORK_DIR/reconstructed_schema.sql` | ✅ | `users` table columns, types, constraints |
+| Database | Docker `db` container | ✅ | Direct SQL access for INSERT |
+| Docker env | Running containers (`php`, `nginx`, `db`) | ✅ | Password hashing + login |
+
+---
+
+## Fill-in Procedure
 
 ### Step 1 — Analyze Users Table Structure
 
@@ -30,7 +43,23 @@ Look for columns that control access level:
 | `type` | `admin`, `member` |
 | `group_id` | FK to a groups/roles table |
 
-### Step 3 — Generate Password Hash
+### Step 3 — Fill in Admin Injection Parameters
+
+**Fill in the admin user details table:**
+
+| Field | Value |
+|-------|-------|
+| **table_name** | `___` (e.g. `users`) |
+| **hash_algorithm** | `___` (e.g. `PASSWORD_BCRYPT`, `md5`, `sha256`) |
+| **admin_username** | `___` (e.g. `audit_admin`) |
+| **admin_email** | `___` (e.g. `admin@test.com`) |
+| **admin_password** | `___` (e.g. `AuditAdmin123!`) |
+| **admin_password_hash** | `___` (output of hash generation command) |
+| **privilege_column** | `___` (e.g. `role`, `is_admin`, `level`) |
+| **privilege_value** | `___` (e.g. `admin`, `1`, `99`) |
+| **extra_required_columns** | `___` (e.g. `created_at=NOW()`, `status=1`) |
+
+### Step 4 — Generate Password Hash
 
 ```bash
 docker exec php php -r "echo password_hash('AuditAdmin123!', PASSWORD_BCRYPT);"
@@ -38,16 +67,16 @@ docker exec php php -r "echo password_hash('AuditAdmin123!', PASSWORD_BCRYPT);"
 
 Store the output as `$HASH`.
 
-### Step 4 — Insert Admin User
+### Step 5 — Insert Admin User
 
 ```bash
 docker exec db mysql -uroot -paudit_root_pass audit_db -e \
   "INSERT INTO users (name, email, password, role) VALUES ('audit_admin', 'admin@test.com', '$HASH', 'admin');"
 ```
 
-Adapt the column names and privilege value based on Step 2.
+Adapt the column names and privilege value based on the filled-in table above.
 
-### Step 5 — Login with Admin Account
+### Step 6 — Login with Admin Account
 
 Use the same login flow as S-038b but with admin credentials:
 
@@ -57,23 +86,17 @@ docker exec php curl -X POST http://nginx:80/login \
   -c /tmp/cookies.txt -v
 ```
 
-### Step 6 — Save as Admin Credentials
+### Step 7 — Save as Admin Credentials
 
 Write the extracted credential into the `admin` section of `credentials.json`.
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| DB schema | `$WORK_DIR/reconstructed_schema.sql` | ✅ | `users` table columns, types, constraints |
-| Database | Docker `db` container | ✅ | Direct SQL access for INSERT |
-| Docker env | Running containers (`php`, `nginx`, `db`) | ✅ | Password hashing + login |
+---
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Credentials | `$WORK_DIR/credentials.json` → `admin` section | Method (cookie/bearer), token/cookie value, user_id, username |
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `admin` section | Method (cookie/bearer), token/cookie value, user_id, username |
 
 Example output fragment:
 ```json
@@ -88,6 +111,38 @@ Example output fragment:
   }
 }
 ```
+
+---
+
+## Examples
+
+### ✅ GOOD — Complete admin injection with all fields identified
+
+| Field | Value |
+|-------|-------|
+| **table_name** | `users` |
+| **hash_algorithm** | `PASSWORD_BCRYPT` |
+| **admin_username** | `audit_admin` |
+| **admin_email** | `admin@test.com` |
+| **admin_password** | `AuditAdmin123!` |
+| **admin_password_hash** | `$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi` |
+| **privilege_column** | `role` |
+| **privilege_value** | `admin` |
+| **extra_required_columns** | `created_at=NOW(), updated_at=NOW()` |
+
+### ❌ BAD — Missing hash algorithm or privilege column
+
+| Field | Value |
+|-------|-------|
+| **table_name** | `users` |
+| **hash_algorithm** | (not checked) |
+| **admin_username** | `admin` |
+| **admin_password_hash** | (used plaintext password instead of hash) |
+| **privilege_column** | (not identified) |
+
+> INSERT will fail: password stored in plaintext won't pass bcrypt verification. Privilege column unknown — account may be created as regular user.
+
+---
 
 ## Error Handling
 

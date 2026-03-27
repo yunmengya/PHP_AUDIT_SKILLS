@@ -1,32 +1,48 @@
-> **Skill ID**: S-038a | **Phase**: 3 | **Parent**: S-038 (auth_simulator)
-> **Input**: TARGET_PATH (source code root)
-> **Output**: auth_type_report (detected auth types + recommended strategies)
-
 # Auth Type Auto-Detection
 
-## Purpose
+## Identity
 
-Automatically identify the target PHP application's authentication mechanism(s) by scanning source code for known signatures. This avoids blind credential-acquisition attempts and routes execution to the correct downstream sub-skill (S-038b–S-038g).
+| Field | Value |
+|-------|-------|
+| **Skill ID** | S-038a |
+| **Phase** | 3 — Authentication Simulation |
+| **Parent** | S-038 (auth_simulator) |
+| **Responsibility** | Automatically identify the target PHP application's authentication mechanism(s) by scanning source code for known signatures. Routes execution to the correct downstream sub-skill (S-038b–S-038g). |
 
-## Procedure
+---
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| PHP source files | `$TARGET_PATH/**/*.php` | ✅ | Auth patterns, middleware references |
+| Composer config | `$TARGET_PATH/composer.json` | ✅ | Dependency packages (JWT, OAuth, etc.) |
+| Environment file | `$TARGET_PATH/.env*` | Optional | Key names hinting at auth type |
+| Framework config | `$TARGET_PATH/config/*.php` | Optional | Guard definitions, auth driver config |
+
+---
+
+## Fill-in Procedure
 
 ### Step 1 — Scan Source Code for Auth Signatures
 
 Run grep-based detection against `$TARGET_PATH` using the signature table below. Record every match.
 
-| Source Code Signature (grep pattern) | Auth Type | Recommended Strategy |
-|--------------------------------------|-----------|----------------------|
-| `Auth::attempt(` / `Auth::guard(` | Laravel Session Auth | S-038b (Auto-Registration) |
-| `Passport::routes()` / `CreateFreshApiToken` | Laravel Passport (OAuth2) | S-038e (OAuth2 Token) |
-| `JWT::decode(` / `JWTAuth::parseToken()` / `tymon/jwt-auth` | JWT Bearer Token | S-038d (JWT Signer) |
-| `wp_authenticate(` / `wp_set_auth_cookie(` | WordPress Cookie Auth | S-038b + WordPress-specific flow |
-| `$_SERVER['PHP_AUTH_USER']` / `$_SERVER['PHP_AUTH_PW']` | HTTP Basic Auth | Construct `Authorization: Basic base64(user:pass)` directly |
-| `$_SESSION['user_id']` / `session_start()` + manual check | Native PHP Session | S-038b (Extract PHPSESSID after login) |
-| `Sanctum::actingAs(` / `sanctum` middleware | Laravel Sanctum (SPA / API Token) | S-038e (Personal Access Token) |
-| `hash_hmac(` + `$_SERVER['HTTP_X_SIGNATURE']` | HMAC Signature Auth | S-038f + signature construction |
-| `api_key` / `apikey` / `API_KEY` in middleware or config | API Key Auth | S-038f (API Key Discoverer) |
+**Fill in the detection results table — one row per pattern match found:**
 
-### Step 2 — Auto-Detection Script
+| Pattern | File | Line | Match Type | Auth Type |
+|---------|------|------|------------|-----------|
+| `Auth::attempt(` / `Auth::guard(` | `___` | `___` | exact / regex | Laravel Session Auth → S-038b |
+| `Passport::routes()` / `CreateFreshApiToken` | `___` | `___` | exact / regex | Laravel Passport (OAuth2) → S-038e |
+| `JWT::decode(` / `JWTAuth::parseToken()` / `tymon/jwt-auth` | `___` | `___` | exact / regex | JWT Bearer Token → S-038d |
+| `wp_authenticate(` / `wp_set_auth_cookie(` | `___` | `___` | exact / regex | WordPress Cookie Auth → S-038b |
+| `$_SERVER['PHP_AUTH_USER']` / `$_SERVER['PHP_AUTH_PW']` | `___` | `___` | exact / regex | HTTP Basic Auth → direct header |
+| `$_SESSION['user_id']` / `session_start()` + manual check | `___` | `___` | exact / regex | Native PHP Session → S-038b |
+| `Sanctum::actingAs(` / `sanctum` middleware | `___` | `___` | exact / regex | Laravel Sanctum → S-038e |
+| `hash_hmac(` + `$_SERVER['HTTP_X_SIGNATURE']` | `___` | `___` | exact / regex | HMAC Signature Auth → S-038f |
+| `api_key` / `apikey` / `API_KEY` in middleware or config | `___` | `___` | exact / regex | API Key Auth → S-038f |
+
+### Step 2 — Run Auto-Detection Script
 
 ```bash
 echo "=== Auth Type Detection ==="
@@ -59,17 +75,13 @@ For each detected auth type, record:
 
 If multiple auth types are detected, list all and mark the primary mechanism (most matches / referenced in middleware).
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Source code | `$TARGET_PATH/` | ✅ | `*.php`, `composer.json`, `.env*`, config files |
+---
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Auth type report | `$WORK_DIR/auth_type_report.json` | JSON with detected types, matched files, recommended strategies |
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Auth type report | `$WORK_DIR/输出结果/auth_type_report.json` | JSON with detected types, matched files, recommended strategies |
 
 Example output:
 ```json
@@ -86,6 +98,30 @@ Example output:
   "fallback_types": []
 }
 ```
+
+---
+
+## Examples
+
+### ✅ GOOD — Complete detection with confidence levels
+
+| Pattern | File | Line | Match Type | Auth Type |
+|---------|------|------|------------|-----------|
+| `Auth::attempt(` | `app/Http/Controllers/LoginController.php` | 42 | exact | Laravel Session Auth → S-038b |
+| `Sanctum::actingAs(` | `tests/Feature/ApiTest.php` | 15 | exact | Laravel Sanctum → S-038e |
+| `api_key` | `app/Http/Middleware/ApiKeyAuth.php` | 23 | regex | API Key Auth → S-038f |
+
+> Primary type: `Laravel Session Auth` (most matches, referenced in route middleware)
+
+### ❌ BAD — Incomplete or ambiguous detection
+
+| Pattern | File | Line | Match Type | Auth Type |
+|---------|------|------|------------|-----------|
+| `Auth::attempt(` | (not recorded) | ? | ? | maybe session? |
+
+> Missing file paths, line numbers, and confidence assessment. Cannot route to downstream skill.
+
+---
 
 ## Error Handling
 

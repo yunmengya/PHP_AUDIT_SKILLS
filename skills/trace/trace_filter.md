@@ -1,6 +1,10 @@
-> **Skill ID**: S-037c | **Phase**: 3 | **Parent**: S-037 (Trace-Worker)
-> **Input**: Raw Xdebug trace file + target sink function name
-> **Output**: Filtered trace JSON (≤ 500 lines, sink-relevant chains only)
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-037c |
+| Phase | 3 |
+| Responsibility | Filter raw Xdebug traces to retain only sink-relevant call chains |
 
 # Trace Filter
 
@@ -10,9 +14,23 @@ Process the raw Xdebug function trace to remove framework noise and retain only
 the call chains relevant to the target sink function. This produces a compact,
 analysable trace suitable for Phase 4 auditors.
 
-## Procedure
+## Input Contract
 
-### 1. Run `trace_filter.php`
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Raw trace file | Request Executor S-037b (Container: `/tmp/xdebug_traces/trace.*.xt`) | Yes | Raw Xdebug function trace |
+| Task package | From S-036e (in-memory) | Yes | `sink_function` |
+| `trace_filter.php` | `tools/trace_filter.php` | Yes | Filtering logic |
+
+## Fill-in Procedure
+
+### Step 1 — Run `trace_filter.php`
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `sink_function` | {target function name, e.g., DB::raw, exec, system} |
+| `trace_file` | {/tmp/xdebug_traces/trace.*.xt} |
+| `max_depth` | {500 lines default} |
 
 ```bash
 docker cp tools/trace_filter.php php:/tmp/trace_filter.php
@@ -21,7 +39,13 @@ docker exec php php /tmp/trace_filter.php \
   $SINK_FUNCTION
 ```
 
-### 2. Trimming Rules
+### Step 2 — Trimming Rules
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `trim_strategy` | {keep_sink_related / truncate_oldest} |
+| `max_output_lines` | {500} |
+| `size_threshold` | {10 MB — triggers auto-trim} |
 
 | Condition | Action |
 |-----------|--------|
@@ -33,7 +57,16 @@ docker exec php php /tmp/trace_filter.php \
 | Autoload calls | **Discard** — `spl_autoload_call`, Composer class map lookups |
 | Event dispatching internals | **Discard** — framework event loop plumbing |
 
-### 3. Output Format
+### Step 3 — Output Format
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `route_id` | {route identifier from task package} |
+| `sink_function` | {target function name} |
+| `filtered_line_count` | {number of lines after filtering} |
+| `call_chain` | {ordered list of function calls from entry to sink} |
+| `filters_encountered` | {list of sanitisation functions found in trace} |
+| `raw_trace_size_bytes` | {original trace file size} |
 
 Produce a JSON structure:
 
@@ -53,24 +86,52 @@ Produce a JSON structure:
 }
 ```
 
-### 4. Pass to Downstream
+### Step 4 — Pass to Downstream
 
-Hand the filtered trace to the Dynamic Binding Resolver (S-037d) for further
-enrichment.
+| Field | Fill-in Value |
+|-------|---------------|
+| `downstream_consumer` | {Dynamic Binding Resolver S-037d} |
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Request Executor (S-037b) | Container: `/tmp/xdebug_traces/trace.*.xt` | Yes | Raw Xdebug function trace |
-| Task package | (from S-036e) | Yes | `sink_function` |
-| Filter tool | `tools/trace_filter.php` | Yes | Filtering logic |
+Hand the filtered trace to the Dynamic Binding Resolver (S-037d) for further enrichment.
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
+| Output File | Path | Description |
+|-------------|------|-------------|
 | Filtered trace JSON | (in-memory / piped to S-037d) | Compact sink-relevant call chain |
+
+## Examples
+
+### ✅ GOOD — Complete filtered trace
+
+```json
+{
+  "route_id": "route_005",
+  "sink_function": "DB::raw",
+  "filtered_line_count": 247,
+  "call_chain": [
+    "index.php",
+    "Illuminate\\Foundation\\Http\\Kernel::handle",
+    "App\\Http\\Controllers\\UserController::update",
+    "Illuminate\\Support\\Facades\\DB::raw"
+  ],
+  "filters_encountered": ["intval"],
+  "raw_trace_size_bytes": 5242880
+}
+```
+
+All fields present, call_chain ends at sink, filters documented.
+
+### ❌ BAD — Incomplete filter result
+
+```json
+{
+  "route_id": "route_005",
+  "call_chain": ["index.php"]
+}
+```
+
+Problems: Missing `sink_function`, `filtered_line_count`, `filters_encountered`, `raw_trace_size_bytes`. Call chain too short — no sink reached.
 
 ## Error Handling
 

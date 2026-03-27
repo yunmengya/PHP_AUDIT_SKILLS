@@ -1,14 +1,28 @@
-> **Skill ID**: S-038g | **Phase**: 3 | **Parent**: S-038 (auth_simulator)
-> **Input**: tenant schema (database structure with tenant isolation)
-> **Output**: per-tenant credentials for cross-tenant testing
-
 # Multi-Tenant Credential Isolation
 
-## Purpose
+## Identity
 
-When the target is a multi-tenant application, create test accounts in separate tenants and obtain independent, tenant-scoped credentials. This enables cross-tenant access testing (IDOR, tenant isolation bypass) in later audit phases.
+| Field | Value |
+|-------|-------|
+| **Skill ID** | S-038g |
+| **Phase** | 3 — Authentication Simulation |
+| **Parent** | S-038 (auth_simulator) |
+| **Responsibility** | When the target is a multi-tenant application, create test accounts in separate tenants and obtain independent, tenant-scoped credentials. Enables cross-tenant access testing (IDOR, tenant isolation bypass) in later audit phases. |
 
-## Procedure
+---
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Database | Docker `db` → `tenants`, `users` tables | ✅ | Tenant IDs, user-tenant mapping |
+| Source code | `$TARGET_PATH/` | ✅ | Tenancy middleware, tenant resolution logic |
+| Migrations | `$TARGET_PATH/database/migrations/` | Optional | `tenant_id` column definitions |
+| Docker env | Running containers (`php`, `nginx`, `db`) | ✅ | User creation + login execution |
+
+---
+
+## Fill-in Procedure
 
 ### Step 1 — Detect Multi-Tenancy Model
 
@@ -34,7 +48,17 @@ docker exec db mysql -uroot -paudit_root_pass audit_db -e "SHOW TABLES LIKE '%te
 docker exec db mysql -uroot -paudit_root_pass audit_db -e "SELECT * FROM tenants LIMIT 5;" 2>/dev/null
 ```
 
-### Step 2 — Create Test Accounts for Different Tenants
+### Step 2 — Fill in Tenant Provisioning Table
+
+**Fill in the tenant provisioning table — one row per tenant:**
+
+| Tenant ID | Domain | Account | Credentials |
+|-----------|--------|---------|-------------|
+| `___` (e.g. `1`) | `___` (e.g. `tenant-a.app.local`) | `___` (e.g. `audit_tenant_1 / tenant1@audit.test`) | `___` (e.g. `Bearer eyJ...` or `Cookie: session=xxx`) |
+| `___` (e.g. `2`) | `___` (e.g. `tenant-b.app.local`) | `___` (e.g. `audit_tenant_2 / tenant2@audit.test`) | `___` (e.g. `Bearer eyJ...` or `Cookie: session=yyy`) |
+| `___` (e.g. `3`) | `___` (e.g. `tenant-c.app.local`) | `___` (e.g. `audit_tenant_3 / tenant3@audit.test`) | `___` (e.g. `Bearer eyJ...` or `Cookie: session=zzz`) |
+
+### Step 3 — Create Test Accounts for Different Tenants
 
 For each tenant (or create new tenants if possible):
 
@@ -52,38 +76,31 @@ for TENANT_ID in $TENANTS; do
 done
 ```
 
-### Step 3 — Obtain Tenant-Scoped Credentials
+### Step 4 — Obtain Tenant-Scoped Credentials
 
 Login as each tenant user and extract credentials. The login may require:
 - Tenant-specific subdomain (e.g., `tenant1.app.local`)
 - Tenant ID in header (e.g., `X-Tenant-ID: 1`)
 - Tenant selection in login payload
 
-### Step 4 — Record Tenant Metadata
+### Step 5 — Record Tenant Metadata
 
 For each credential, record:
 - `tenant_id` / `org_id`
 - Tenant domain/subdomain (if applicable)
 - Tenant-specific database (if DB-per-tenant)
 
-### Step 5 — Save to Credentials
+### Step 6 — Save to Credentials
 
 Write per-tenant credentials into the `tenants` section of `credentials.json`.
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Database | Docker `db` container → `tenants`, `users` tables | ✅ | Tenant IDs, user-tenant mapping |
-| Source code | `$TARGET_PATH/` | ✅ | Tenancy middleware, tenant resolution logic |
-| Migrations | `$TARGET_PATH/database/migrations/` | Optional | `tenant_id` column definitions |
-| Docker env | Running containers (`php`, `nginx`, `db`) | ✅ | User creation + login execution |
+---
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Credentials | `$WORK_DIR/credentials.json` → `tenants` section | Per-tenant tokens/cookies with tenant metadata |
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `tenants` section | Per-tenant tokens/cookies with tenant metadata |
 
 Example output fragment:
 ```json
@@ -106,6 +123,29 @@ Example output fragment:
   }
 }
 ```
+
+---
+
+## Examples
+
+### ✅ GOOD — Complete tenant provisioning with credentials verified
+
+| Tenant ID | Domain | Account | Credentials |
+|-----------|--------|---------|-------------|
+| `1` | `tenant-a.app.local` | `audit_tenant_1 / tenant1@audit.test` | `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOjEwfQ...` (verified: 200 on `/api/user`) |
+| `2` | `tenant-b.app.local` | `audit_tenant_2 / tenant2@audit.test` | `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOjExfQ...` (verified: 200 on `/api/user`) |
+| `3` | `tenant-c.app.local` | `audit_tenant_3 / tenant3@audit.test` | `Cookie: session=abc789` (verified: 200 on `/dashboard`) |
+
+### ❌ BAD — Tenants listed but no accounts created
+
+| Tenant ID | Domain | Account | Credentials |
+|-----------|--------|---------|-------------|
+| `1` | `tenant-a.app.local` | (not created) | (none) |
+| `2` | (unknown) | (not created) | (none) |
+
+> No test accounts provisioned. Cross-tenant isolation testing impossible without per-tenant credentials.
+
+---
 
 ## Error Handling
 

@@ -1,6 +1,10 @@
-> **Skill ID**: S-037d | **Phase**: 3 | **Parent**: S-037 (Trace-Worker)
-> **Input**: Trace containing unresolved dynamic bindings
-> **Output**: Trace with all dynamic calls resolved to concrete targets
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-037d |
+| Phase | 3 |
+| Responsibility | Resolve dynamic PHP dispatch patterns to concrete runtime targets |
 
 # Dynamic Binding Resolver
 
@@ -11,9 +15,22 @@ cannot fully resolve. The Xdebug trace captures the actual runtime targets of
 these calls. This sub-skill extracts and records those resolutions so that
 Phase 4 auditors have a complete, concrete call chain.
 
-## Procedure
+## Input Contract
 
-### 1. Scan Trace for Dynamic Patterns
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Filtered trace | Trace Filter S-037c (in-memory) | Yes | Filtered call chain with raw function names |
+
+## Fill-in Procedure
+
+### Step 1 — Scan Trace for Dynamic Patterns
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `pattern_type` | {call_user_func / call_user_func_array / variable_method / late_static / dynamic_include / variable_variable / dynamic_new} |
+| `expression` | {the dynamic expression found in source, e.g., $callback, $method} |
+| `location_file` | {source file where pattern appears} |
+| `location_line` | {line number where pattern appears} |
 
 Search the filtered trace for the following dynamic binding patterns:
 
@@ -27,15 +44,27 @@ Search the filtered trace for the following dynamic binding patterns:
 | `$$varName` | Variable variable | Actual variable name used |
 | `new $className()` | Dynamic instantiation | Actual class name |
 
-### 2. Extract Resolution from Xdebug Trace
+### Step 2 — Extract Resolution from Xdebug Trace
 
-Xdebug's function trace records the **actual** called function, not the
-variable expression. For each dynamic pattern found:
+| Field | Fill-in Value |
+|-------|---------------|
+| `resolved_target` | {actual function/class/file name from trace entry} |
+| `resolution_source` | {Xdebug trace — records actual called function, not variable expression} |
+
+Xdebug's function trace records the **actual** called function, not the variable expression. For each dynamic pattern found:
 
 1. Read the resolved function/class/file name from the trace entry.
 2. Record a mapping: `{ "pattern": "call_user_func", "resolved": "App\\Services\\Formatter::clean", "file": "UserController.php", "line": 42 }`.
 
-### 3. Build `dynamic_bindings` Array
+### Step 3 — Build `dynamic_bindings` Array
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `pattern` | {dynamic dispatch pattern type} |
+| `expression` | {original dynamic expression from source} |
+| `resolved` | {concrete target from Xdebug trace} |
+| `file` | {source file path} |
+| `line` | {source line number} |
 
 Append all resolutions to the trace record's `dynamic_bindings` field:
 
@@ -60,24 +89,56 @@ Append all resolutions to the trace record's `dynamic_bindings` field:
 }
 ```
 
-### 4. Back-fill into Context Pack
+### Step 4 — Back-fill into Context Pack
 
-If a corresponding Context Pack exists for this route, update its
-`dynamic_bindings` field with the resolved targets. This improves static
-analysis accuracy for any subsequent re-analysis.
+| Field | Fill-in Value |
+|-------|---------------|
+| `context_pack_exists` | {true / false} |
+| `backfill_target` | {$WORK_DIR/context_packs/ — dynamic_bindings field} |
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Trace Filter (S-037c) | (in-memory) | Yes | Filtered call chain with raw function names |
+If a corresponding Context Pack exists for this route, update its `dynamic_bindings` field with the resolved targets. This improves static analysis accuracy for any subsequent re-analysis.
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
+| Output File | Path | Description |
+|-------------|------|-------------|
 | Resolved trace | (in-memory / piped to S-037h) | Trace with `dynamic_bindings` array populated |
 | Context Pack update | `$WORK_DIR/context_packs/` | Optional back-fill of resolved bindings |
+
+## Examples
+
+### ✅ GOOD — Complete dynamic binding resolution
+
+```json
+{
+  "dynamic_bindings": [
+    {
+      "pattern": "call_user_func",
+      "expression": "$callback",
+      "resolved": "App\\Services\\Formatter::clean",
+      "file": "app/Http/Controllers/UserController.php",
+      "line": 42
+    }
+  ]
+}
+```
+
+All fields present: pattern type, original expression, resolved target, file, line.
+
+### ❌ BAD — Missing resolution details
+
+```json
+{
+  "dynamic_bindings": [
+    {
+      "pattern": "call_user_func",
+      "resolved": "unknown"
+    }
+  ]
+}
+```
+
+Problems: Missing `expression`, `file`, `line`. Resolved target is "unknown" instead of actual function.
 
 ## Error Handling
 

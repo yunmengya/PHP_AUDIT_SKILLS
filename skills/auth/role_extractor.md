@@ -1,14 +1,30 @@
-> **Skill ID**: S-038h | **Phase**: 3 | **Parent**: S-038 (auth_simulator)
-> **Input**: database seeds/migrations, roles table, permission tables
-> **Output**: available roles list + multi-role credentials
-
 # Multi-Role Credential Acquisition
 
-## Purpose
+## Identity
 
-Extract the full list of roles defined in the application and create test accounts for each role. This enables granular privilege escalation testing — both vertical (low role accessing high-role endpoints) and horizontal (same-level cross-user access).
+| Field | Value |
+|-------|-------|
+| **Skill ID** | S-038h |
+| **Phase** | 3 — Authentication Simulation |
+| **Parent** | S-038 (auth_simulator) |
+| **Responsibility** | Extract the full list of roles defined in the application and create test accounts for each role. Enables granular privilege escalation testing — both vertical (low role → high-role endpoints) and horizontal (same-level cross-user access). |
 
-## Target Role List
+---
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Database seeds | `$TARGET_PATH/database/seeders/`, `$TARGET_PATH/database/seeds/` | Optional | Role definitions in seed classes |
+| Migrations | `$TARGET_PATH/database/migrations/` | Optional | Role enum definitions, roles table schema |
+| Database | Docker `db` → `roles`, `permissions`, `model_has_roles` | ✅ | Role names, permission mappings |
+| Docker env | Running containers (`php`, `db`) | ✅ | User creation + login execution |
+
+---
+
+## Fill-in Procedure
+
+### Step 1 — Extract Role Definitions
 
 Security audits SHOULD NOT focus solely on anonymous / authenticated / admin. Many applications define more granular roles:
 
@@ -20,10 +36,6 @@ Security audits SHOULD NOT focus solely on anonymous / authenticated / admin. Ma
 | `moderator` | Content manager | May access user management and bulk operation Sinks |
 | `admin` / `administrator` | Administrator | Full permission baseline |
 | `super_admin` / `root` | Super administrator | System-level operations (config changes, plugin installation) |
-
-## Procedure
-
-### Step 1 — Extract Role Definitions from Database Seeds/Migrations
 
 ```bash
 # Laravel: Search for role definitions in Seeders
@@ -49,7 +61,19 @@ docker exec db mysql -uroot -paudit_root_pass audit_db -e "SHOW TABLES LIKE '%pe
 docker exec db mysql -uroot -paudit_root_pass audit_db -e "SHOW TABLES LIKE '%group%';"
 ```
 
-### Step 2 — Batch Create Multi-Role Accounts
+### Step 2 — Fill in Discovered Roles Table
+
+**Fill in the role discovery table — one row per role found:**
+
+| Role Name | Source (seed/migration/table) | Permissions | Account Created |
+|-----------|-------------------------------|-------------|-----------------|
+| `___` (e.g. `subscriber`) | `___` (e.g. `roles table, id=1`) | `___` (e.g. `read`) | `___` (✅ / ❌) |
+| `___` (e.g. `editor`) | `___` (e.g. `RoleSeeder.php`) | `___` (e.g. `read, write, upload`) | `___` (✅ / ❌) |
+| `___` (e.g. `moderator`) | `___` (e.g. `roles table, id=3`) | `___` (e.g. `read, write, delete_others`) | `___` (✅ / ❌) |
+| `___` (e.g. `admin`) | `___` (e.g. `roles table, id=4`) | `___` (e.g. `*`) | `___` (✅ / ❌) |
+| `___` (e.g. `super_admin`) | `___` (e.g. `migration enum`) | `___` (e.g. `*`) | `___` (✅ / ❌) |
+
+### Step 3 — Batch Create Multi-Role Accounts
 
 ```bash
 # Generate password hash
@@ -64,7 +88,7 @@ for ROLE in subscriber editor moderator admin super_admin; do
 done
 ```
 
-### Step 3 — Spatie Permission: Assign Roles via `model_has_roles`
+### Step 4 — Spatie Permission: Assign Roles via `model_has_roles`
 
 ```bash
 for ROLE in subscriber editor moderator admin super_admin; do
@@ -80,28 +104,21 @@ for ROLE in subscriber editor moderator admin super_admin; do
 done
 ```
 
-### Step 4 — Login Each Role Account & Collect Credentials
+### Step 5 — Login Each Role Account & Collect Credentials
 
 For each created account, log in and extract the credential (cookie or token). Use the same method determined by S-038a (auth type detection).
 
-### Step 5 — Save Extended Credential Output
+### Step 6 — Save Extended Credential Output
 
 Write per-role credentials into the `roles` section of `credentials.json`.
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Database seeds | `$TARGET_PATH/database/seeders/`, `$TARGET_PATH/database/seeds/` | Optional | Role definitions in seed classes |
-| Migrations | `$TARGET_PATH/database/migrations/` | Optional | Role enum definitions, roles table schema |
-| Database | Docker `db` container → `roles`, `permissions`, `model_has_roles` | ✅ | Role names, permission mappings |
-| Docker env | Running containers (`php`, `db`) | ✅ | User creation + login execution |
+---
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Credentials | `$WORK_DIR/credentials.json` → `roles` section | Per-role tokens with permission lists |
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `roles` section | Per-role tokens with permission lists |
 
 Example output fragment:
 ```json
@@ -145,6 +162,30 @@ When dispatching tasks, Trace-Dispatcher SHOULD specify the list of roles to tes
 - **Admin endpoints** → Test with `editor` / `subscriber` credentials for vertical privilege escalation
 - **User endpoints** → Test with other same-level user credentials for horizontal privilege escalation
 - **Public endpoints** → Test with `anonymous` to confirm no authentication is required
+
+---
+
+## Examples
+
+### ✅ GOOD — All roles extracted with accounts and permissions mapped
+
+| Role Name | Source (seed/migration/table) | Permissions | Account Created |
+|-----------|-------------------------------|-------------|-----------------|
+| `subscriber` | `roles` table, id=1 | `read` | ✅ `subscriber@audit.test` |
+| `editor` | `roles` table, id=2 | `read, write, upload` | ✅ `editor@audit.test` |
+| `moderator` | `roles` table, id=3 | `read, write, delete_others` | ✅ `moderator@audit.test` |
+| `admin` | `roles` table, id=4 + `RoleSeeder.php` | `*` | ✅ `admin@audit.test` |
+| `super_admin` | migration enum in `2023_01_01_create_users_table.php` | `*` | ✅ `super_admin@audit.test` |
+
+### ❌ BAD — Only admin role discovered, no account creation
+
+| Role Name | Source (seed/migration/table) | Permissions | Account Created |
+|-----------|-------------------------------|-------------|-----------------|
+| `admin` | (assumed) | (unknown) | ❌ |
+
+> Only one role found — missed granular roles. No accounts created. Vertical privilege escalation testing impossible.
+
+---
 
 ## Error Handling
 

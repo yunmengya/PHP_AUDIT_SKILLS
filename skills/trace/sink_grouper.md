@@ -1,6 +1,10 @@
-> **Skill ID**: S-036c | **Phase**: 3 | **Parent**: S-036 (Trace-Dispatcher)
-> **Input**: Trimmed task list
-> **Output**: Sink-type-grouped batches for efficient dispatch
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-036c |
+| Phase | 3 |
+| Responsibility | Group trimmed route list by sink type for efficient batch dispatch |
 
 # Sink Grouper
 
@@ -11,12 +15,24 @@ vulnerability category are batched together. This enables downstream Phase 4
 specialized auditors to process related traces in bulk and improves cache
 locality during analysis.
 
-## Procedure
+## Input Contract
 
-### 1. Identify Sink Types
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Trimmed task list | Resource Downsampler S-036b (in-memory) | Yes | `sink_function`, `route_id`, `priority`, `source_count` |
 
-Read the `sink_function` field from each task entry and map it to a canonical
-sink category:
+## Fill-in Procedure
+
+### Step 1 — Identify Sink Types
+
+Read the `sink_function` field from each task entry and map it to a canonical sink category:
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `sink_function` | {target function name from task entry} |
+| `sink_category` | {RCE / SQLi / File / SSRF / XXE / Deserialization / XSS / Other} |
+
+Mapping reference:
 
 | Sink Category | Example Sink Functions |
 |---------------|----------------------|
@@ -29,7 +45,12 @@ sink category:
 | XSS | `echo`, `print`, `printf` (when outputting user input without encoding) |
 | Other | Any sink not matching the above categories |
 
-### 2. Build Groups
+### Step 2 — Build Groups
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `group_key` | {sink_category name} |
+| `group_members` | {list of task entries matching this category} |
 
 Create one group per sink category present in the trimmed list:
 
@@ -41,32 +62,71 @@ groups = {
 }
 ```
 
-### 3. Ordering Within Groups
+### Step 3 — Ordering Within Groups
 
-Within each group, maintain the priority-then-source-count ordering established
-by S-036a.
+| Field | Fill-in Value |
+|-------|---------------|
+| `intra_group_sort` | {priority ascending, then source_count descending} |
 
-### 4. Group-Level Batch Sizing
+Within each group, maintain the priority-then-source-count ordering established by S-036a.
 
-Split large groups into batches of 5–10 tasks for dispatch to individual
-Trace-Workers. Smaller groups (≤ 5) become a single batch.
+### Step 4 — Group-Level Batch Sizing
 
-### 5. Emit Grouped Batches
+| Field | Fill-in Value |
+|-------|---------------|
+| `batch_size` | {5–10 tasks per batch} |
+| `small_group_threshold` | {≤ 5 — becomes a single batch} |
 
-Pass the grouped and batched task list to the Task Packager (S-036e) and
-Concurrency Tuner (S-036d).
+Split large groups into batches of 5–10 tasks for dispatch to individual Trace-Workers. Smaller groups (≤ 5) become a single batch.
 
-## Input Contract
+### Step 5 — Emit Grouped Batches
 
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Resource Downsampler (S-036b) | (in-memory) | Yes | `sink_function`, `route_id`, `priority`, `source_count` |
+| Field | Fill-in Value |
+|-------|---------------|
+| `output_format` | {dict of sink_category → list of batches} |
+| `downstream_consumers` | {Task Packager S-036e, Concurrency Tuner S-036d} |
+
+Pass the grouped and batched task list to the Task Packager (S-036e) and Concurrency Tuner (S-036d).
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
+| Output File | Path | Description |
+|-------------|------|-------------|
 | Sink-grouped batches | (in-memory / piped to S-036d, S-036e) | Dict of `{sink_category: [[batch1], [batch2], ...]}` |
+
+## Examples
+
+### ✅ GOOD — Properly grouped and batched
+
+```json
+{
+  "RCE": [
+    [
+      { "route_id": "route_003", "sink_function": "exec", "priority": "P0", "source_count": 5 },
+      { "route_id": "route_017", "sink_function": "system", "priority": "P0", "source_count": 3 }
+    ]
+  ],
+  "SQLi": [
+    [
+      { "route_id": "route_001", "sink_function": "DB::raw", "priority": "P0", "source_count": 6 },
+      { "route_id": "route_005", "sink_function": "mysqli_query", "priority": "P1", "source_count": 4 }
+    ]
+  ]
+}
+```
+
+Grouped by category, ordered within groups, batched ≤ 10 per batch.
+
+### ❌ BAD — No grouping, missing category
+
+```json
+[
+  { "route_id": "route_003", "sink_function": "exec" },
+  { "route_id": "route_001", "sink_function": "DB::raw" }
+]
+```
+
+Problems: Flat list instead of grouped dict, no sink_category assignment, missing `priority` and `source_count`.
 
 ## Error Handling
 

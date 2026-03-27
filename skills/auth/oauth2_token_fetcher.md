@@ -1,14 +1,28 @@
-> **Skill ID**: S-038e | **Phase**: 3 | **Parent**: S-038 (auth_simulator)
-> **Input**: OAuth configuration, database (oauth_clients table), existing user credentials
-> **Output**: OAuth2 access tokens with various scopes
-
 # OAuth2 Token Acquisition
 
-## Purpose
+## Identity
 
-When the target application uses OAuth2 (e.g., Laravel Passport or Sanctum), obtain access tokens through supported grant types. Also extract tokens with different scopes to enable scope-bypass testing in later phases.
+| Field | Value |
+|-------|-------|
+| **Skill ID** | S-038e |
+| **Phase** | 3 — Authentication Simulation |
+| **Parent** | S-038 (auth_simulator) |
+| **Responsibility** | When the target application uses OAuth2 (e.g., Laravel Passport or Sanctum), obtain access tokens through supported grant types. Extract tokens with different scopes to enable scope-bypass testing in later phases. |
 
-## Procedure
+---
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| OAuth config | `$TARGET_PATH/config/auth.php`, `AuthServiceProvider.php` | ✅ | Guard definitions, Passport routes |
+| Database | Docker `db` → `oauth_clients`, `personal_access_tokens` | ✅ | Client ID, client secret, token hashes |
+| User credentials | From S-038b or S-038c | Optional | Username, password for password grant |
+| Docker env | Running containers (`php`, `nginx`, `db`) | ✅ | Curl + DB query execution |
+
+---
+
+## Fill-in Procedure
 
 ### Step 1 — Detect OAuth2 Provider
 
@@ -17,7 +31,17 @@ Identify which OAuth2 library is in use:
 - **Laravel Sanctum**: `sanctum` middleware, `HasApiTokens` trait
 - **Custom OAuth2**: `league/oauth2-server` or custom implementation
 
-### Step 2 — Password Grant
+### Step 2 — Fill in Token Acquisition Parameters
+
+**Fill in the grant type details table — one row per grant type attempted:**
+
+| Grant Type | Endpoint | Client ID | Client Secret | Scope |
+|------------|----------|-----------|---------------|-------|
+| `password` | `___` (e.g. `http://nginx:80/oauth/token`) | `___` | `___` | `___` (e.g. `*`) |
+| `client_credentials` | `___` (e.g. `http://nginx:80/oauth/token`) | `___` | `___` | `___` (e.g. `*`) |
+| `personal_access_token` | (direct DB insert) | — | — | `___` (e.g. `["*"]`) |
+
+### Step 3 — Password Grant
 
 Requires a valid user account (from S-038b or S-038c):
 
@@ -26,7 +50,7 @@ docker exec php curl -X POST http://nginx:80/oauth/token \
   -d "grant_type=password&client_id=1&client_secret=xxx&username=audit@test.com&password=AuditPass123!&scope=*"
 ```
 
-### Step 3 — Client Credentials Grant
+### Step 4 — Client Credentials Grant
 
 Retrieve client credentials from the database:
 
@@ -38,7 +62,7 @@ docker exec php curl -X POST http://nginx:80/oauth/token \
   -d "grant_type=client_credentials&client_id=$ID&client_secret=$SECRET&scope=*"
 ```
 
-### Step 4 — Personal Access Token (Laravel Sanctum)
+### Step 5 — Personal Access Token (Laravel Sanctum)
 
 Directly insert a token into the database:
 
@@ -48,7 +72,7 @@ docker exec db mysql -e "INSERT INTO personal_access_tokens (tokenable_type, tok
 
 For Sanctum, the plain-text token value must be hashed with SHA-256 before insertion. The plain-text version is used in the `Authorization: Bearer` header.
 
-### Step 5 — Extract Tokens with Different Scopes
+### Step 6 — Extract Tokens with Different Scopes
 
 Request tokens with varying scope sets to test for scope bypass:
 
@@ -58,24 +82,17 @@ Request tokens with varying scope sets to test for scope bypass:
 | `full_access` | `*` | Full permission token |
 | `write_only` | `write` | Write-only for escalation testing |
 
-### Step 6 — Save Tokens to Credentials
+### Step 7 — Save Tokens to Credentials
 
 Write all tokens into the `oauth_tokens` section of `credentials.json`.
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| OAuth config | `$TARGET_PATH/config/auth.php`, `$TARGET_PATH/app/Providers/AuthServiceProvider.php` | ✅ | Guard definitions, Passport routes |
-| Database | Docker `db` container → `oauth_clients`, `personal_access_tokens` | ✅ | Client ID, client secret, token hashes |
-| User credentials | From S-038b or S-038c | Optional | Username, password for password grant |
-| Docker env | Running containers (`php`, `nginx`, `db`) | ✅ | Curl + DB query execution |
+---
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Credentials | `$WORK_DIR/credentials.json` → `oauth_tokens` section | Tokens keyed by scope label |
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `oauth_tokens` section | Tokens keyed by scope label |
 
 Example output fragment:
 ```json
@@ -87,6 +104,28 @@ Example output fragment:
   }
 }
 ```
+
+---
+
+## Examples
+
+### ✅ GOOD — Complete grant type table with all fields filled
+
+| Grant Type | Endpoint | Client ID | Client Secret | Scope |
+|------------|----------|-----------|---------------|-------|
+| `password` | `http://nginx:80/oauth/token` | `2` | `abc123secret` | `*` |
+| `client_credentials` | `http://nginx:80/oauth/token` | `1` | `def456secret` | `read write` |
+| `personal_access_token` | (DB insert into `personal_access_tokens`) | — | — | `["*"]` |
+
+### ❌ BAD — Missing client credentials or untested scopes
+
+| Grant Type | Endpoint | Client ID | Client Secret | Scope |
+|------------|----------|-----------|---------------|-------|
+| `password` | `http://nginx:80/oauth/token` | `1` | (unknown) | `*` |
+
+> Cannot issue token without client_secret. Must query `oauth_clients` table first. No scope variation tested.
+
+---
 
 ## Error Handling
 

@@ -1,14 +1,28 @@
-> **Skill ID**: S-038d | **Phase**: 3 | **Parent**: S-038 (auth_simulator)
-> **Input**: environment files (.env), source code (JWT configuration)
-> **Output**: self-signed JWT tokens at multiple privilege levels
-
 # JWT / Session Signing Reverse-Engineer
 
-## Purpose
+## Identity
 
-When the target application uses JWT-based authentication, extract the signing secret from configuration files or source code and self-sign tokens at various privilege levels (user, admin, etc.) without needing to go through the login flow.
+| Field | Value |
+|-------|-------|
+| **Skill ID** | S-038d |
+| **Phase** | 3 — Authentication Simulation |
+| **Parent** | S-038 (auth_simulator) |
+| **Responsibility** | When the target application uses JWT-based authentication, extract the signing secret from configuration files or source code and self-sign tokens at various privilege levels (user, admin, etc.) without needing to go through the login flow. |
 
-## Procedure
+---
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Environment file | `$TARGET_PATH/.env` | ✅ | `JWT_SECRET`, `APP_KEY` |
+| JWT config | `$TARGET_PATH/config/jwt.php` | Optional | Algorithm, TTL, required claims |
+| Source code | `$TARGET_PATH/app/` | ✅ | JWT encoding/decoding logic, payload structure |
+| Docker env | Running `php` container | ✅ | Token generation execution context |
+
+---
+
+## Fill-in Procedure
 
 ### Step 1 — Search for Secret Keys
 
@@ -32,14 +46,28 @@ grep -rn "secret\|key" $TARGET_PATH/config/jwt.php $TARGET_PATH/config/app.php -
 grep -rn "JWT::encode\|jwt_encode\|sign(" $TARGET_PATH/app/ --include="*.php"
 ```
 
-### Step 2 — Identify Token Structure
+### Step 2 — Fill in JWT Configuration Parameters
+
+**Fill in the JWT signing details table:**
+
+| Field | Value |
+|-------|-------|
+| **algorithm** | `___` (e.g. `HS256`, `RS256`, `HS384`) |
+| **secret_source** | `___` (e.g. `.env JWT_SECRET`, `config/jwt.php`, hard-coded) |
+| **secret_value** | `___` (the actual secret key or path to private key file) |
+| **header** | `___` (e.g. `{"alg":"HS256","typ":"JWT"}`) |
+| **payload_claims** | `___` (e.g. `sub, role, iss, aud, exp, iat`) |
+| **expiration** | `___` (e.g. `86400` seconds / `1 day`) |
+| **library** | `___` (e.g. `firebase/php-jwt`, `tymon/jwt-auth`, `lcobucci/jwt`) |
+
+### Step 3 — Identify Token Structure
 
 Examine existing JWT usage in the codebase to determine:
 - Required payload claims (`sub`, `role`, `iss`, `aud`, `exp`, etc.)
 - Signing algorithm (`HS256`, `RS256`, etc.)
 - Token expiry conventions
 
-### Step 3 — Self-Sign Tokens Inside the Container
+### Step 4 — Self-Sign Tokens Inside the Container
 
 ```bash
 docker exec php php -r "
@@ -50,7 +78,7 @@ docker exec php php -r "
 "
 ```
 
-### Step 4 — Issue Tokens at Multiple Privilege Levels
+### Step 5 — Issue Tokens at Multiple Privilege Levels
 
 Generate separate tokens for each target role:
 
@@ -63,24 +91,17 @@ Generate separate tokens for each target role:
 
 Ensure `sub` values reference existing user IDs when the application validates them against the database.
 
-### Step 5 — Save Tokens to Credentials
+### Step 6 — Save Tokens to Credentials
 
 Write each token into the appropriate section of `credentials.json`.
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Environment file | `$TARGET_PATH/.env` | ✅ | `JWT_SECRET`, `APP_KEY` |
-| JWT config | `$TARGET_PATH/config/jwt.php` | Optional | Algorithm, TTL, required claims |
-| Source code | `$TARGET_PATH/app/` | ✅ | JWT encoding/decoding logic, payload structure |
-| Docker env | Running `php` container | ✅ | Token generation execution context |
+---
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Credentials | `$WORK_DIR/credentials.json` → `authenticated` + `admin` sections | Self-signed JWT tokens per privilege level |
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Credentials file | `$WORK_DIR/输出结果/credentials.json` → `authenticated` + `admin` sections | Self-signed JWT tokens per privilege level |
 
 Example output fragment:
 ```json
@@ -99,6 +120,38 @@ Example output fragment:
   }
 }
 ```
+
+---
+
+## Examples
+
+### ✅ GOOD — Complete JWT config with all fields identified
+
+| Field | Value |
+|-------|-------|
+| **algorithm** | `HS256` |
+| **secret_source** | `.env JWT_SECRET` |
+| **secret_value** | `base64:abc123def456ghi789jkl012mno345pqr678stu901=` |
+| **header** | `{"alg":"HS256","typ":"JWT"}` |
+| **payload_claims** | `sub, role, iss, aud, exp, iat` |
+| **expiration** | `86400` (1 day) |
+| **library** | `tymon/jwt-auth` |
+
+### ❌ BAD — Incomplete configuration
+
+| Field | Value |
+|-------|-------|
+| **algorithm** | (not checked) |
+| **secret_source** | `.env` |
+| **secret_value** | (not extracted) |
+| **header** | (default assumed) |
+| **payload_claims** | `sub` only |
+| **expiration** | (not set) |
+| **library** | (unknown) |
+
+> Token will be rejected: missing required claims, wrong algorithm, or incorrect secret. Always verify ALL fields before signing.
+
+---
 
 ## Error Handling
 

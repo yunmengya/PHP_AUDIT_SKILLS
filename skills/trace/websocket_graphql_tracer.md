@@ -1,6 +1,10 @@
-> **Skill ID**: S-037f | **Phase**: 3 | **Parent**: S-037 (Trace-Worker)
-> **Input**: WebSocket or GraphQL route entry
-> **Output**: Handler/resolver call-chain trace
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-037f |
+| Phase | 3 |
+| Responsibility | Construct protocol-specific requests and trace WebSocket/GraphQL handlers |
 
 # WebSocket & GraphQL Tracer
 
@@ -11,9 +15,24 @@ resolvers in the same way as REST endpoints. This sub-skill constructs the
 appropriate protocol-specific requests and traces the resulting handler or
 resolver call chains.
 
-## Procedure
+## Input Contract
 
-### 1. WebSocket Request Construction
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Task package | From S-036e (in-memory) | Yes | `route_url`, `method`, `route_type` (ws/graphql) |
+| Credentials | Request Constructor S-037a (in-memory) | Yes | Auth headers/cookies |
+
+## Fill-in Procedure
+
+### Step 1 — WebSocket Request Construction
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `protocol` | {ws — WebSocket} |
+| `ws_url` | {ws://nginx:80 + route path} |
+| `event_name` | {test — default event identifier} |
+| `payload_data` | {TRACE_MARKER — trace identification string} |
+| `ws_library` | {WebSocket\Client or raw socket PHP} |
 
 Construct and send a WebSocket message via a PHP script inside the container:
 
@@ -27,9 +46,13 @@ docker exec php php -r "
 
 #### Tracing the Handler
 
+| Field | Fill-in Value |
+|-------|---------------|
+| `handler_tracing_method` | {Xdebug / auto_prepend_file / tick tracer} |
+| `handler_process` | {WebSocket handler — may be separate worker} |
+
 1. Ensure Xdebug is configured to trace the WebSocket handler process
-   (may require `auto_prepend_file` or a tick tracer if the handler runs in a
-   separate worker).
+   (may require `auto_prepend_file` or a tick tracer if the handler runs in a separate worker).
 2. Collect the trace file from the handler process.
 3. Filter using the same rules as S-037c.
 
@@ -41,7 +64,16 @@ docker exec php php -r "
 | Message body used in SQL query | SQLi |
 | Message body written to file | File write |
 
-### 2. GraphQL Request Construction
+### Step 2 — GraphQL Request Construction
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `protocol` | {graphql — GraphQL over HTTP POST} |
+| `graphql_endpoint` | {http://nginx:80/graphql} |
+| `operation_type` | {query / mutation} |
+| `query_body` | {GraphQL query or mutation string} |
+| `content_type` | {application/json} |
+| `cookie_header` | {XDEBUG_TRIGGER=1; + session cookie} |
 
 Send a GraphQL query or mutation via `curl`:
 
@@ -61,9 +93,13 @@ docker exec php curl -s -X POST http://nginx:80/graphql \
 
 #### Tracing the Resolver
 
+| Field | Fill-in Value |
+|-------|---------------|
+| `resolver_focus` | {mutation resolvers — higher sink probability} |
+| `nested_resolver_depth` | {trace full resolver chain for nested fields} |
+
 1. The Xdebug trace captures the resolver function called for each field.
-2. Pay special attention to **Mutation resolvers** — they are more likely to
-   contain sinks (writes, deletes, external calls).
+2. Pay special attention to **Mutation resolvers** — they are more likely to contain sinks (writes, deletes, external calls).
 3. For nested resolvers, trace the full resolver chain.
 
 #### Common GraphQL Sink Patterns
@@ -74,7 +110,14 @@ docker exec php curl -s -X POST http://nginx:80/graphql \
 | Resolver constructs shell command from args | RCE |
 | File upload mutation with unvalidated type | File upload |
 
-### 3. Construct Protocol-Specific Test Values
+### Step 3 — Construct Protocol-Specific Test Values
+
+| Field | Fill-in Value |
+|-------|---------------|
+| `ws_event` | {test} |
+| `ws_data` | {TRACE_MARKER} |
+| `graphql_query_value` | {introspection or simple field query} |
+| `graphql_mutation_value` | {minimal mutation with benign test values} |
 
 | Protocol | Field | Test Value |
 |----------|-------|------------|
@@ -83,18 +126,44 @@ docker exec php curl -s -X POST http://nginx:80/graphql \
 | GraphQL Query | `query` | Introspection or simple field query |
 | GraphQL Mutation | `query` | Minimal mutation with benign test values |
 
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Task package (S-036e) | (in-memory) | Yes | `route_url`, `method`, `route_type` (ws/graphql) |
-| Credentials (S-037a) | (in-memory) | Yes | Auth headers/cookies |
-
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
+| Output File | Path | Description |
+|-------------|------|-------------|
 | Handler/resolver trace | (in-memory / piped to S-037c) | Filtered call chain from the handler or resolver |
+
+## Examples
+
+### ✅ GOOD — Complete WebSocket + GraphQL trace
+
+```json
+{
+  "route_type": "graphql",
+  "operation_type": "mutation",
+  "graphql_endpoint": "http://nginx:80/graphql",
+  "query": "mutation { updateUser(id: 1, name: \"test\") { id } }",
+  "trace": {
+    "call_chain": [
+      "GraphQL\\Server::executeRequest",
+      "App\\GraphQL\\Mutations\\UpdateUser::resolve",
+      "Illuminate\\Support\\Facades\\DB::raw"
+    ],
+    "sink_reached": true
+  }
+}
+```
+
+Protocol specified, operation type documented, full call chain captured.
+
+### ❌ BAD — Missing protocol context
+
+```json
+{
+  "call_chain": ["resolve"]
+}
+```
+
+Problems: No `route_type`, no `operation_type`, no `graphql_endpoint`, call chain too short with no context.
 
 ## Error Handling
 
