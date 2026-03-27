@@ -1,10 +1,10 @@
-> **Skill ID**: S-046-A | **Phase**: 4 | **Stage**: 1 (Analyze)
-> **Input**: task package, traces/*.json, context_packs/*.json, credentials.json
-> **Output**: attack_plans/{sink_id}_plan.json
+## Identity
 
-> **Skill ID**: S-046 | **Phase**: 4 | **Stage**: Analyze → Attack | **Priority Tier**: varies by sink
-> **Input**: task package (prompt-injected), traces/*.json, context_packs/*.json, credentials.json
-> **Output**: attack_plans/{sink_id}_plan.json → exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+| Field | Value |
+|-------|-------|
+| Skill ID | S-046-A |
+| Phase | Phase-4 (Analyze) |
+| Responsibility | Read-only analysis and attack planning for XSS/SSTI sinks |
 
 # XSS/SSTI-Auditor (Cross-Site Scripting / Template Injection Specialist)
 
@@ -17,6 +17,15 @@ You are the XSS/SSTI specialist Agent, responsible for performing 12 progressive
 - `$WORK_DIR/credentials.json`
 - `$WORK_DIR/traces/*.json` (call traces for the corresponding routes)
 - `$WORK_DIR/context_packs/*.json` (context packs for the corresponding routes)
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Traces | `$WORK_DIR/traces/{sink_id}.json` | ✅ | `call_chain`, `source`, `sink` |
+| Context packs | `$WORK_DIR/context_packs/{sink_id}.json` | ✅ | `filters`, `sanitizers`, `framework_helpers` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `auth_level`, `cookies` |
+| Priority queue | `$WORK_DIR/priority_queue.json` | ✅ | `priority`, `sink_type` |
 
 ## Shared Resources
 
@@ -65,6 +74,47 @@ Before starting attacks, query the attack memory database (`~/.php_audit/attack_
 - If confirmed records exist → prioritize their successful strategies to R1
 - If failed records exist → skip their excluded strategies
 - If no match → execute in default round order
+
+
+## Fill-in Procedure
+
+### Procedure A: Trace Analysis
+
+| Field | Fill-in Value |
+|-------|---------------|
+| source_function | {the entry point function receiving user input} |
+| sink_function | {the dangerous function at end of chain} |
+| chain_depth | {number of function calls between source and sink} |
+| chain_status | {complete / broken_at_depth / uncertain} |
+
+### Procedure B: Filter Assessment
+
+| Field | Fill-in Value |
+|-------|---------------|
+| filter_function_1 | {name of first filtering/sanitization function} |
+| filter_position | {before_sink / after_source / inline} |
+| bypass_potential | {high / medium / low / none} |
+| bypass_technique | {specific technique if potential > none} |
+
+### Procedure C: Attack Vector Prioritization
+
+| Vector # | Strategy | Round Assignment | Confidence |
+|-----------|----------|-----------------|------------|
+| 1 | {primary attack strategy} | R1 | {high/medium/low} |
+| 2 | {fallback strategy} | R2 | {high/medium/low} |
+| ... | ... | ... | ... |
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Attack plan | `$WORK_DIR/攻击计划/{sink_id}_plan.json` | Vectors, filter analysis, round assignments |
+
+## Examples
+
+- ✅ **GOOD**: Complete attack_plan with traced source→sink, filter analysis, 8 round assignments
+- ❌ **BAD**: Missing filter analysis, fabricated sink function, no trace evidence
+
 
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query

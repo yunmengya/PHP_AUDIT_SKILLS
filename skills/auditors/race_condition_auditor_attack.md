@@ -1,8 +1,30 @@
-> **Skill ID**: S-052-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-052-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 8-round progressive attack against race condition (TOCTOU) sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 8-Round Attack
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - File Upload Race
 
@@ -30,6 +52,17 @@ Steps:
 
 **Success criteria:** The uploaded PHP file was successfully executed before deletion.
 
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R2 - Double Spend / Balance Overdraft
 
 Objective: Bypass balance/inventory checks via concurrent requests.
@@ -51,6 +84,17 @@ Steps:
 
 **Success criteria:** Balance becomes negative, or the number of successful orders exceeds inventory.
 
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R3 - One-Time Token Replay
 
 Objective: Concurrently use the same one-time token.
@@ -70,6 +114,17 @@ Steps:
 
 **Success criteria:** The same one-time token was successfully used multiple times.
 
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R4 - Coupon / Points Double Redemption
 
 Objective: Concurrently redeem the same coupon or points.
@@ -86,6 +141,17 @@ Variants:
 - Concurrent bypass of one-time-use invitation codes
 
 **Success criteria:** Coupon applied multiple times, or points consumed multiple times.
+
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R5 - Rate Limit Bypass
 
@@ -111,6 +177,17 @@ Implementation analysis:
 - Database `UPDATE attempts SET count=count+1 WHERE ...` without transaction lock
 
 **Success criteria:** The number of successful requests exceeds the rate limit threshold.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Database Transaction Race
 
@@ -143,6 +220,17 @@ wait
 
 **Success criteria:** Data inconsistency (total amount not conserved, phantom records appear).
 
+
+#### R7 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R7 - Session Race
 
 Objective: Concurrent Session modifications causing data inconsistency.
@@ -165,6 +253,17 @@ Variants:
 - Concurrent user preference modifications
 
 **Success criteria:** Session data loss or inconsistency.
+
+
+#### R8 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R8 - Combined Race Chain
 
@@ -419,6 +518,52 @@ Detection function list:
 - Race condition testing is inherently non-deterministic; each scenario MUST be repeated at least 3 times
 - Confirming a race requires a success rate > 20% (not sporadic); otherwise mark as suspected
 - Race condition testing MUST NOT be executed against production environments
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "RACE-001",
+  "vuln_type": "RaceCondition",
+  "sub_type": "double_spend",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "confirmed_round": 2,
+  "endpoint": "POST /api/purchase",
+  "concurrent_requests": 30,
+  "success_count": 5,
+  "payload": "30 concurrent POST /api/purchase with item_id=1, quantity=1",
+  "evidence": "EVID_RACE_CRITICAL_SECTION: OrderController.php:87 — $balance=getBalance(); if($balance>=$price){deduct($price);}; EVID_RACE_SHARED_RESOURCE: user_balance column in accounts table; EVID_RACE_WINDOW_ANALYSIS: 3-statement gap between SELECT and UPDATE without FOR UPDATE; EVID_RACE_STATISTICAL_RESULT: 5/30 requests succeeded, balance went from 100 to -400",
+  "confidence": "confirmed",
+  "impact": "Financial loss — balance overdraft by 500 units",
+  "prerequisite_conditions": { "auth_requirement": "authenticated", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 2, "impact": 3, "complexity": 2, "score": 2.30, "cvss": 7.7, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "RACE-001",
+  "vuln_type": "RaceCondition",
+  "final_verdict": "confirmed",
+  "evidence": "The code does not use locks",
+  "severity": { "level": "H" }
+}
+// ❌ No sub_type, no concurrent_requests/success_count
+// ❌ evidence is static analysis only — no actual race execution proof
+// ❌ Missing EVID_RACE_STATISTICAL_RESULT (required for confirmed)
+// ❌ severity missing numeric scores and reasons
+```
 
 
 ---

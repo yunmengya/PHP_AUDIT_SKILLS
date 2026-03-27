@@ -1,8 +1,30 @@
-> **Skill ID**: S-053-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-053-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 8-round progressive attack against cryptographic weakness sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 8 Attack Rounds
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - Password Hashing Audit
 
@@ -30,6 +52,17 @@ Dynamic Testing:
 - Locate `password_hash()` cost/time_cost/memory_cost parameters
 
 **Evidence:** Password hash stored in MD5/SHA1 format in the database.
+
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R2 - Random Number Predictability
 
@@ -59,6 +92,17 @@ Dynamic Testing:
 
 **Evidence:** Predicted Token matches the actually generated Token.
 
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R3 - Encryption Algorithm Audit
 
 Static Analysis:
@@ -85,6 +129,17 @@ Checklist:
 - DES/3DES/RC4 → High (broken/weak algorithms)
 
 **Evidence:** ECB mode or hardcoded keys found in source code.
+
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R4 - JWT Security Audit
 
@@ -122,6 +177,17 @@ Dynamic Testing:
 
 **Evidence:** JWT key brute-forced, or alg:none Token accepted.
 
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R5 - Session / CSRF Token Security
 
 Analysis:
@@ -139,6 +205,17 @@ Attack:
 - If based on `mt_rand()`: use php_mt_seed to reverse-engineer
 
 **Evidence:** Successfully predicted CSRF Token or Session ID.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Signature & Integrity Verification
 
@@ -164,6 +241,17 @@ Attack:
 
 **Evidence:** Measurable timing differences in timing attack, or signature bypassed.
 
+
+#### R7 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R7 - Key Management Audit
 
 Analysis:
@@ -185,6 +273,17 @@ Analysis:
    - HMAC key < 32 bytes → Medium
 
 **Evidence:** Valid keys hardcoded in source code, or keys reused across environments.
+
+
+#### R8 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R8 - Combined Attack Chains
 
@@ -351,3 +450,47 @@ After completing the exploit JSON, perform item-by-item self-check per `shared/a
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "CRYPTO-001",
+  "vuln_type": "Cryptography",
+  "sub_type": "weak_hash",
+  "final_verdict": "confirmed",
+  "rounds_executed": 2,
+  "confirmed_round": 1,
+  "location": "app/Models/User.php:45",
+  "payload": "Registration with password 123456, database stores md5 hash",
+  "evidence": "EVID_CRYPTO_ALGORITHM_USAGE: User.php:45 — $this->password = md5($input); EVID_CRYPTO_KEY_MANAGEMENT: No salt used; EVID_CRYPTO_SECURITY_CONTEXT: Password storage for user authentication; EVID_CRYPTO_EXPLOIT_PROOF: DB field value e10adc3949ba59abbe56e057f20f883e matches md5('123456')",
+  "confidence": "confirmed",
+  "impact": "Password brute-forceable via rainbow tables",
+  "prerequisite_conditions": { "auth_requirement": "anonymous", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 3, "impact": 2, "complexity": 3, "score": 2.55, "cvss": 8.5, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "CRYPTO-001",
+  "vuln_type": "Cryptography",
+  "final_verdict": "confirmed",
+  "evidence": "Uses MD5 somewhere",
+  "severity": { "level": "H" }
+}
+// ❌ No sub_type, location, or payload
+// ❌ evidence has no EVID references, no file:line, no DB proof
+// ❌ "somewhere" — must specify exact code location
+// ❌ severity missing scores and reasons
+```

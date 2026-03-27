@@ -1,8 +1,30 @@
-> **Skill ID**: S-051-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-051-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 8-round progressive attack against NoSQL injection (MongoDB/Redis) sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 8-Round Attack
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - Operator Injection (Authentication Bypass)
 
@@ -31,6 +53,17 @@ JSON body form:
 
 **Success criteria:** Authentication passed without knowing the password.
 
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R2 - $where JavaScript Injection
 
 Objective: Execute JavaScript code via the `$where` operator.
@@ -55,6 +88,17 @@ done
 
 **Success criteria:** JavaScript code execution or data leakage.
 
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R3 - $regex ReDoS and Data Extraction
 
 Objective: Leverage the `$regex` operator for data extraction or ReDoS.
@@ -76,6 +120,17 @@ Payload:
   ```
 
 **Success criteria:** Character-by-character extraction of username or password, or service delay caused by ReDoS.
+
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R4 - Aggregation Pipeline Injection
 
@@ -103,6 +158,17 @@ Payload:
 
 **Success criteria:** Unauthorized collection or field access via aggregation pipeline.
 
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R5 - JSON Parameter Pollution
 
 Objective: Exploit PHP's `json_decode()` and array merge behavior.
@@ -126,6 +192,17 @@ Payload:
 - PHP array to BSON type conversion differences
 
 **Success criteria:** Injected MongoDB operators are parsed and executed.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Redis Command Injection
 
@@ -151,6 +228,17 @@ Payload:
 
 **Success criteria:** Redis commands are executed (keys disappear after FLUSHALL, or a Webshell is written).
 
+
+#### R7 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R7 - ORM Layer Bypass (Laravel MongoDB)
 
 Objective: Bypass the jenssegers/laravel-mongodb ORM query builder.
@@ -175,6 +263,17 @@ Payload:
 - `limit=99999` → Bulk data exfiltration
 
 **Success criteria:** Unauthorized data access via operator injection through the ORM layer.
+
+
+#### R8 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R8 - Combined Attack Chains
 
@@ -341,6 +440,50 @@ Read the shared findings store before starting the attack phase to leverage inte
 - MongoDB testing MUST NOT use `$out` to write to production collections
 - Enumeration limit: $regex blind injection extracts at most 100 characters
 - Do NOT execute FLUSHALL/FLUSHDB; describe only as PoC
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "NOSQL-001",
+  "vuln_type": "NoSQLi",
+  "sub_type": "operator_injection",
+  "final_verdict": "confirmed",
+  "rounds_executed": 4,
+  "confirmed_round": 1,
+  "endpoint": "POST /api/login",
+  "payload": "{\"username\":{\"$ne\":\"\"},\"password\":{\"$ne\":\"\"}}",
+  "evidence": "EVID_NOSQL_QUERY_CONSTRUCTION: UserController.php:32 — $collection->findOne(['username'=>$_POST['username'],'password'=>$_POST['password']]); EVID_NOSQL_USER_INPUT_MAPPING: $_POST array directly used as query filter; EVID_NOSQL_OPERATOR_INJECTION: {$ne:''} injected via POST body; EVID_NOSQL_QUERY_SEMANTIC_DIFF: Normal returns null, injected returns {_id:'...', username:'admin', role:'admin'}",
+  "confidence": "confirmed",
+  "impact": "Authentication bypass — login as admin without password",
+  "prerequisite_conditions": { "auth_requirement": "anonymous", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 3, "impact": 3, "complexity": 3, "score": 3.0, "cvss": 10.0, "level": "C" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "NOSQL-001",
+  "vuln_type": "NoSQLi",
+  "final_verdict": "confirmed",
+  "evidence": "Might be vulnerable to NoSQL injection",
+  "severity": { "score": 3.0, "level": "C" }
+}
+// ❌ Missing sub_type, rounds_executed, endpoint, payload
+// ❌ evidence is vague — no EVID references, no concrete response data
+// ❌ severity missing reachability/impact/complexity and reasons
+// ❌ No prerequisite_conditions
+```
 
 
 ---

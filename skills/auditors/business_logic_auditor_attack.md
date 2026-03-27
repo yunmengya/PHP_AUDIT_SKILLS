@@ -1,8 +1,30 @@
-> **Skill ID**: S-055-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-055-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 8-round progressive attack against business logic flaw sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 8 Rounds of Attack
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - Price and Quantity Tampering
 
@@ -29,6 +51,17 @@ Attack steps:
 
 **Success Criteria:** Complete an order at below-normal price.
 
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R2 - Coupon/Discount Abuse
 
 Attack steps:
@@ -46,6 +79,17 @@ Attack steps:
 6. **Negative discount**: `discount=-100` → Price increase (may become revenue in refund scenarios)
 
 **Success Criteria:** Obtain discounts beyond intended limits or free merchandise.
+
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R3 - Payment Flow Bypass
 
@@ -71,6 +115,17 @@ Attack steps:
 
 **Success Criteria:** Obtain goods/services without paying or underpaying.
 
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R4 - Multi-Step Flow Step-Skipping
 
 Attack steps:
@@ -95,6 +150,17 @@ Implementation methods:
 
 **Success Criteria:** Critical business steps are bypassed.
 
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R5 - Negative and Boundary Value Attacks
 
 Attack steps:
@@ -115,6 +181,17 @@ Attack steps:
    - null/undefined values
 
 **Success Criteria:** Achieve financial anomaly or business rule bypass through boundary values.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Email/SMS Bombing
 
@@ -137,6 +214,17 @@ Analysis:
 - Whether limits are IP-based or account-based
 
 **Success Criteria:** Successfully send more than a reasonable number of emails/SMS to the target.
+
+
+#### R7 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R7 - State Machine Anomalies
 
@@ -164,6 +252,17 @@ grep -rn "status.*=\|setState\|updateStatus\|transition" \
 Analyze whether each state transition validates the preceding state.
 
 **Success Criteria:** Achieve an illegal state transition.
+
+
+#### R8 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R8 - Combined Business Logic Chains
 
@@ -298,6 +397,52 @@ After completing all rounds, write the final results to `$WORK_DIR/exploits/{sin
 - SMS/email bombing tests are limited to a maximum of 50 attempts; stop once a repeatable pattern is confirmed through observation
 - Create Docker snapshots before each attack round and roll back after
 - Business logic testing requires extracting business context; blind brute-force testing is PROHIBITED
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "BIZ-001",
+  "vuln_type": "BusinessLogic",
+  "sub_type": "price_tamper",
+  "final_verdict": "confirmed",
+  "rounds_executed": 2,
+  "confirmed_round": 1,
+  "endpoint": "POST /api/order",
+  "payload": "{\"item_id\":1,\"quantity\":1,\"price\":0.01}",
+  "expected_behavior": "Price read from database, client input ignored",
+  "actual_behavior": "Order created at 0.01, original price 99.99",
+  "evidence": "EVID_BIZ_FLOW_DESCRIPTION: User submits order → OrderController reads price from POST → creates order; EVID_BIZ_BYPASS_POINT: OrderController.php:23 $price=$request->input('price') — price sourced from client; EVID_BIZ_STATE_PERSISTENCE: Order #123 persisted with amount=0.01; EVID_BIZ_EXPLOIT_RESPONSE: HTTP 200 {status:success, order_id:123, total:0.01}",
+  "confidence": "confirmed",
+  "impact": "Financial loss — goods purchased at 0.01% of actual price",
+  "prerequisite_conditions": { "auth_requirement": "authenticated", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 2, "impact": 3, "complexity": 3, "score": 2.55, "cvss": 8.5, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "BIZ-001",
+  "vuln_type": "BusinessLogic",
+  "final_verdict": "suspected",
+  "evidence": "Price might be modifiable",
+  "severity": { "level": "H" }
+}
+// ❌ "might be" — no actual test performed
+// ❌ Missing expected_behavior vs actual_behavior comparison
+// ❌ No EVID references, no request/response proof
+// ❌ severity missing scores and reasons
+```
 
 
 ---

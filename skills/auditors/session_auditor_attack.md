@@ -1,8 +1,30 @@
-> **Skill ID**: S-058-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-058-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 6-round progressive attack against session/cookie security sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 6-Round Attack Strategy
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - Session Fixation Attack
 
@@ -58,6 +80,17 @@ Dynamic Verification:
    - CodeIgniter: Is `sess_regenerate()` called after login
 
 **Evidence:** The attacker's pre-set Session ID remains valid after the victim logs in, and the attacker can use that ID to access the victim's authenticated Session.
+
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R2 - Cookie Security Flag Audit
 
@@ -117,6 +150,17 @@ Dynamic Verification:
 
 **Evidence:** HTTP response header `Set-Cookie: PHPSESSID=xxx` is missing HttpOnly/Secure/SameSite attributes.
 
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R3 - Session ID Strength Analysis
 
 Static Analysis:
@@ -171,6 +215,17 @@ Dynamic Verification:
    - If based on user input or predictable values → Critical risk
 
 **Evidence:** Collected Session IDs exhibit predictable patterns, or `use_strict_mode = 0` allows arbitrary Session IDs to be accepted.
+
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R4 - Session Storage Security
 
@@ -239,6 +294,17 @@ Dynamic Verification:
      - Excessive permission data (permission bloat)
 
 **Evidence:** Session file permissions are `0644` (world-readable), or Redis Session storage has no password authentication.
+
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R5 - Session Destruction Integrity
 
@@ -317,6 +383,17 @@ Dynamic Verification:
    - Only `session_unset()` without `session_destroy()` → Session file persists
 
 **Evidence:** Old Session ID can still access authenticated pages after Logout, or Session file is not deleted.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Advanced Session Attacks
 
@@ -577,6 +654,50 @@ Read the shared findings database before starting the attack phase, leveraging t
 - Deserialization testing MUST use harmless payloads (e.g., `phpinfo()`); MUST NOT execute destructive operations
 - Session Upload Progress testing SHOULD only analyze feasibility; MUST NOT actually deploy Webshells
 - All Session IDs and Cookie values in evidence MUST be redacted in reports
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "SESS-001",
+  "vuln_type": "Session_Security",
+  "sub_type": "session_fixation",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "confirmed_round": 1,
+  "location": "app/Http/Controllers/AuthController.php:87",
+  "payload": "Cookie: PHPSESSID=attacker_fixed_id → victim logs in → attacker reuses same ID",
+  "evidence": "EVID_SESS_CONFIG_STATE: session.use_strict_mode=0, session.use_only_cookies=1; EVID_SESS_COOKIE_FLAGS: Set-Cookie: PHPSESSID=xxx; path=/ (missing HttpOnly, Secure, SameSite); EVID_SESS_LIFECYCLE_FLOW: session_start() at bootstrap → no session_regenerate_id() in AuthController::login(); EVID_SESS_EXPLOIT_RESPONSE: Pre-set PHPSESSID=attacker123, after login curl -b PHPSESSID=attacker123 /dashboard returns HTTP 200 with user data",
+  "confidence": "confirmed",
+  "impact": "Session hijacking — attacker pre-sets Session ID and gains victim authenticated session",
+  "prerequisite_conditions": { "auth_requirement": "anonymous", "exploitability_judgment": "conditionally_exploitable", "other_preconditions": ["Victim must visit attacker-controlled link"] },
+  "severity": { "reachability": 2, "impact": 3, "complexity": 1, "score": 2.10, "cvss": 7.0, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "SESS-001",
+  "vuln_type": "Session_Security",
+  "final_verdict": "confirmed",
+  "evidence": "session_regenerate_id() not found in code",
+  "severity": { "level": "H" }
+}
+// ❌ Absence of function is code review finding, not exploitation proof
+// ❌ No actual fixation test performed (pre-set ID → login → reuse)
+// ❌ Missing cookie flags analysis
+// ❌ severity missing scores and reasons
+```
 
 
 ---

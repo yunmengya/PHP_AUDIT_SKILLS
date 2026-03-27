@@ -1,8 +1,30 @@
-> **Skill ID**: S-057-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-057-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 6-round progressive attack against CSRF (Cross-Site Request Forgery) sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 6-Round Attack Strategy
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - CSRF Token Absence Detection
 
@@ -57,6 +79,17 @@ docker exec php curl -s -X POST \
 ```
 
 **Success Criteria:** Discover endpoints where state changes can be executed without a CSRF Token, or discover anti-pattern routes that perform state changes via GET.
+
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R2 - Token Validation Bypass
 
@@ -139,6 +172,17 @@ docker exec php curl -s -X POST \
 
 **Success Criteria:** Empty Token, missing Token, consumed Token, cross-session Token, or static Token is accepted by the server.
 
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R3 - SameSite Cookie Bypass
 
 Detect and bypass SameSite Cookie attribute CSRF protection:
@@ -201,6 +245,17 @@ docker exec php curl -s -D- "http://nginx:80/" | grep -i 'set-cookie.*domain'
 ```
 
 **Success Criteria:** Session Cookie's SameSite attribute configuration allows cross-site requests to carry Cookies, enabling attacker pages to automatically complete authenticated requests.
+
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R4 - JSON CSRF
 
@@ -269,6 +324,17 @@ docker exec php grep -rn 'json_decode.*file_get_contents.*php://input\|getConten
 ```
 
 **Success Criteria:** Successfully send requests to JSON API endpoints using HTML forms or `sendBeacon` that trigger state changes, without requiring CORS preflight or CSRF Token.
+
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R5 - Origin/Referer Check Bypass
 
@@ -361,6 +427,17 @@ docker exec php grep -rn 'HTTP_ORIGIN\|HTTP_REFERER\|Origin\|Referer' \
 ```
 
 **Success Criteria:** Successfully execute cross-site requests using missing, null, or forged Origin/Referer headers.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Advanced CSRF Chains
 
@@ -677,6 +754,50 @@ Read the shared findings database before starting the attack phase, leveraging:
 - Each confirmed finding MUST record the exact request/response pair
 - CSRF PoCs are ONLY for confirming vulnerability existence through actual requests; MUST NOT be used to actually attack users
 - Multi-step CSRF tests MUST ensure no persistent side effects are produced (e.g., creating data that cannot be deleted)
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "CSRF-001",
+  "vuln_type": "CSRF",
+  "sub_type": "token_missing",
+  "final_verdict": "confirmed",
+  "rounds_executed": 2,
+  "confirmed_round": 1,
+  "endpoint": "POST /api/transfer",
+  "payload": "<form method=\"POST\" action=\"http://target/api/transfer\"><input name=\"amount\" value=\"10000\"/></form>",
+  "evidence": "EVID_CSRF_ENDPOINT_IDENTITY: POST /api/transfer — performs fund transfer; EVID_CSRF_TOKEN_STATUS: No _token field in form, no VerifyCsrfToken middleware on route; EVID_CSRF_SAMESITE_STATUS: Set-Cookie: PHPSESSID=xxx; path=/ (no SameSite attribute); EVID_CSRF_CROSS_ORIGIN_RESPONSE: Cross-origin POST with Origin:http://evil.com returned HTTP 200 {status:success, balance:0}",
+  "confidence": "confirmed",
+  "impact": "Fund transfer — attacker can transfer victim funds via cross-site form",
+  "prerequisite_conditions": { "auth_requirement": "authenticated", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 2, "impact": 3, "complexity": 2, "score": 2.30, "cvss": 7.7, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "CSRF-001",
+  "vuln_type": "CSRF",
+  "final_verdict": "confirmed",
+  "evidence": "No CSRF token found in the form",
+  "severity": { "level": "H" }
+}
+// ❌ Missing token is necessary but not sufficient — must prove state change
+// ❌ No cross-origin request proof, no state diff
+// ❌ Missing SameSite cookie analysis
+// ❌ severity missing scores and reasons
+```
 
 
 ---

@@ -1,8 +1,30 @@
-> **Skill ID**: S-056-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-056-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 6-round progressive attack against CRLF injection sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 6 Rounds of Attack
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - Basic CRLF Injection
 
@@ -31,6 +53,17 @@ Objective: Test newline character injection in HTTP header values to determine w
 Inject the above payloads into all identified Sink parameters. Analyze whether `X-Injected: true` appears in response headers. Also check whether the server returns a 500 error (indicating newline characters were passed to the header layer but triggered an error).
 
 **Evidence:** `X-Injected: true` appears in response headers, or the server returns an error due to illegal headers.
+
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R2 - Encoding Bypass
 
@@ -68,6 +101,17 @@ Objective: Bypass application-layer `\r\n` filters through various encoding meth
 Test the decoding order of each encoding before and after the filter. Some frameworks perform an additional URL decode after the security check, giving double encoding an opportunity to exploit.
 
 **Evidence:** Successfully injecting a new header via alternative encoding (`X-Injected: true` appears in response headers).
+
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R3 - HTTP Response Splitting
 
@@ -110,6 +154,17 @@ Objective: Achieve response splitting by injecting a complete HTTP response, con
 - HTTP/2: Pseudo-headers (`:status`, `:path`) do not allow CR/LF, but downgrade to HTTP/1.1 may introduce them
 
 **Evidence:** Attacker-injected HTML/JS content appears in the response body, or the browser renders a complete response page controlled by the attacker.
+
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R4 - Cache Poisoning
 
@@ -166,6 +221,17 @@ Objective: Exploit CRLF injection to tamper with cache-related headers, poisonin
 
 **Evidence:** A clean request without payload returns tampered cached content (containing injected headers or modified response body).
 
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R5 - Mail Header Injection
 
 Objective: Inject additional mail headers through the `additional_headers` parameter of the `mail()` function to achieve mail abuse.
@@ -212,6 +278,17 @@ user@example.com%0d%0aContent-Type: multipart/mixed; boundary="EVIL"%0d%0a%0d%0a
 - Inject `X-Mailer: CRLF-Test` as a detection marker
 
 **Evidence:** BCC email received via controlled mailbox, or the email raw headers contain an injected `Content-Type: text/html` with HTML content.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Advanced Combination Attacks
 
@@ -587,6 +664,52 @@ if ($email !== false) {
 ```
 
 > **Key Insight:** The core of defense bypass lies in understanding the filter's execution timing and coverage. The vast majority of successful bypass cases occur because: (1) filtering executes before decoding; (2) filtering is incomplete (only filters `\r\n` pair but not standalone `\r` or `\n`); (3) using a blocklist instead of an allowlist. During auditing, FIRST locate the filtering logic's position and implementation, THEN select the corresponding bypass strategy.
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "CRLF-001",
+  "vuln_type": "CRLF_Injection",
+  "sub_type": "header_injection",
+  "final_verdict": "confirmed",
+  "rounds_executed": 2,
+  "confirmed_round": 1,
+  "endpoint": "GET /redirect?url=PAYLOAD",
+  "sink_function": "header()",
+  "parameter": "url",
+  "payload": "%0d%0aX-Injected:%20true",
+  "evidence": "EVID_CRLF_INJECTION_POINT: RedirectController.php:15 — header('Location: '.$_GET['url']); EVID_CRLF_USER_INPUT_PATH: $_GET['url'] → header() with no filtering; EVID_CRLF_SANITIZATION_STATUS: No str_replace or preg_replace for \\r\\n; EVID_CRLF_INJECTION_RESPONSE: Response headers contain 'X-Injected: true' on separate line",
+  "confidence": "confirmed",
+  "impact": "HTTP response header injection — can set arbitrary cookies or split response",
+  "prerequisite_conditions": { "auth_requirement": "anonymous", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 3, "impact": 2, "complexity": 3, "score": 2.55, "cvss": 8.5, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "CRLF-001",
+  "vuln_type": "CRLF_Injection",
+  "final_verdict": "confirmed",
+  "evidence": "header() is used with user input",
+  "severity": { "level": "H" }
+}
+// ❌ header() with user input is a pattern, not proof of exploitation
+// ❌ No payload, no response showing injected header
+// ❌ Missing EVID references
+// ❌ PHP 7.0+ blocks CRLF in header() — version not checked
+```
 
 
 ---

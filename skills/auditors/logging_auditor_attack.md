@@ -1,8 +1,30 @@
-> **Skill ID**: S-060-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-060-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 6-round progressive attack against log security sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 6-Round Attack
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - Log Injection
 
@@ -46,6 +68,17 @@ $logger->info("Search query: {query}", ['query' => $sanitizedInput]);
 ```
 
 **Evidence:** Injected forged log entries successfully appear in the log file and are indistinguishable from genuine entries.
+
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R2 - Sensitive Data in Logs
 
@@ -99,6 +132,17 @@ Log::debug('Request received', ['data' => $request->except(['password', 'token']
 ```
 
 **Evidence:** Log files contain plaintext passwords, complete Tokens, credit card numbers, or other sensitive data.
+
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R3 - Log File Exposure
 
@@ -158,6 +202,17 @@ GET /download?path=../../var/log/syslog
 
 **Evidence:** Log files are directly downloadable via HTTP, or file permissions allow any user to read them.
 
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R4 - Missing Audit Events
 
 Verify whether critical security events are properly logged:
@@ -202,6 +257,17 @@ grep -rn 'log\|Log::' app/Http/Controllers/Auth/ --include="*.php"
 ```
 
 **Evidence:** After performing critical security operations, no corresponding audit records exist in the log files.
+
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R5 - Log Tampering
 
@@ -255,6 +321,17 @@ cat /etc/logrotate.d/app 2>/dev/null
 ```
 
 **Evidence:** Log file paths can be controlled via user input, or the admin panel allows unauthorized log deletion.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Advanced Exploitation
 
@@ -478,6 +555,51 @@ Read the shared findings store before starting the attack phase, leveraging find
 - LFI exploitation chain tests MUST use only harmless functions like `phpinfo()` or `echo`; MUST NOT execute system commands
 - Sensitive data search results MUST only record existence and location; MUST NOT copy actual data values
 - Log path traversal tests MUST NOT overwrite critical system files (`/etc/passwd`, `/etc/shadow`, etc.)
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "LOG-001",
+  "vuln_type": "LogSecurity",
+  "sub_type": "log_injection",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "confirmed_round": 1,
+  "sink_function": "error_log()",
+  "location": "app/Http/Controllers/AuthController.php:45",
+  "payload": "admin\n[2025-01-01 00:00:00] security.CRITICAL: Admin password changed from 10.0.0.1",
+  "evidence": "EVID_LOG_WRITE_POINT: AuthController.php:45 — error_log('Login failed for user: '.$_POST['username']); EVID_LOG_CONTENT_ANALYSIS: Injected newline creates fake CRITICAL entry indistinguishable from real entries; EVID_LOG_ACCESS_CONTROL: storage/logs/laravel.log permissions 0644, web-accessible via /storage/logs/laravel.log; EVID_LOG_EXPLOIT_RESPONSE: Log file contains forged entry with attacker-controlled timestamp and severity",
+  "confidence": "confirmed",
+  "impact": "Log forgery — attacker can inject fake audit entries to mislead forensic investigation",
+  "prerequisite_conditions": { "auth_requirement": "anonymous", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 3, "impact": 1, "complexity": 3, "score": 2.30, "cvss": 7.7, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "LOG-001",
+  "vuln_type": "LogSecurity",
+  "final_verdict": "confirmed",
+  "evidence": "error_log() uses user input",
+  "severity": { "level": "M" }
+}
+// ❌ Pattern identification is not exploitation proof
+// ❌ No payload showing injected log entry
+// ❌ No EVID references
+// ❌ severity missing scores and reasons
+```
 
 
 ---

@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-042-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against Deserialization sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8-Round Attack Strategy
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1: Basic Payload
 
@@ -13,12 +40,32 @@
 - Simple command execution chain: `__destruct` → `system()`
 - Evidence write: `system('echo DESERIAL_R1 > /tmp/deserial_proof_round_1')`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R2: Encoding Bypass
 
 - Base64 wrapping: `base64_decode('TzoxMjp...')`
 - Hex encoding: `\x4f\x3a\x38\x3a...`
 - URL-encoded serialized string
 - gzcompress/gzuncompress wrapping
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R3: Property Name Obfuscation + Case Variation
 
@@ -27,12 +74,32 @@
 - Unicode variant property names
 - Case-obfuscated class names (depends on autoloader behavior)
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R4: PHP Weak Type Confusion
 
 - Type confusion: `i:0;` vs `s:1:"0";` vs `b:0;`
 - Array/object interchange: `a:1:{...}` vs `O:8:"stdClass":1:{...}`
 - NULL injection: `N;` replacing expected types
 - Float precision: `d:0.9999999999999999;`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R5: protected/private Property Override
 
@@ -41,12 +108,32 @@
 - Property type override: replace string property with object
 - Inheritance chain property override: subclass same-name properties
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R6: Nested Object Chains
 
 - Multi-level nesting: Obj1 → Obj2 → Obj3 → Sink
 - Self-reference: `$obj->self = $obj` (triggers recursion)
 - Objects embedded in arrays: `a:1:{i:0;O:...}`
 - Closure serialization (opis/closure library)
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R7: phar:// Bypass File Type Checks
 
@@ -67,6 +154,16 @@
 4. Trigger with `phar://`: `phar:///uploads/evil.gif`
 5. Trigger points: `file_exists`, `is_dir`, `fopen`, `file_get_contents`, `getimagesize`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R8: Multi-Gadget Combination + Framework-Specific Chains
 
 - Generate framework-specific chains with phpggc:
@@ -76,6 +173,16 @@
 - Combine multiple Gadget chains
 - Custom chain + framework chain hybrid
 - Payload transformation: serialization → Base64 → URL encoding
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R9: PHP 8.x Deserialization New Features
 
@@ -91,6 +198,16 @@
 - **`__unserialize` vs `__wakeup` Priority**:
   - PHP 8.0+ calls `__unserialize()` first
   - When both exist, the attack surfaces differ
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R10: Framework-Specific Gadget Chains (Extended)
 
@@ -114,6 +231,16 @@
 - PHPUnit: `PHPUnit\Framework\MockObject\*` → code execution
 - Faker: `Faker\Generator::__destruct()` chain (Laravel dev dependency)
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R11: Non-Standard Deserialization Entry Points
 
 - **Session Deserialization**:
@@ -130,6 +257,16 @@
   - `serialize()` stores to DB → SQL injection modifies data → `unserialize()` reads out → RCE
   - WordPress `wp_options` table serialized data
   - Second-order deserialization attacks
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12: PropertyOrientedProgramming Advanced Chain Construction
 
@@ -820,6 +957,64 @@ phpggc -l Monolog
 **Key Insight:**
 > Monolog is present in nearly all modern PHP projects (the default logging library for Laravel, Symfony, and other frameworks), making it one of the most universal POP chains. The `BufferHandler` → `StreamHandler` chain achieves arbitrary file write (Webshell), while the `BufferHandler` → `SyslogUdpHandler` variant can achieve RCE. Since Monolog is an indirect dependency (introduced through frameworks), developers are often unaware of the deserialization risks it poses. During auditing, whenever `monolog/monolog` is found in `composer.lock`, it SHOULD be included in the POP chain search scope.
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "deser_cookie_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 5,
+  "successful_round": 3,
+  "payload": "O:29:"Monolog\Handler\SyslogHandler":...",
+  "evidence_result": "DESER_R3 written to /tmp/deser_proof_round_3 via Monolog gadget chain",
+  "severity": {
+    "level": "C",
+    "score": 2.55,
+    "cvss": 8.5
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.55 → cvss 8.5 → level `C`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "deser_cookie_001",
+  "final_verdict": "suspected",
+  "rounds_executed": 2,
+  "successful_round": null,
+  "payload": "O:8:"stdClass":0:{}",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "C",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no deserialization behavior observed
+- failure_reason is empty — must explain why 'suspected' rather than confirmed
+- severity_level 'C' for unconfirmed finding — suspected findings cannot be Critical
 
 ---
 

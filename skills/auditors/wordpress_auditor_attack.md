@@ -1,8 +1,30 @@
-> **Skill ID**: S-054-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-054-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 8-round progressive attack against WordPress-specific vulnerability sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 8-Round Attack
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - WordPress Core Known Vulnerabilities
 
@@ -21,6 +43,17 @@ High-risk vulnerability patterns:
 - Query the `wpscan` database or `wpvulndb` API
 
 **Evidence:** Confirmed exploitable known CVE via version matching.
+
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R2 - Plugin Vulnerability Audit
 
@@ -41,6 +74,17 @@ Priority plugins for audit (high install count, broad attack surface):
 - UpdraftPlus, All in One SEO, Wordfence
 
 **Evidence:** Exploitable vulnerability found in a plugin.
+
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R3 - XML-RPC Attack
 
@@ -81,6 +125,17 @@ WordPress XML-RPC interface `/xmlrpc.php`:
 
 **Evidence:** Successful brute force via XML-RPC or SSRF trigger.
 
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R4 - REST API Vulnerabilities
 
 1. **User enumeration**:
@@ -106,6 +161,17 @@ WordPress XML-RPC interface `/xmlrpc.php`:
 
 **Evidence:** Unauthorized access to draft/private content, or successful username enumeration.
 
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R5 - Shortcode Injection
 
 Objective: Inject WordPress shortcodes into user-controllable content.
@@ -126,6 +192,17 @@ If a PHP-executing shortcode exists (e.g., `[php]echo system('id');[/php]`):
 - Inject the shortcode in comments → RCE
 
 **Evidence:** Shortcode parsed and executed in an unintended context.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Nonce Bypass and CSRF
 
@@ -150,6 +227,17 @@ WordPress Nonce security analysis:
 
 **Evidence:** Admin operation successfully executed without Nonce or with a forged Nonce.
 
+
+#### R7 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
+
 ### R7 - Theme/Plugin Editor RCE
 
 Objective: Achieve code execution via the WordPress admin editor.
@@ -172,6 +260,17 @@ Objective: Achieve code execution via the WordPress admin editor.
    - Combined with `.htaccess` modification for execution
 
 **Evidence:** File modified via editor can execute PHP code.
+
+
+#### R8 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R8 - Combined Attack Chains
 
@@ -310,6 +409,51 @@ After completing all rounds, write the final results to `$WORK_DIR/exploits/{sin
 - MUST NOT modify critical configuration in `wp_options` (e.g., `siteurl`)
 - MUST NOT delete any content (posts, pages, users)
 - Plugin code audit takes priority over blind testing to reduce noise
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "WP-001",
+  "vuln_type": "WordPress",
+  "sub_type": "xmlrpc",
+  "final_verdict": "confirmed",
+  "rounds_executed": 4,
+  "confirmed_round": 3,
+  "endpoint": "POST /xmlrpc.php",
+  "component": "WordPress Core 6.2",
+  "payload": "system.multicall with 100 wp.getUsersBlogs attempts",
+  "evidence": "EVID_WP_COMPONENT_SCOPE: WordPress Core 6.2 — wp-includes/version.php confirms $wp_version='6.2'; EVID_WP_HOOK_ENTRY: xmlrpc.php enabled, system.listMethods returns wp.getUsersBlogs; EVID_WP_EXPLOIT_RESPONSE: multicall brute force matched admin:password123, HTTP 200 with blog list returned",
+  "confidence": "confirmed",
+  "impact": "Admin credential brute-forced via XML-RPC multicall",
+  "prerequisite_conditions": { "auth_requirement": "anonymous", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 3, "impact": 3, "complexity": 2, "score": 2.70, "cvss": 9.0, "level": "C" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "WP-001",
+  "vuln_type": "WordPress",
+  "final_verdict": "confirmed",
+  "evidence": "XML-RPC is enabled",
+  "severity": { "level": "C" }
+}
+// ❌ XML-RPC enabled alone is not a vulnerability — no exploit proof
+// ❌ Missing component version, endpoint, payload
+// ❌ No EVID references
+// ❌ severity missing scores and reasons
+```
 
 
 ---

@@ -1,8 +1,30 @@
-> **Skill ID**: S-059-B | **Phase**: 4 | **Stage**: 2 (Attack)
-> **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+## Identity
 
+| Field | Value |
+|-------|-------|
+| Skill ID | S-059-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute 6-round progressive attack against LDAP injection sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
 ## 6-Round Attack
+
+
+#### R1 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R1 - Basic LDAP Filter Injection
 
@@ -35,6 +57,17 @@ docker exec php curl -s "http://nginx:80/api/ldap/search?username=*)(uid=*))(|(u
 ```
 
 **Success Criteria:** The injected query returns significantly more LDAP entries than the normal query, or returns non-target user data.
+
+
+#### R2 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R2 - Authentication Bypass
 
@@ -73,6 +106,17 @@ docker exec php curl -s -X POST "http://nginx:80/api/login" \
 ```
 
 **Success Criteria:** Passing LDAP authentication without knowing the correct password.
+
+
+#### R3 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R3 - Boolean Blind Injection
 
@@ -120,6 +164,17 @@ echo "Final value: $known"
 ```
 
 **Success Criteria:** Successfully extracting a partial or complete value of at least one LDAP attribute through boolean condition differences.
+
+
+#### R4 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R4 - OR/AND Logic Injection
 
@@ -174,6 +229,17 @@ docker exec php curl -s -X POST "http://nginx:80/api/login" \
 ```
 
 **Success Criteria:** Changed query semantics through logical operator injection, bypassing authentication or access controls.
+
+
+#### R5 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R5 - Special Character Bypass
 
@@ -233,6 +299,17 @@ docker exec php curl -s -X POST "http://nginx:80/api/login" \
 ```
 
 **Success Criteria:** Successfully triggering LDAP injection by bypassing input validation/filtering through special character encoding.
+
+
+#### R6 Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | {URL from attack plan} |
+| injection_point | {parameter name from plan} |
+| payload | {payload from this round's strategy} |
+| evidence_command | {docker exec or curl command to verify} |
+| expected_evidence | {what confirms success} |
 
 ### R6 - Advanced Exploitation
 
@@ -508,6 +585,52 @@ Read the shared findings store before starting the attack phase, leveraging:
 - DN injection tests MUST NOT modify group membership of existing entries
 - `ldap_bind()` tests MUST NOT cause account lockout (keep failure count within threshold)
 - Enumeration operations SHOULD control request frequency to avoid triggering LDAP server rate limits
+
+
+## Output Contract
+
+| File | Path | Format |
+|------|------|--------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+### ✅ GOOD Output Example
+
+```json
+{
+  "sink_id": "LDAP-001",
+  "vuln_type": "LDAPi",
+  "sub_type": "filter_injection",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "confirmed_round": 1,
+  "endpoint": "GET /api/ldap/search?username=",
+  "ldap_server": "OpenLDAP",
+  "sink_function": "ldap_search",
+  "payload": "*)(uid=*))(|(uid=*",
+  "evidence": "EVID_LDAP_QUERY_POINT: LdapController.php:28 — ldap_search($conn, $baseDN, $filter); EVID_LDAP_FILTER_CONSTRUCTION: $filter='(uid='.$_GET['username'].')' — direct concatenation; EVID_LDAP_USER_INPUT_PATH: $_GET['username'] → sprintf → ldap_search() filter param; EVID_LDAP_INJECTION_RESPONSE: Normal query returns 1 entry, injected query returns 53 entries with uid/mail/cn attributes",
+  "confidence": "confirmed",
+  "impact": "Full LDAP directory enumeration — all user entries leaked",
+  "prerequisite_conditions": { "auth_requirement": "authenticated", "exploitability_judgment": "directly_exploitable" },
+  "severity": { "reachability": 2, "impact": 2, "complexity": 3, "score": 2.25, "cvss": 7.5, "level": "H" }
+}
+```
+
+### ❌ BAD Output Example
+
+```json
+{
+  "sink_id": "LDAP-001",
+  "vuln_type": "LDAPi",
+  "final_verdict": "confirmed",
+  "evidence": "ldap_search uses user input",
+  "severity": { "level": "H" }
+}
+// ❌ Using user input is pattern, not proof
+// ❌ No injection payload, no response comparison
+// ❌ Missing EVID references
+// ❌ severity missing scores and reasons
+```
 
 
 ---

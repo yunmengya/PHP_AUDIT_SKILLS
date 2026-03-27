@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-040-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against RCE (Remote Code Execution) sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8-Round Attack Strategy
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1: Basic Command Injection
 
@@ -10,6 +37,16 @@ Direct command separator concatenation:
 - `;id`, `|id`, `` `id` ``, `$(id)`, `&& id`
 - Applicable to: system, exec, passthru, shell_exec, popen
 - For eval-type: `phpinfo();`, `system('id');`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R2: Encoding Bypass
 
@@ -19,6 +56,16 @@ Direct command separator concatenation:
 - Hex: `\x73\x79\x73\x74\x65\x6d`
 - Unicode: `\u0073ystem`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R3: Wildcard and Whitespace Bypass
 
 - `$IFS` as space substitute: `cat$IFS/etc/passwd`
@@ -27,12 +74,32 @@ Direct command separator concatenation:
 - Tab `%09` as space substitute
 - `$'\x20'` as space substitute
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R4: Variable Overwrite Attack
 
 - extract() overwrite critical variables: `_SERVER[REMOTE_ADDR]=127.0.0.1`
 - parse_str() injection: `query=a&_SESSION[role]=admin`
 - `$$var` variable overwrite: overwrite configuration variables, callback function names
 - register_globals simulation scenario
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R5: Truncation and Newline Injection
 
@@ -42,6 +109,16 @@ Direct command separator concatenation:
 - Long string truncation: oversized input to overflow buffer
 - Path truncation: `./../../` repeated to exceed MAX_PATH
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R6: disable_functions Bypass
 
 - LD_PRELOAD + mail()/putenv(): load malicious .so
@@ -49,6 +126,16 @@ Direct command separator concatenation:
 - imap_open() command injection
 - ImageMagick delegate command injection
 - PHP Bug exploitation (known CVEs)
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6.5: PHP Filter Chain RCE (Important New Technique 2022+)
 
@@ -62,6 +149,16 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
   ```
 - Advantages: No file write required, no disable_functions bypass needed, pure protocol-layer RCE
 - Conditions: `allow_url_include=On` or include path prefix is controllable
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6.6: PHP 8.x Feature Exploitation
 
@@ -79,12 +176,32 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
 - **Attributes Reflection**:
   - `ReflectionAttribute::newInstance()` can trigger constructor
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R6.7: Composer Autoloader Abuse
 
 - Pollute `vendor/composer/autoload_classmap.php` or `autoload_psr4.php`
 - Inject malicious files via `composer.json` `autoload.files`
 - Phar deserialization via Composer cache directory
 - `vendor/bin/` scripts direct execution
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6.8: mail() 5th Parameter Injection
 
@@ -93,12 +210,32 @@ Exploit `php://filter` chains to construct arbitrary characters and generate PHP
 - Write email content to web directory for execution as PHP file
 - Locate `mail.add_x_header` configuration
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R7: Logic Bypass + Race Condition
 
 - Business logic flow bypass: skip pre-validation steps
 - Parameter type confusion: array replacing string `param[]=value`
 - Race condition: concurrent requests bypass one-time checks
 - Second-order execution: store payload first, then trigger execution
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R8: Combined Attack
 
@@ -247,6 +384,64 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write. SQLite WAL mode aut
 
 Write all round results to `$WORK_DIR/exploits/{sink_id}.json`. Format MUST follow the attack result contract in `shared/data_contracts.md` (Section 9 exploit_result.json).
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "rce_system_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "successful_round": 1,
+  "payload": ";echo RCE_R1 > /tmp/rce_proof_round_1",
+  "evidence_result": "RCE_R1",
+  "severity": {
+    "level": "C",
+    "score": 2.85,
+    "cvss": 9.5
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.85 → cvss 9.5 → level `C`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "rce_system_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": ";id",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "H",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no proof of exploitation
+- failure_reason is empty — no explanation of outcome
+- severity_level 'H' without score — scoring fields are inconsistent
 
 ---
 

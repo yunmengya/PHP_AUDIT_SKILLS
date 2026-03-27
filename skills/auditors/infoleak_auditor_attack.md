@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-050-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against Information Leakage sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## Attack Rounds
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Grep Scan for Hardcoded Sensitive Information
 
@@ -15,6 +42,16 @@ Search source code for:
 
 **Evidence:** Active, usable hardcoded keys discovered (not placeholders/test values).
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R2 - Git History Search
 
 ```bash
@@ -26,6 +63,16 @@ git show <commit>:<filepath>  # Recover deleted files
 ```
 **Evidence:** Keys recovered from Git history are still valid on the current system.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R3 - API Response Field Analysis
 
 - Call each endpoint with valid credentials and analyze all JSON fields
@@ -35,6 +82,16 @@ git show <commit>:<filepath>  # Recover deleted files
 
 **Evidence:** API response contains fields not appropriate for the current requesting user.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R4 - User Enumeration Testing
 
 **Login:** Valid user + wrong password vs invalid user + wrong password — compare messages, status codes, timing.
@@ -43,6 +100,16 @@ git show <commit>:<filepath>  # Recover deleted files
 **API:** `GET /api/users/1` (exists) vs `GET /api/users/99999` (does not exist).
 
 **Evidence:** Measurable response differences allow reliable account enumeration.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R5 - Error Message Triggering
 
@@ -54,6 +121,16 @@ git show <commit>:<filepath>  # Recover deleted files
 
 **Evidence:** Errors leak internal paths, SQL queries, database structure, or framework internals.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R6 - Data Masking Check
 
 Analyze endpoints returning personal data:
@@ -63,6 +140,16 @@ Analyze endpoints returning personal data:
 - Verify: phone number middle 4 digits masked, email partially masked, bank card showing only last 4 digits, ID number middle section masked
 
 **Evidence:** At least one endpoint returns unmasked PII.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R7 - Framework Debug Endpoint Scan
 
@@ -76,6 +163,16 @@ POST /api/endpoint with malformed body
 ```
 **Evidence:** Debug endpoints are accessible, leaking internal state, environment variables, or configuration.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R8 - Combination (Leaked Keys → Exploitation)
 
 1. Hardcoded AWS keys (R1) -> enumerate S3 buckets -> download data
@@ -85,6 +182,16 @@ POST /api/endpoint with malformed body
 5. Internal IPs in source code (R1) -> SSRF to internal services
 
 **Evidence:** Leaked information is directly used for unauthorized access.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R9 - Supply Chain Information Leakage
 
@@ -101,6 +208,16 @@ POST /api/endpoint with malformed body
   - Environment variables in `.gitlab-ci.yml`
   - Credentials in `Jenkinsfile`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10 - Timing Side Channels
 
 - **Password comparison timing**: Time differences between `===` vs `==` vs `hash_equals()`
@@ -110,6 +227,16 @@ POST /api/endpoint with malformed body
 - **Cache hit/miss timing**: Infer whether specific data exists in cache
 - **HMAC verification timing**: Timing leak in `$computed_mac == $provided_mac`
 - Measurement method: Send 50+ requests per test case, take the median
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R11 - Frontend Source Code Leakage
 
@@ -126,6 +253,16 @@ POST /api/endpoint with malformed body
 - **Inline comment leakage**:
   - `<!-- TODO: Remember to delete test account admin/test123 -->`
   - `<!-- API endpoint: http://internal-api:8080 -->`
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12 - DNS/Network Information Leakage
 
@@ -268,6 +405,64 @@ Read the shared findings store before starting the attack phase to leverage cred
 - MUST NOT crack password hashes from production environments; only record exposure
 - Enumeration MUST be limited to a sample size sufficient to confirm the pattern through sample comparison (maximum 10 usernames)
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "infoleak_phpinfo_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 4,
+  "successful_round": 1,
+  "payload": "GET /phpinfo.php",
+  "evidence_result": "phpinfo() page accessible, exposing DOCUMENT_ROOT=/var/www/html, PHP 8.1.12, loaded extensions list",
+  "severity": {
+    "level": "M",
+    "score": 1.5,
+    "cvss": 5.0
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 1.5 → cvss 5.0 → level `M`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "infoleak_phpinfo_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "GET /phpinfo.php",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "C",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no phpinfo() content shown as proof
+- failure_reason is empty — no details about what was leaked
+- severity_level 'C' for phpinfo exposure alone — should be M or L unless chained with other vulns
 
 ---
 

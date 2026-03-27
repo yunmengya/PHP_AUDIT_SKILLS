@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-049-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against Configuration / Misconfiguration sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8-Round Attack
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Direct Sensitive Path Access
 
@@ -10,11 +37,31 @@ Request: `/.env`, `/.git/config`, `/.git/HEAD`, `/composer.json`, `/phpinfo.php`
 
 **Evidence:** Any path returns 200 with sensitive content (not a redirect/404).
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R2 - Path Variants
 
 Attempt: `/.env.bak`, `/.env.old`, `/.env.swp`, `/.env.save`, `/.env~`, `/.env.orig`, `/.env.dist`, `/.env.example`, `/.env.production`, `/.env.local`, `/config.php.bak`, `/database.sql`, `/backup.zip`, `/backup.tar.gz`, `/db.sql`, `/dump.sql`, `/www.zip`, `/site.tar.gz`
 
 **Evidence:** Backup/variant files are accessible and contain credentials or configuration data.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R3 - Case Variation & Encoding Bypass
 
@@ -26,6 +73,16 @@ Attempt: `/.env.bak`, `/.env.old`, `/.env.swp`, `/.env.save`, `/.env~`, `/.env.o
 
 **Evidence:** Sensitive files accessed via alternative encoding.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R4 - Nginx/Apache Configuration Bypass
 
 - Nginx alias traversal: `/assets../../../.env`
@@ -36,17 +93,47 @@ Attempt: `/.env.bak`, `/.env.old`, `/.env.swp`, `/.env.save`, `/.env~`, `/.env.o
 
 **Evidence:** Restricted paths accessed via server-specific tricks.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R5 - HTTP Method Bypass
 
 `OPTIONS /.env`, `TRACE /.env`, `HEAD /admin`, `PROPFIND /` (WebDAV enumeration), `MOVE`/`COPY` operations. Send requests to test whether TRACE reflects headers (XST).
 
 **Evidence:** Restricted resources return responses to alternative methods, or TRACE reflects sensitive headers.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R6 - Default Credential Enumeration
 
 Attempt default credentials against the following targets: application login, `/adminer`, `/phpmyadmin`, API Basic Auth, Telescope/Horizon authentication. Maximum 5 attempts per endpoint.
 
 **Evidence:** Successful login using default credentials (returns Session Cookie or authenticated content).
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R7 - CORS Origin Mutation
 
@@ -55,6 +142,16 @@ Test: `Origin: https://evil.com`, `Origin: null`, `Origin: https://subdomain.tar
 Check whether `Access-Control-Allow-Origin` reflects the attacker's Origin with `Access-Control-Allow-Credentials: true`.
 
 **Evidence:** Attacker Origin is reflected and credentials are allowed.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R8 - Combination (Config Leak → Keys → Exploitation)
 
@@ -65,6 +162,16 @@ Check whether `Access-Control-Allow-Origin` reflects the attacker's Origin with 
 5. Use API keys to access third-party services (AWS, Stripe)
 
 **Evidence:** Configuration data is used to achieve further unauthorized access.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R9 - HTTP Request Smuggling
 
@@ -86,6 +193,16 @@ Analyze HTTP parsing differences between the front-end proxy and back-end server
   - `Transfer-Encoding: xchunked`
 - **HTTP/2 Downgrade**: Smuggling during HTTP/2 to HTTP/1.1 conversion
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10 - Web Cache Poisoning
 
 - Identify caching behavior (`X-Cache`, `CF-Cache-Status`, `Age` headers)
@@ -101,6 +218,16 @@ Analyze HTTP parsing differences between the front-end proxy and back-end server
 - Laravel: `Cache-Control` header configuration
 - Nginx: `proxy_cache_key` configuration
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R11 - Subdomain Takeover Detection
 
 - Analyze whether services pointed to by DNS CNAME records are still active:
@@ -110,6 +237,16 @@ Analyze HTTP parsing differences between the front-end proxy and back-end server
   - Azure: CNAME points to `*.azurewebsites.net` but app is deleted
 - Look for `NXDOMAIN` or specific error page signatures
 - Check whether IP addresses from `A` records still belong to the target
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12 - PHP Runtime Configuration Audit
 
@@ -609,6 +746,64 @@ function auditSecurityHeaders(array $responseHeaders): array
 
 > **Key Insight:** Missing HTTP security headers are usually not directly exploitable vulnerabilities on their own, but they significantly **lower the barrier for other attacks**. For example: missing CSP escalates XSS from "may execute limited code" to "can execute arbitrary code"; missing HSTS allows a network-layer man-in-the-middle to directly downgrade HTTPS. Security header detection SHOULD be performed as a **baseline check** in every audit, with priority on CSP and HSTS — the two highest-impact headers. During auditing, it is recommended to use a checklist for item-by-item verification to ensure no omissions.
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "config_env_exposure_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "successful_round": 1,
+  "payload": "GET /.env",
+  "evidence_result": "Response contains APP_KEY=base64:xxx, DB_PASSWORD=prod_secret_123, MAIL_PASSWORD=smtp_pass",
+  "severity": {
+    "level": "C",
+    "score": 2.55,
+    "cvss": 8.5
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.55 → cvss 8.5 → level `C`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "config_env_exposure_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "GET /.env",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "L",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no .env content shown as proof
+- failure_reason is empty — no context about what was exposed
+- severity_level 'L' for .env exposure with production credentials — should be C or H
 
 ---
 

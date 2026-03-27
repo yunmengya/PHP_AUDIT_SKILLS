@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-048-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against Authorization / Access Control sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8 Attack Rounds
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Direct Privilege Escalation Access
 
@@ -15,6 +42,16 @@ Test admin routes by sending requests with low-privilege credentials or no crede
 
 **Success Criteria:** Low-privilege user completes admin-exclusive operations (user management, configuration changes, data export).
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R2 - Parameter Tampering & Mass Assignment
 
 Modify identity and role parameters in requests:
@@ -26,6 +63,16 @@ Modify identity and role parameters in requests:
 
 **Success Criteria:** User obtains an elevated role, accesses other users' data, or overwrites protected fields.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R3 - HTTP Method Tampering
 
 Test access control by sending requests with different HTTP methods:
@@ -36,6 +83,16 @@ Test access control by sending requests with different HTTP methods:
 - HEAD request to bypass body-based authorization checks
 
 **Success Criteria:** A blocked operation is successfully executed via an alternative HTTP method.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R4 - Weak Comparison Bypass & Type Juggling
 
@@ -49,6 +106,16 @@ Exploit PHP loose comparison authentication logic:
 
 **Success Criteria:** Authentication bypassed via type juggling or weak comparison.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R5 - Token Tampering (JWT)
 
 Manipulate JWT Tokens:
@@ -60,6 +127,16 @@ Manipulate JWT Tokens:
 5. Modify `sub`/`user_id` claim to another user's ID
 
 **Success Criteria:** Modified Token is accepted by the server with elevated access privileges.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6 - Batch ID Enumeration
 
@@ -73,6 +150,16 @@ Systematically enumerate object references:
 
 **Success Criteria:** Unauthorized access to multiple other users' resources.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R7 - Multi-Step Process Skip
 
 Bypass sequential verification steps:
@@ -83,6 +170,16 @@ Bypass sequential verification steps:
 - Skip approval: Directly call final action endpoints
 
 **Success Criteria:** Critical business steps are bypassed, reaching final state without completing intermediate steps.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R8 - Combination Chain
 
@@ -97,6 +194,16 @@ Alternative chain: Type Juggling login bypass -> Session Fixation -> Vertical Pr
 
 **Success Criteria:** Complete privilege escalation chain from anonymous/low-privilege to full admin with persistent access.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R9 - OAuth2/API Token Abuse
 
 Test OAuth2 and API Token authorization boundaries by sending cross-privilege requests:
@@ -108,6 +215,16 @@ Test OAuth2 and API Token authorization boundaries by sending cross-privilege re
 - Refresh Token privilege escalation: Request higher scope during refresh
 
 **Success Criteria:** Low-privilege Token successfully executes high-privilege operations, or cross-application Token reuse succeeds.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R10 - GraphQL Deep Authorization Testing
 
@@ -121,6 +238,16 @@ Test GraphQL endpoint authorization completeness with the following queries:
 
 **Success Criteria:** Obtain unauthorized data via GraphQL relationships or Mutations.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R11 - Multi-Tenant/Subdomain Isolation Testing
 
 1. Modify tenant_id/org_id parameters in requests
@@ -129,6 +256,16 @@ Test GraphQL endpoint authorization completeness with the following queries:
 4. Send cross-tenant requests on shared endpoints to test data leakage
 
 **Success Criteria:** Tenant A sees Tenant B's data.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12 - Complete Privilege Escalation Chain (Enhanced)
 
@@ -842,6 +979,64 @@ for (let i = 0; i < 100; i++) {
 
 > WebSocket message handling typically lacks the same level of input validation and authorization checks as HTTP endpoints. Developers tend to trust messages from established connections, neglecting message-level field filtering and permission verification. **Each WebSocket message MUST undergo the same input validation (whitelist fields), authorization checks (verify operation permissions), and rate limiting as HTTP requests**. Channel subscription MUST be validated server-side and MUST NOT rely on client-side declarations.
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "authz_admin_panel_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 4,
+  "successful_round": 1,
+  "payload": "GET /admin/users with regular user session cookie",
+  "evidence_result": "200 OK with full admin user list returned to regular user, IDOR confirmed",
+  "severity": {
+    "level": "C",
+    "score": 2.7,
+    "cvss": 9.0
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.7 → cvss 9.0 → level `C`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "authz_admin_panel_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "GET /admin",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "M",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no response body proving unauthorized access
+- failure_reason is empty — no detail about access control bypass
+- severity_level 'M' for confirmed admin panel access bypass — should be C or H
 
 ---
 

