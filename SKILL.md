@@ -29,7 +29,7 @@ All skill resources are located in the skill root directory (referred to as `SKI
 - `schemas/` — JSON Schema files (referenced by `shared/data_contracts.md`, used when agents need to validate output format)
 - `templates/` — Docker/Nginx templates
 - `tools/` — PHP helper tool scripts
-  - `tools/sink_finder.php` — AST Sink scanner. Usage: `php sink_finder.php <target_dir>` (Phase-2 tool-runner)
+  - `tools/sink_finder.php` — AST Sink scanner. Usage: `php sink_finder.php <target_dir>` (Phase-2 ast-scanner)
   - `tools/trace_filter.php` — Xdebug Trace filter. Usage: `php trace_filter.php <trace_file> [sink1,sink2,...]` (Phase-3 trace-dispatcher/trace-worker)
   - `tools/payload_encoder.php` — Payload encoder. Usage: `php payload_encoder.php <payload> <encoding_type>` (Phase-4 expert agents)
   - `tools/waf_detector.php` — WAF/filter fingerprinting. Usage: `php waf_detector.php <base_url> [cookie]` (Phase-4 expert agents)

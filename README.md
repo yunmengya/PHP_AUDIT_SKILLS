@@ -565,7 +565,7 @@ $WORK_DIR/
   ↓
 Phase 1: env-detective ∥ schema-reconstructor → docker-builder → QC
   ↓
-Phase 2: tool-runner ∥ route-mapper ∥ auth-auditor ∥ dep-scanner
+Phase 2: scanners ×7 ∥ route-mapper ∥ auth-auditor ∥ dep-scanner
          → context-extractor → risk-classifier → QC → 动态创建 Phase-4 任务
   ↓
 Phase 3: auth-simulator → trace-dispatcher → trace-worker×N → QC

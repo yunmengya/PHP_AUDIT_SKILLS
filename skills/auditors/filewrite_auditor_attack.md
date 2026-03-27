@@ -430,7 +430,7 @@ Symlink entries in ZIP files:
 ## Constraints
 
 - MUST only write files named shell_proof.php or temporary test files
-- MUST clean up test artifacts after confirmation when possible
+- MUST clean up test artifacts after confirmation (unless cleanup would destroy evidence needed for the report)
 - MUST NOT overwrite critical application files
 - MUST comply with authorization scope
 

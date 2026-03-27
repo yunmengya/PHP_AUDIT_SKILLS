@@ -56,12 +56,12 @@ graph TD
     end
 
     %% ============================================================
-    %% Phase 4: 深度对抗审计 (team4, 17 agents)
+    %% Phase 4: 深度对抗审计 (team4, 22 agents)
     %% ============================================================
     subgraph P4["Phase 4: 深度对抗审计 — team4/"]
         direction TB
 
-        subgraph P4_EXPERTS["16 个漏洞专家（按需启动）"]
+        subgraph P4_EXPERTS["21 个漏洞专家（按需启动）"]
             direction LR
             RCE["rce-auditor<br/>📄 rce_auditor.md"]
             SQLI["sqli-auditor<br/>📄 sqli_auditor.md"]
@@ -79,6 +79,11 @@ graph TD
             CRYPTO["crypto-auditor<br/>📄 crypto_auditor.md"]
             WP["wp-auditor<br/>📄 wordpress_auditor.md"]
             BIZ["bizlogic-auditor<br/>📄 business_logic_auditor.md"]
+            CSRF["csrf-auditor<br/>📄 csrf_auditor.md"]
+            CRLF["crlf-auditor<br/>📄 crlf_auditor.md"]
+            LDAP["ldap-auditor<br/>📄 ldap_auditor.md"]
+            LOG["logging-auditor<br/>📄 logging_auditor.md"]
+            SESS["session-auditor<br/>📄 session_auditor.md"]
         end
 
         P4_S1(["Step 1: 并行分析<br/>不碰容器"])

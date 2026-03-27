@@ -24,7 +24,7 @@ graph TD
 
     subgraph P2["Phase 2: 静态资产侦察"]
         P2_START["phase2-recon.md"] --> P2_PAR(["并行"])
-        P2_PAR --> TR["tool-runner #5<br/>Psalm / Progpilot"]
+        P2_PAR --> TR["scanners ×7 #5a-g<br/>Psalm / Progpilot / AST / PHPStan / Semgrep / Composer / CodeQL"]
         P2_PAR --> RM["route-mapper #6<br/>路由映射"]
         P2_PAR --> AU["auth-auditor #7<br/>鉴权审计"]
         P2_PAR --> DSC["dep-scanner #8<br/>组件扫描"]

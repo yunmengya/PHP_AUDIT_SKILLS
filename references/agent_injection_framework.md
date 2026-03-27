@@ -20,13 +20,13 @@ To control the prompt token usage of each Agent, shared resources are divided in
 - `shared/data_contracts.md` — JSON Schema data contracts
 - `shared/evidence_contract.md` — EVID_* evidence point dictionary (evidence citation specification for Phase-4 expert conclusion output)
 
-> **Note**: `shared/sink_definitions.md` has been demoted from L1 to L2, injected only to Agents requiring Sink definitions (Phase-2 tool-runner/context-extractor/risk-classifier + Phase-4 experts). This saves approximately 25KB (~6000 tokens) of context space, reducing attention distraction for unrelated Agents.
+> **Note**: `shared/sink_definitions.md` has been demoted from L1 to L2, injected only to Agents requiring Sink definitions (Phase-2 scanner agents/context-extractor/risk-classifier + Phase-4 experts). This saves approximately 25KB (~6000 tokens) of context space, reducing attention distraction for unrelated Agents.
 
 #### L2 Role-based Injection Resources
 
 | Resource File | Target Agent for Injection |
 |---------------|----------------------------|
-| `shared/sink_definitions.md` | Phase-2 tool-runner, context-extractor, risk-classifier + all Phase-4 experts |
+| `shared/sink_definitions.md` | Phase-2 scanner agents, context-extractor, risk-classifier + all Phase-4 experts |
 | `shared/php_specific_patterns.md` | All Phase-4 experts + Phase-2 context-extractor |
 | `shared/attack_chains.md` | Phase-4.5 attack-graph-builder + correlation-engine |
 | `shared/known_cves.md` | Phase-2 dep-scanner + all Phase-4 experts |

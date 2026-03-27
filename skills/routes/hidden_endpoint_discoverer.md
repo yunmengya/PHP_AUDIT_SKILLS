@@ -19,7 +19,7 @@
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-6 | Every hidden endpoint MUST have a `discovery_source` field explaining how it was found | Entry deleted — no provenance of discovery method |
-| CR-1 | Where possible, hidden endpoints MUST include `file` + `line` provenance | Entry quality degraded without source traceability |
+| CR-1 | Hidden endpoints MUST include `file` + `line` provenance when discoverable from source code | Entry quality degraded without source traceability |
 
 ## Fill-in Procedure
 
