@@ -27,7 +27,7 @@
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | MUST NOT guess or fabricate passwords for pre-existing application accounts — credentials for existing accounts MUST come from source code analysis or `$WORK_DIR/credentials.json`. Test accounts created by THIS procedure may use procedure-defined passwords | FAIL — test uses fabricated credentials, results unreliable |
-| CR-2 | MUST write output to `$WORK_DIR/auth/` directory conforming to output contract schema | FAIL — downstream Phase-3/4 agents cannot locate auth artifacts |
+| CR-2 | MUST write output to the path specified in Output Contract conforming to its schema | FAIL — downstream Phase-3/4 agents cannot locate auth artifacts |
 | CR-3 | MUST extract ALL defined roles with their permission mappings — incomplete role list causes missing privilege escalation tests | FAIL — partial role extraction leads to incomplete authz testing |
 
 ---

@@ -8,7 +8,7 @@
 ![Skills](https://img.shields.io/badge/skills-145+-green)
 ![Skill Files](https://img.shields.io/badge/skill_files-121-brightgreen)
 ![Auditors](https://img.shields.io/badge/auditors-21_types_×_2_stages-red)
-![Schemas](https://img.shields.io/badge/schemas-25-orange)
+![Schemas](https://img.shields.io/badge/schemas-30-orange)
 ![Phase](https://img.shields.io/badge/phases-6-purple)
 
 基于 Claude Code Agent Teams 的多智能体协作安全审计框架，覆盖环境构建、静态侦察、动态追踪、深度对抗利用、后渗透关联分析、报告收口全链路，支持 **21 种漏洞类型** 专家级审计。
@@ -48,7 +48,7 @@ RCE · SQLi · 反序列化 · LFI · 文件写入 · SSRF · XSS/SSTI · XXE ·
 ### 🔒 质量保障体系
 - **Gate 门禁**：每阶段结束强制校验产物存在性（GATE-1 ~ GATE-4.5）
 - **独立 QC 池**：按需 spawn 质检员，"完成一个、校验一个"，含图记忆 + 研究员专项检查
-- **25 个 JSON Schema**：所有 Agent 间数据交换严格校验格式
+- **30 个 JSON Schema**：所有 Agent 间数据交换严格校验格式
 - **Auditor 自检**：每个审计员内置 `auditor_self_check.md` 自我校验清单
 
 ---
@@ -371,7 +371,7 @@ PHP_AUDIT_SKILLS/
 │   ├── sink_definitions.md           #   Sink 函数定义
 │   └── waf_bypass.md                 #   WAF 检测与绕过
 │
-├── schemas/                          # JSON Schema（25 个）
+├── schemas/                          # JSON Schema（30 个）
 │   ├── attack_graph.schema.json
 │   ├── attack_memory_entry.schema.json
 │   ├── auth_credentials.schema.json

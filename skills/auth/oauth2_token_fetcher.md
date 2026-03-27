@@ -27,7 +27,7 @@
 | # | Rule | Consequence |
 |---|------|-------------|
 | CR-1 | MUST NOT use hardcoded credentials — only use credentials discovered from source code analysis or `$WORK_DIR/credentials.json` | FAIL — test uses fabricated credentials, results unreliable |
-| CR-2 | MUST write output to `$WORK_DIR/auth/` directory conforming to output contract schema | FAIL — downstream Phase-3/4 agents cannot locate auth artifacts |
+| CR-2 | MUST write output to the path specified in Output Contract conforming to its schema | FAIL — downstream Phase-3/4 agents cannot locate auth artifacts |
 | CR-3 | MUST verify obtained token grants actual API access by making an authenticated request | FAIL — expired or invalid token passed to downstream agents |
 
 ---
