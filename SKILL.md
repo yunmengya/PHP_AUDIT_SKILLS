@@ -279,7 +279,7 @@ bash "$WORK_DIR/.audit_state/phase_transition.sh" "GATE_2_PASS" "CREATE_DYNAMIC_
 
 > 📄 **Full sink→agent mapping + framework dispatch**: `phases/phase2-tasks-dynamic.md`
 
-Read `$WORK_DIR/priority_queue.json`. Map sink_type → auditor agent (22 types). Apply framework-adaptive forced dispatch. Create Phase-4, Phase-4.5, Phase-5 task trees with dependencies.
+Read `$WORK_DIR/priority_queue.json`. Map sink_type → auditor agent (21 types). Apply framework-adaptive forced dispatch. Create Phase-4, Phase-4.5, Phase-5 task trees with dependencies.
 
 **Anti-skip rule**: If priority_queue.json is empty → MUST still launch framework-adaptive forced agents.
 
