@@ -79,7 +79,7 @@ For each route entry, apply all rules:
 | CR | Check | Fill-in Action |
 |----|-------|---------------|
 | CR-1 | Route has `file` + `line` with non-empty values | {if missing → DELETE route, log: `"CR-1 violation: no provenance for {path}"`} |
-| CR-2 | If CLI route command available, check `cli_route_list != "not_available"` | {log warning if CLI was available but not executed} |
+| CR-2 | If CLI route command available, check `cli_route_list != "not_available"` | {FAIL — CLI routes missing from final map, coverage incomplete} |
 | CR-3 | `controller_verified: true` | {if false → DELETE route, log: `"CR-3 violation: controller not found for {path}"`} |
 | CR-4 | `input_sources` from code analysis | {if not analyzed → mark `input_sources` as `"unknown"`} |
 | CR-5 | No unexpanded `Route::resource` entries | {if found → expand into individual routes} |
@@ -134,7 +134,7 @@ Print user-facing summary (in Chinese):
 ━━━ 路由映射完成 ━━━
 HTTP 路由: {N} 条
 隐藏端点: {N} 条
-合成入口: CLI={N} CRON={N} QUEUE={N} HOOK={N}
+Synthetic entries: CLI={N} CRON={N} QUEUE={N} HOOK={N}
 认证缺口: {N} 条 (高风险: {N})
 CR 违规:  {N} 条 (已删除)
 输出文件: $WORK_DIR/route_map.json

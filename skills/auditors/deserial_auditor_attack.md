@@ -966,7 +966,7 @@ phpggc -l Monolog
 ```
 
 **Key Insight:**
-> Monolog is present in nearly all modern PHP projects (the default logging library for Laravel, Symfony, and other frameworks), making it one of the most universal POP chains. The `BufferHandler` → `StreamHandler` chain achieves arbitrary file write (Webshell), while the `BufferHandler` → `SyslogUdpHandler` variant can achieve RCE. Since Monolog is an indirect dependency (introduced through frameworks), developers are often unaware of the deserialization risks it poses. During auditing, whenever `monolog/monolog` is found in `composer.lock`, it SHOULD be included in the POP chain search scope.
+> Monolog is present in nearly all modern PHP projects (the default logging library for Laravel, Symfony, and other frameworks), making it one of the most universal POP chains. The `BufferHandler` → `StreamHandler` chain achieves arbitrary file write (Webshell), while the `BufferHandler` → `SyslogUdpHandler` variant can achieve RCE. Since Monolog is an indirect dependency (introduced through frameworks), developers are often unaware of the deserialization risks it poses. During auditing, whenever `monolog/monolog` is found in `composer.lock`, it MUST be included in the POP chain search scope.
 
 
 

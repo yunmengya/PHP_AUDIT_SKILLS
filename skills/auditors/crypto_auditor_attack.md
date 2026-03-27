@@ -335,7 +335,7 @@ Analysis:
 ## Detection (Vulnerability Pattern Recognition)
 
 The following code patterns indicate potential cryptographic weaknesses:
-- Pattern 1: `md5($password)` / `sha1($password)` — Insecure hash algorithms used for password storage; SHOULD use `password_hash()`
+- Pattern 1: `md5($password)` / `sha1($password)` — Insecure hash algorithms used for password storage; MUST use `password_hash()`
 - Pattern 2: `openssl_encrypt($data, 'AES-128-ECB', $key)` — ECB mode without IV; identical plaintext produces identical ciphertext, causing pattern leakage
 - Pattern 3: `$token = md5(time())` / `$reset = substr(md5(rand()), 0, 16)` — Predictable seed used to generate security Tokens
 - Pattern 4: `if(md5($input) == md5($stored))` — Loose comparison of hash values; magic hashes starting with `0e` can bypass

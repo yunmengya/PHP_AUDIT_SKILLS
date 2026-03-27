@@ -507,7 +507,7 @@ ROT13 first then Base64, bypasses rules that detect Base64-encoded PHP tags. Dec
 
 ### Key Insight
 
-> The iconv chain technique for php://filter is currently one of the most powerful primitives for LFI → RCE. It does not depend on `allow_url_include`, does not require file write permissions, and only needs a single `include()` to achieve arbitrary code execution. Defense efforts SHOULD focus on restricting the use of `php://` protocols and detecting overly long filter chains at the WAF layer.
+> The iconv chain technique for php://filter is currently one of the most powerful primitives for LFI → RCE. It does not depend on `allow_url_include`, does not require file write permissions, and only needs a single `include()` to achieve arbitrary code execution. Defense efforts MUST focus on restricting the use of `php://` protocols and detecting overly long filter chains at the WAF layer.
 
 ## Log Poisoning → RCE
 
