@@ -188,14 +188,37 @@ bash tools/audit_db.sh qc-write "$WORK_DIR" '{"agent":"xxx", "redo_count": N, ..
 | Phase 5 | 2 | Force generation (mark with WARN) |
 
 ### Redo Information Delivery
-On failure, the lead SHALL send the following information to the verified Agent:
-```
-Your output did not pass quality check. Below are the failed items and fix requirements:
 
-[Paste the quality checker's failed_items list]
+On failure, the lead MUST inject the following **structured redo prompt** verbatim into the responsible Agent's next invocation. Every `{fill-in}` field MUST be populated from the QC report — free-form rewording is PROHIBITED.
 
-Please address each fix requirement and resubmit.
 ```
+⚠️ QC FAILURE — REDO REQUIRED
+
+| Field | Value |
+|-------|-------|
+| Phase | {fill-in: Phase-N} |
+| Your Agent Role | {fill-in: responsible agent name from mapping table above} |
+| Redo Attempt | {fill-in: current redo_count} / {fill-in: max retries for this phase} |
+| QC Report Path | {fill-in: $WORK_DIR/质量报告/quality_report_phaseN.json} |
+
+### Failed Items
+
+| # | Check Item | Expected | Your Actual Output | Fix Requirement |
+|---|-----------|----------|-------------------|-----------------|
+| {fill-in: check id from QC report} | {fill-in: check_item} | {fill-in: expected value} | {fill-in: actual value from QC report} | {fill-in: specific remediation action} |
+(repeat for each failed item)
+
+### Constraints
+- MUST fix ALL items listed above
+- MUST NOT modify outputs that already passed QC
+- MUST resubmit to the same Output Contract path as your original invocation
+- If a fix requires re-reading source code, re-read it — do NOT hallucinate from memory
+```
+
+**Population rules:**
+1. `Failed Items` table rows MUST come from the QC report's `item_results` where `status = "❌"`
+2. `Fix Requirement` MUST be a concrete action verb phrase (e.g., "re-run Psalm scan", "add missing `auth_level` field"), NOT vague instructions like "fix it"
+3. If QC report contains `remediation` text for a failed item, copy it verbatim into `Fix Requirement`
 
 ---
 

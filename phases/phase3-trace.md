@@ -36,9 +36,14 @@ spawn trace_dispatcher  (Task #13, foreground, read teams/team3/trace_dispatcher
 spawn quality_checker (Task #14, foreground)
 ⏳ Block-wait QC result
   — QC PASS → continue
-  — QC FAIL → check trace_dispatcher redo_count:
-    if redo_count < 2 → increment redo_count, re-run with failed items
-    if redo_count >= 2 → mark degraded, fall back to static analysis
+  — QC FAIL →
+    1. Read QC report from $WORK_DIR/质量报告/quality_report_phase3.json
+    2. Extract all items where status = "❌"
+    3. Build the structured redo prompt per teams/qc/qc_dispatcher.md "Redo Information Delivery" template
+    4. Re-invoke trace_dispatcher with the filled-in redo prompt injected into its context
+    5. Check trace_dispatcher redo_count:
+       if redo_count < 2 → increment redo_count, re-run
+       if redo_count >= 2 → mark degraded, fall back to static analysis
 ```
 
 **Step 4 — GATE:**

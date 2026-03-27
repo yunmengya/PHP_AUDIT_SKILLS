@@ -30,11 +30,16 @@ spawn docker_builder       (Task #3, foreground, read teams/team1/docker_builder
 spawn quality_checker (Task #4, foreground, read teams/qc/quality_checker.md)
 ⏳ Block-wait QC result
   — QC PASS → continue
-  — QC FAIL → re-send failed_items to docker_builder, check redo_count:
-    # Phase-1 allows 3 retries (vs 2 for other phases) because environment setup
-    # is a hard prerequisite — there is no degraded fallback. More retries before halt.
-    if redo_count < 3 → increment redo_count, retry
-    if redo_count >= 3 → halt for user intervention (Phase-1 cannot degrade)
+  — QC FAIL →
+    1. Read QC report from $WORK_DIR/质量报告/quality_report_phase1.json
+    2. Extract all items where status = "❌"
+    3. Build the structured redo prompt per teams/qc/qc_dispatcher.md "Redo Information Delivery" template
+    4. Re-invoke docker_builder with the filled-in redo prompt injected into its context
+    5. Check redo_count:
+       # Phase-1 allows 3 retries (vs 2 for other phases) because environment setup
+       # is a hard prerequisite — there is no degraded fallback. More retries before halt.
+       if redo_count < 3 → increment redo_count, retry
+       if redo_count >= 3 → halt for user intervention (Phase-1 cannot degrade)
 ```
 
 **Step 4 — GATE:**

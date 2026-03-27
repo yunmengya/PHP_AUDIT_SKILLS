@@ -45,9 +45,14 @@ spawn sarif_exporter (background, read teams/team5/sarif_exporter.md)
 spawn quality_checker (final report QC, foreground)
 ⏳ Block-wait final QC result
   — QC PASS → continue
-  — QC FAIL → check report_writer redo_count:
-    if redo_count < 2 → increment redo_count, revise and resubmit
-    if redo_count >= 2 → force output whatever is available
+  — QC FAIL →
+    1. Read QC report from $WORK_DIR/质量报告/quality_report_phase5.json
+    2. Extract all items where status = "❌"
+    3. Build the structured redo prompt per teams/qc/qc_dispatcher.md "Redo Information Delivery" template
+    4. Re-invoke report_writer with the filled-in redo prompt injected into its context
+    5. Check report_writer redo_count:
+       if redo_count < 2 → increment redo_count, revise and resubmit
+       if redo_count >= 2 → force output whatever is available (mark with WARN)
 ```
 
 **Step 4 — GATE + File Reorganization:**

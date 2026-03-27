@@ -41,9 +41,15 @@ spawn risk_classifier   (Task #10, foreground, read teams/team2/risk_classifier.
 spawn quality_checker (Task #11, foreground)
 ⏳ Block-wait QC result
   — QC PASS → continue
-  — QC FAIL → identify failing agent, check redo_count:
-    if redo_count < 2 → increment redo_count, re-run with failed_items
-    if redo_count >= 2 → mark degraded, continue with available results
+  — QC FAIL →
+    1. Read QC report from $WORK_DIR/质量报告/quality_report_phase2.json
+    2. Extract all items where status = "❌"
+    3. Map each failed item to its responsible agent (see teams/qc/qc_dispatcher.md Phase-2 mapping)
+    4. For EACH responsible agent, build the structured redo prompt per teams/qc/qc_dispatcher.md "Redo Information Delivery" template
+    5. Re-invoke each responsible agent with its filled-in redo prompt injected into context
+    6. Check redo_count:
+       if redo_count < 2 → increment redo_count, re-run
+       if redo_count >= 2 → mark degraded, continue with available results
 ```
 
 **Step 4 — GATE:**

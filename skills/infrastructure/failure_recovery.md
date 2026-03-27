@@ -82,31 +82,46 @@ On QC FAIL, identify the responsible agent and apply per-phase recovery:
 | Field | Fill-in Value |
 |-------|--------------|
 | Failed Phase | `Phase-___` (1 / 2 / 3 / 4 / 4.5 / 5) |
-| Failed Items | `___` (from QC report failed_items) |
+| Failed Items | `___` (from QC report `item_results` where `status = "❌"`) |
 | Responsible Agent | `___` (mapped from failed artifact, see mapping below) |
 | Current redo_count | `___` (from checkpoint.json) |
 | Phase Redo Limit | `___` (from recovery table below) |
-| Action Taken | `___` (re-spawn / over-limit action) |
+| Action Taken | `___` (re-spawn with structured redo prompt / over-limit action) |
 
 **Failed-item to agent mapping:**
 
 ```
-route_map.json failed        → route_mapper
-auth_matrix.json failed      → auth_auditor
+route_map.json failed          → route_mapper
+auth_matrix.json failed        → auth_auditor
+ast_sinks.json failed          → ast_scanner
+priority_queue.json failed     → risk_classifier
+context_packs/ failed          → context_extractor
+dep_risk.json failed           → dep_scanner
+credentials.json failed        → auth_simulator
+traces/*.json failed           → trace_dispatcher
 exploits/{sink_id}.json failed → corresponding auditor
-审计报告.md failed             → report_writer
+审计报告.md failed               → report_writer
 ```
+
+**Redo Prompt Delivery:**
+
+When re-invoking the responsible agent, MUST use the structured redo prompt template defined in `teams/qc/qc_dispatcher.md` § "Redo Information Delivery". The redo prompt MUST contain:
+1. Phase, Agent Role, Redo Attempt count — from this procedure's fill-in table above
+2. Failed Items table — populated from QC report `item_results` where `status = "❌"`, with `expected`, `actual`, and concrete `Fix Requirement`
+3. Constraints block — copied verbatim from the template
+
+Free-form messages like "QC failed, please redo" are **PROHIBITED** — the agent receives no actionable information from such messages.
 
 **QC Failure Recovery table (per-phase redo limits and over-limit actions):**
 
 | Phase | QC Failure Recovery | Redo Limit | Over-Limit Action |
 |-------|--------------------|------------|-------------------|
-| Phase-1 (env build) | Re-send failed_items to docker-builder | 3 | Halt for user intervention — NO degradation allowed, Docker MUST succeed |
-| Phase-2 (static recon) | Identify responsible agent via failed_items, re-run | 2 | Mark degraded, note coverage gap in report. MUST continue to Phase-3, Phase-4, Phase-5 |
-| Phase-3 (dynamic trace) | Re-run trace_dispatcher with failed items | 2 | Fall back to static analysis for broken routes. MUST continue to Phase-4, Phase-5 |
-| Phase-4 (evidence) | Re-run failed auditor | 2 | Mark as degraded, downgrade verdict to "insufficient evidence". MUST continue to Phase-4.5, Phase-5 |
-| Phase-4.5 (correlation) | Re-run failed agent | 1 | Use team4_progress.json directly. MUST continue to Phase-5 |
-| Phase-5 (report) | Revise and resubmit | 2 | Force output whatever is available (with WARN tag) |
+| Phase-1 (env build) | Re-invoke docker-builder with structured redo prompt | 3 | Halt for user intervention — NO degradation allowed, Docker MUST succeed |
+| Phase-2 (static recon) | Map failed items → responsible agents, re-invoke each with structured redo prompt | 2 | Mark degraded, note coverage gap in report. MUST continue to Phase-3, Phase-4, Phase-5 |
+| Phase-3 (dynamic trace) | Re-invoke trace_dispatcher with structured redo prompt | 2 | Fall back to static analysis for broken routes. MUST continue to Phase-4, Phase-5 |
+| Phase-4 (evidence) | Re-invoke failed auditor with structured redo prompt | 2 | Mark as degraded, downgrade verdict to "insufficient evidence". MUST continue to Phase-4.5, Phase-5 |
+| Phase-4.5 (correlation) | Re-invoke failed agent with structured redo prompt | 1 | Use team4_progress.json directly. MUST continue to Phase-5 |
+| Phase-5 (report) | Re-invoke report_writer with structured redo prompt | 2 | Force output whatever is available (with WARN tag) |
 
 ### Procedure C: Downstream Impact Propagation
 
