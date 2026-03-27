@@ -4,8 +4,8 @@
 
 | Field | Value |
 |-------|-------|
-| Skill ID | S-020 |
-| Phase | Phase-2 (Static Asset Reconnaissance) |
+| Skill ID | S-023 |
+| Phase | Phase-2 |
 | Responsibility | Run Psalm taint analysis inside Docker container and output structured taint paths |
 
 ## Input Contract
@@ -16,70 +16,87 @@
 | TARGET_PATH | Orchestrator | ✅ | Source code root |
 | WORK_DIR | Orchestrator | ✅ | Working directory |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | Output MUST be wrapped in `{"tool": "psalm", "status": "...", "results": [...]}` | Missing wrapper breaks downstream aggregation |
+| CR-2 | Each result MUST include `type` (taint type), `file`, and `line` | Incomplete taint entries cannot be correlated with other scanner findings |
+| CR-3 | On failure, MUST include both `"status": "failed"` AND `"error"` field | Silent failures hide scanning gaps from the audit report |
+| CR-4 | MUST use `--taint-analysis` flag (not regular analysis) | Regular analysis misses Source→Sink data flow tracking |
+
 ## Fill-in Procedure
 
 ### Procedure A: Install Psalm
 
-```bash
-docker exec php composer require --dev vimeo/psalm --no-interaction 2>&1 || true
-```
-
-On failure: record reason, output failed status JSON.
+| Field | Fill-in Value |
+|-------|--------------|
+| command | `docker exec php composer require --dev vimeo/psalm --no-interaction 2>&1 \|\| true` |
+| on_failure | Record reason, set `status` = `"failed"`, `error` = failure message |
 
 ### Procedure B: Generate Configuration
 
-Generate `psalm.xml`:
-```xml
-<?xml version="1.0"?>
-<psalm errorLevel="4" resolveFromConfigFile="true"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xmlns="https://getpsalm.org/schema/config"
-       xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd">
-    <projectFiles>
-        <directory name="app" />
-        <directory name="routes" />
-        <ignoreFiles>
-            <directory name="vendor" />
-        </ignoreFiles>
-    </projectFiles>
-</psalm>
-```
-
-Write configuration into the container.
+| Field | Fill-in Value |
+|-------|--------------|
+| config_format | XML (`psalm.xml`) |
+| error_level | `4` |
+| project_dirs | `app`, `routes` |
+| ignore_dirs | `vendor` |
+| deploy_method | Write `psalm.xml` into container at `/var/www/html/psalm.xml` |
+| schema_ref | `https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd` |
 
 ### Procedure C: Execute Scan
 
-```bash
-docker exec php vendor/bin/psalm --taint-analysis --output-format=json 2>&1
-```
+| Field | Fill-in Value |
+|-------|--------------|
+| command | `docker exec php vendor/bin/psalm --taint-analysis --output-format=json 2>&1` |
+| mode | Taint analysis (Source→Sink tracking) |
+| output_format | Psalm native JSON |
 
 ### Procedure D: Save Output
 
-Save output as `$WORK_DIR/psalm_taint.json`.
+| Field | Fill-in Value |
+|-------|--------------|
+| output_path | `$WORK_DIR/psalm_taint.json` |
+| wrapper_format | `{"tool": "psalm", "status": "success/failed", "results": [...]}` |
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| psalm_taint.json | `$WORK_DIR/psalm_taint.json` | Taint analysis results with Source→Sink paths |
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| psalm_taint.json | `$WORK_DIR/psalm_taint.json` | `{"tool": "psalm", "status": string, "results": [TaintFinding]}` | Taint analysis results with Source→Sink paths |
 
 ## Examples
 
 ### ✅ GOOD: Valid output with taint paths
 ```json
-{"tool": "psalm", "status": "success", "results": [{"type": "TaintedSql", "file": "app/Models/User.php", "line": 42}]}
+{
+  "tool": "psalm",
+  "status": "success",
+  "results": [
+    {
+      "type": "TaintedSql",
+      "file": "app/Models/User.php",
+      "line": 42,
+      "message": "Detected tainted SQL query"
+    }
+  ]
+}
 ```
+Explanation: Contains standard wrapper, taint type, file location, and descriptive message. ✅
 
 ### ❌ BAD: Missing status field on failure
 ```json
-{"results": []}
+{
+  "results": []
+}
 ```
-Must include `"status": "failed"` and `"error"` field on failure. ❌
+Missing `"tool"`, `"status"`, and `"error"` fields — violates CR-1 and CR-3. Cannot distinguish between "no findings" and "scan failed". ❌
 
 ## Error Handling
 
-| Error Condition | Action |
-|----------------|--------|
+| Error | Action |
+|-------|--------|
 | Composer install fails | Output `{"tool": "psalm", "status": "failed", "error": "install failed", "results": []}` |
-| Psalm crashes on legacy code | Record error, output failed status JSON |
+| Psalm crashes on legacy code | Output `{"tool": "psalm", "status": "failed", "error": "...", "results": []}` |
 | No taint paths found | Output `{"tool": "psalm", "status": "success", "results": []}` (valid empty) |

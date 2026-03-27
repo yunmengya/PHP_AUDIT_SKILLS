@@ -4,8 +4,8 @@
 
 | Field | Value |
 |-------|-------|
-| Skill ID | S-022 |
-| Phase | Phase-2 (Static Asset Reconnaissance) |
+| Skill ID | S-020 |
+| Phase | Phase-2 |
 | Responsibility | Run sink_finder.php AST parser inside Docker to discover all dangerous Sink function calls |
 
 ## Input Contract
@@ -17,55 +17,93 @@
 | TARGET_PATH | Orchestrator | ✅ | Source code root |
 | WORK_DIR | Orchestrator | ✅ | Working directory |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | Every sink entry MUST include `arg_safety` field | Without `arg_safety`, context_extractor cannot filter and prioritize traces |
+| CR-2 | Output MUST be wrapped in `{"tool": "ast_sinks", "status": "...", "results": [...]}` | Downstream aggregation fails without standard wrapper |
+| CR-3 | `sink_type` MUST use standard categories (RCE, SQLi, XSS, SSRF, FileOp, Deserial, etc.) | Non-standard types break vulnerability classification |
+
 ## Fill-in Procedure
 
 ### Procedure A: Install PHP Parser
 
-```bash
-docker exec php composer require --dev nikic/php-parser --no-interaction 2>&1 || true
-```
+| Field | Fill-in Value |
+|-------|--------------|
+| command | `docker exec php composer require --dev nikic/php-parser --no-interaction 2>&1 \|\| true` |
+| on_failure | Record error reason, set `status` = `"failed"` in output JSON |
 
 ### Procedure B: Copy Script into Container
 
-```bash
-docker cp tools/sink_finder.php php:/tmp/sink_finder.php
-```
+| Field | Fill-in Value |
+|-------|--------------|
+| command | `docker cp tools/sink_finder.php php:/tmp/sink_finder.php` |
+| source_file | `tools/sink_finder.php` from project tools directory |
+| destination | `/tmp/sink_finder.php` inside `php` container |
 
 ### Procedure C: Execute Scan
 
-```bash
-docker exec php php /tmp/sink_finder.php /var/www/html
-```
+| Field | Fill-in Value |
+|-------|--------------|
+| command | `docker exec php php /tmp/sink_finder.php /var/www/html` |
+| scan_target | `/var/www/html` (mapped from TARGET_PATH) |
+| output_format | JSON array of sink entries |
 
 ### Procedure D: Save Output
 
-Save output as `$WORK_DIR/ast_sinks.json`.
-
-Each entry contains: `file`, `line`, `sink_function`, `sink_type`, `arg_safety` (safe/needs_trace/suspicious).
+| Field | Fill-in Value |
+|-------|--------------|
+| output_path | `$WORK_DIR/ast_sinks.json` |
+| entry_fields | `file`, `line`, `sink_function`, `sink_type`, `arg_safety` |
+| arg_safety_values | `safe` / `needs_trace` / `suspicious` |
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| ast_sinks.json | `$WORK_DIR/ast_sinks.json` | All dangerous Sink calls with argument safety classification |
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| ast_sinks.json | `$WORK_DIR/ast_sinks.json` | `{"tool": "ast_sinks", "status": string, "results": [SinkEntry]}` | All dangerous Sink calls with argument safety classification |
 
 ## Examples
 
 ### ✅ GOOD: Sink entry with arg_safety
 ```json
-{"file": "app/Http/Controllers/RunController.php", "line": 55, "sink_function": "eval", "sink_type": "RCE", "arg_safety": "needs_trace"}
+{
+  "tool": "ast_sinks",
+  "status": "success",
+  "results": [
+    {
+      "file": "app/Http/Controllers/RunController.php",
+      "line": 55,
+      "sink_function": "eval",
+      "sink_type": "RCE",
+      "arg_safety": "needs_trace"
+    }
+  ]
+}
 ```
+Explanation: Contains all required fields including `arg_safety` for downstream filtering. ✅
 
 ### ❌ BAD: Missing arg_safety
 ```json
-{"file": "app/Http/Controllers/RunController.php", "line": 55, "sink_function": "eval"}
+{
+  "tool": "ast_sinks",
+  "status": "success",
+  "results": [
+    {
+      "file": "app/Http/Controllers/RunController.php",
+      "line": 55,
+      "sink_function": "eval"
+    }
+  ]
+}
 ```
-`arg_safety` is required for context_extractor filtering. ❌
+Missing `arg_safety` — violates CR-1. context_extractor cannot determine trace priority. ❌
 
 ## Error Handling
 
-| Error Condition | Action |
-|----------------|--------|
+| Error | Action |
+|-------|--------|
 | PHP Parser install fails | Output `{"tool": "ast_sinks", "status": "failed", "error": "...", "results": []}` |
-| sink_finder.php crash | Record error, output failed status |
-| No sinks found | Output valid empty result (application may be genuinely safe) |
+| sink_finder.php crash | Record error, output `{"tool": "ast_sinks", "status": "failed", "error": "...", "results": []}` |
+| No sinks found | Output `{"tool": "ast_sinks", "status": "success", "results": []}` (valid empty — application may be genuinely safe) |

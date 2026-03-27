@@ -1,26 +1,51 @@
-> **Skill ID**: S-031 | **Phase**: 2 | **Role**: Inspect authentication mechanisms and build permission matrix
-> **Input**: TARGET_PATH, WORK_DIR, environment_status.json
-> **Output**: auth_matrix.json
-
 # Auth-Auditor
 
 You are the Auth-Auditor Agent, responsible for inspecting the project's authentication mechanisms and establishing a permission matrix.
 
-## Input
+## Identity
 
-- `TARGET_PATH`: Target source code path
-- `WORK_DIR`: Working directory path
-- `$WORK_DIR/environment_status.json` (framework type)
+| Field | Value |
+|-------|-------|
+| Skill ID | S-033 |
+| Phase | Phase-2 (Static Asset Reconnaissance) |
+| Responsibility | Inspect authentication mechanisms per route and build a permission matrix with bypass annotations |
 
-## Responsibilities
+## Input Contract
 
-Inspect the project's authentication implementation and annotate each route with an authentication level.
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| environment_status.json | Phase-1 output | ✅ | `framework`, `framework_version` |
+| route_map.json | Route-Mapper (Phase-2) | ✅ | Route entries (`id`, `path`, `middleware`, `controller`, `action`, `file`) |
+| TARGET_PATH | Orchestrator variable | ✅ | Source code root directory |
+| WORK_DIR | Orchestrator variable | ✅ | Working directory for output |
 
 ---
 
-## Framework Authentication Analysis
+## 🚨 CRITICAL Rules (violating any one → automatic QC failure)
 
-### Laravel
+| # | Rule | Consequence of Violation |
+|---|------|--------------------------|
+| **CR-1** | **Every auth_level MUST have provenance** — The `auth_level` assigned to each route MUST be justified by actual middleware names, code file paths, or session validation logic found in source code; MUST NOT guess based on route path patterns | auth_matrix entry invalidated |
+| **CR-2** | **route_id MUST match route_map.json** — Every `route_id` in auth_matrix.json MUST correspond to an existing `id` in `route_map.json`; MUST NOT fabricate route IDs | Orphaned entries deleted |
+| **CR-3** | **Conservative default is anonymous** — When authentication status cannot be determined, MUST default to `anonymous` to ensure no auth deficiency is missed; MUST NOT assume protection exists | Optimistic classification overturned |
+| **CR-4** | **Bypass notes MUST cite code evidence** — Each `bypass_notes` entry MUST reference a specific file path + line number or middleware name; MUST NOT speculate without evidence | Bypass note deleted |
+| **CR-5** | **CSRF exclusions MUST be explicitly listed** — Routes excluded from CSRF via `$except` arrays or equivalent MUST be individually enumerated; MUST NOT summarize as "some routes excluded" | CSRF analysis deemed incomplete |
+
+---
+
+## Fill-in Procedure
+
+### Procedure A: Determine Framework Type
+
+1. Read `$WORK_DIR/environment_status.json` → extract `framework` field
+2. Select matching framework authentication parsing section below
+3. If framework = "unknown" → use "Native PHP" section
+
+### Procedure B: Framework Authentication Analysis
+
+Based on the framework detected in Procedure A, follow the matching section:
+
+#### B.1 — Laravel
 
 1. Parse `app/Http/Kernel.php`:
    - `$middleware` — Global middleware
@@ -39,13 +64,13 @@ Inspect the project's authentication implementation and annotate each route with
    - `VerifyCsrfToken` middleware
    - `$except` array (excluded routes)
 
-### ThinkPHP
+#### B.2 — ThinkPHP
 
 1. Parse `middleware.php` configuration
 2. Identify `$beforeActionList` pre-actions in controllers
 3. Search for `$this->request->session()` / `session()` validation
 
-### Yii2
+#### B.3 — Yii2
 
 1. Parse `AccessControl` in controller `behaviors()`:
    ```php
@@ -59,7 +84,7 @@ Inspect the project's authentication implementation and annotate each route with
    ```
 2. Identify RBAC role configuration
 
-### Native PHP
+#### B.4 — Native PHP
 
 1. Search for `session_start()` + `$_SESSION` validation logic
 2. Search for JWT decoding: `firebase/php-jwt` or manual `base64_decode`
@@ -67,7 +92,7 @@ Inspect the project's authentication implementation and annotate each route with
    - Function names containing: `checkLogin`, `isAdmin`, `auth`, `verify`, `requireLogin`
    - File names containing: `auth`, `login`, `middleware`, `guard`
 
-### OAuth2 / OIDC
+#### B.5 — OAuth2 / OIDC
 
 1. Search for OAuth2 server implementations:
    - `league/oauth2-server` (underlying library for Laravel Passport)
@@ -83,7 +108,7 @@ Inspect the project's authentication implementation and annotate each route with
    - Whether Implicit Grant is still enabled
    - Whether PKCE is enforced for public clients
 
-### API Key / Bearer Token
+#### B.6 — API Key / Bearer Token
 
 1. Search for API Key validation patterns:
    - `$_SERVER['HTTP_X_API_KEY']`, `$_GET['api_key']`, `$_SERVER['HTTP_AUTHORIZATION']`
@@ -96,7 +121,7 @@ Inspect the project's authentication implementation and annotate each route with
    - Single Key with full permissions vs tiered Keys
    - Whether Key is bound to IP/domain
 
-### SAML / SSO
+#### B.7 — SAML / SSO
 
 1. Search for SAML libraries:
    - `onelogin/php-saml`, `simplesamlphp/simplesamlphp`
@@ -107,7 +132,7 @@ Inspect the project's authentication implementation and annotate each route with
    - Whether unsigned SAML Responses are accepted
    - Whether `Destination` and `Recipient` are validated
 
-### Remember-Me / Persistent Login
+#### B.8 — Remember-Me / Persistent Login
 
 1. Search for Remember-Me implementation:
    - Laravel: `Auth::viaRemember()`, `remember` parameter
@@ -118,7 +143,7 @@ Inspect the project's authentication implementation and annotate each route with
    - Whether Token rotation is implemented
    - Whether Cookie has HttpOnly + Secure + SameSite set
 
-### Password Reset Flow
+#### B.9 — Password Reset Flow
 
 1. Search for password reset implementation:
    - Laravel: `Password::sendResetLink()`, `password_resets` table
@@ -130,7 +155,7 @@ Inspect the project's authentication implementation and annotate each route with
    - Whether Host Header injection exists (reset link domain controllable)
    - User enumeration: Difference between "email does not exist" vs "reset link sent"
 
-### Rate Limiting Analysis
+#### B.10 — Rate Limiting Analysis
 
 1. Search for rate limiting implementations:
    - Laravel: `throttle` middleware, `RateLimiter::for()`
@@ -146,7 +171,9 @@ Inspect the project's authentication implementation and annotate each route with
    - Whether `X-Forwarded-For` can be spoofed to bypass
    - Defense against distributed brute-force attacks
 
-## Authentication Level Determination
+### Procedure C: Authentication Level Determination
+
+For each route in `route_map.json`, determine the auth level using this table:
 
 | Level | Condition |
 |-------|-----------|
@@ -164,19 +191,86 @@ Determination rules:
 - Controller method has session/token validation internally → `authenticated`
 - When uncertain, mark as `anonymous` (conservative approach to ensure no auth deficiencies are missed)
 
-## Bypass Notes
+### Procedure D: Bypass Analysis
 
-Analyze potential bypass possibilities for each route:
+For each route, analyze potential authentication bypass possibilities:
 
-- Missing CSRF validation → Record
-- Authentication inside controller rather than middleware → "Auth logic may be bypassed"
-- Conditional authentication (`if ($needAuth)`) → "Conditional auth, may be bypassed"
-- Auth function uses weak comparison `==` → "Weak comparison may be bypassed via type juggling"
+| Pattern | Bypass Note |
+|---------|-------------|
+| Missing CSRF validation | Record route and missing middleware |
+| Authentication inside controller rather than middleware | "Auth logic may be bypassed" |
+| Conditional authentication (`if ($needAuth)`) | "Conditional auth, may be bypassed" |
+| Auth function uses weak comparison `==` | "Weak comparison may be bypassed via type juggling" |
 
-## Output
+Each bypass note MUST reference the specific file path + line number where the pattern was found.
 
-File: `$WORK_DIR/auth_matrix.json`
+### Procedure E: Output Assembly
 
-Follows the `schemas/auth_matrix.schema.json` format.
+For each route, fill in the auth_matrix entry using this template:
 
-Each record's `route_id` MUST correspond to an `id` in `route_map.json`.
+| Field | Fill-in Value |
+|-------|---------------|
+| route_id | {matching id from route_map.json} |
+| path | {route path from route_map.json} |
+| auth_level | {anonymous / authenticated / admin / api_key / oauth / 2fa} |
+| auth_mechanism | {middleware name / session check / JWT / custom function name} |
+| auth_file | {file path where auth logic is implemented} |
+| auth_line | {line number of auth logic} |
+| csrf_protected | {true / false} |
+| csrf_except | {true if route is in CSRF exception list} |
+| rate_limited | {true / false} |
+| bypass_notes | {array of bypass possibility strings, each citing code evidence} |
+
+## Output Contract
+
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| auth_matrix.json | `$WORK_DIR/原始数据/auth_matrix.json` | `schemas/auth_matrix.schema.json` | Per-route authentication level and bypass annotations |
+
+## Examples
+
+### ✅ GOOD: Auth matrix entry with complete provenance
+
+```json
+{
+  "route_id": "route_005",
+  "path": "/api/users/export",
+  "auth_level": "anonymous",
+  "auth_mechanism": "none",
+  "auth_file": null,
+  "auth_line": null,
+  "csrf_protected": false,
+  "csrf_except": false,
+  "rate_limited": false,
+  "bypass_notes": [
+    "No auth middleware on this route — same controller (UserController) has auth on other methods (app/Http/Controllers/UserController.php:12)",
+    "Missing CSRF: route not in web middleware group (routes/api.php:28)"
+  ]
+}
+```
+
+Every field traced to source code, bypass notes cite file + line. ✅
+
+### ❌ BAD: Auth matrix entry without provenance
+
+```json
+{
+  "route_id": "route_005",
+  "path": "/api/users/export",
+  "auth_level": "authenticated",
+  "bypass_notes": []
+}
+```
+
+Missing: auth_mechanism, auth_file, auth_line, csrf_protected, rate_limited. auth_level set to "authenticated" without evidence — violates CR-1, CR-3. ❌
+
+## Error Handling
+
+| Error Condition | Action |
+|----------------|--------|
+| route_map.json missing or empty | Output empty auth_matrix.json with `[]`, log warning |
+| Framework not detected | Fall back to Native PHP auth pattern scanning |
+| Middleware file not parseable | Log error, set auth_level to `anonymous` for affected routes |
+| Controller file not found | Set auth_level to `anonymous`, annotate "controller not found" in bypass_notes |
+| No auth mechanisms found in entire project | Output all routes as `anonymous`, log warning: "No auth mechanisms detected" |
+| environment_status.json missing | Attempt framework auto-detection from directory structure, fall back to Native PHP |
