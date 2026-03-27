@@ -9,7 +9,7 @@
 | S-080 | qc_phase1.md | 1 | GATE_1 | Docker containers running, PHP version detected, framework identified, composer parsed, Xdebug trace mode |
 | S-081 | qc_phase2.md | 2 | GATE_2 | route_map.json completeness, auth_matrix coverage ≥ 80%, priority_queue valid (0 < P0 ≤ 20), scanner outputs exist, context_packs coverage |
 | S-082 | qc_phase3.md | 3 | GATE_3 | credentials.json valid, traces have Source→Sink call chains, chain completeness ≥ 70%, context_packs coverage ≥ 80% of priority routes |
-| S-083 | qc_phase4.md | 4 | GATE_4 | exploit_results have valid final_verdict, EVID evidence chains complete, severity scoring consistent, prerequisites declared, sink coverage ≥ 90% |
+| S-083 | qc_phase4.md | 4 | GATE_4 | exploits have valid final_verdict, EVID evidence chains complete, severity scoring consistent, prerequisites declared, sink coverage ≥ 90% |
 | S-084 | qc_phase45.md | 4.5 | GATE_4_5 | correlation_report non-empty, no duplicate chains, severity escalations justified, PoC scripts executable, patches applicable |
 | S-085 | qc_phase5.md | 5 | Final | Report structure matches template, P0/P1 100% coverage, confirmed vulns have PoC + evidence, Chinese output, SARIF valid, file organization correct |
 

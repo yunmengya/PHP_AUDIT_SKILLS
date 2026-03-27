@@ -54,7 +54,7 @@ P3 auditors → Stage 1 (parallel) → WAIT ALL → Stage 2 (sequential)
 | File | Path | Description |
 |------|------|-------------|
 | Attack plan | `$WORK_DIR/attack_plans/{sink_id}_plan.json` | Stage 1 output: vectors, payloads, bypass strategies |
-| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Stage 2 output: final_verdict, evidence, PoC |
+| Exploit result | `$WORK_DIR/exploits/{sink_id}.json` | Stage 2 output: final_verdict, evidence, PoC |
 | PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
 | Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
 

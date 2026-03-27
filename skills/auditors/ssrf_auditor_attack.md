@@ -1,6 +1,6 @@
 > **Skill ID**: S-045-B | **Phase**: 4 | **Stage**: 2 (Attack)
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+> **Output**: exploits/{sink_id}.json, PoC脚本/{sink_id}_poc.py
 
 
 ## Identity
@@ -27,7 +27,7 @@
 | CR-2 | MUST NOT exceed 12 attack rounds — if stuck after round 10, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
-| CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
+| CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST use OOB callback (DNS/HTTP to listener) or internal-only content in response to confirm SSRF — redirect following alone is insufficient | FAIL — false positive on client-side redirects |
 
 ## 8 Rounds of Attack
@@ -369,7 +369,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger Smart Pivot:
 
 ## Prerequisites and Scoring (MUST be filled)
 
-The output `exploit_results/{sink_id}_result.json` MUST contain the following two objects:
+The output `exploits/{sink_id}.json` MUST contain the following two objects:
 
 ### prerequisite_conditions
 ```json
@@ -423,7 +423,7 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write. SQLite WAL mode aut
 
 ## Output
 
-After all rounds are complete, write the final result to `$WORK_DIR/exploit_results/{sink_id}_result.json`.
+After all rounds are complete, write the final result to `$WORK_DIR/exploits/{sink_id}.json`.
 
 > **Strictly follow the fill-in template in `shared/OUTPUT_TEMPLATE.md` to generate the output file.**
 > JSON structure follows `schemas/exploit_result.schema.json`; field constraints are in `shared/data_contracts.md` Section 9.
@@ -824,7 +824,7 @@ grep -rn 'callback.*HTTP_HOST\|webhook.*HTTP_HOST\|notify.*getHost' --include="*
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| Exploit result | `$WORK_DIR/exploits/{sink_id}.json` | Final verdict + all round records |
 | PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
 | Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
 

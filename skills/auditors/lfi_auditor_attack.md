@@ -1,6 +1,6 @@
 > **Skill ID**: S-043-B | **Phase**: 4 | **Stage**: 2 (Attack)
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+> **Output**: exploits/{sink_id}.json, PoC脚本/{sink_id}_poc.py
 
 
 ## Identity
@@ -27,7 +27,7 @@
 | CR-2 | MUST NOT exceed 12 attack rounds — if stuck after round 10, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
-| CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
+| CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST confirm file read by matching known file content patterns (e.g., `/etc/passwd` format, `<?php` header) — HTTP 200 alone does not confirm LFI | FAIL — false positive on custom 200 error pages |
 
 ## 8 Rounds of Attack
@@ -338,7 +338,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger a Smart Pivot:
 
 ## Prerequisites & Scoring (MUST be filled)
 
-The output `exploit_results/{sink_id}_result.json` MUST include the following two objects:
+The output `exploits/{sink_id}.json` MUST include the following two objects:
 
 ### prerequisite_conditions (Prerequisites)
 ```json
@@ -391,7 +391,7 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write. SQLite WAL mode aut
 
 ## Output
 
-After all rounds are complete, write the final results to `$WORK_DIR/exploit_results/{sink_id}_result.json`.
+After all rounds are complete, write the final results to `$WORK_DIR/exploits/{sink_id}.json`.
 
 > **Strictly generate the output file according to the fill-in template in `shared/OUTPUT_TEMPLATE.md`.**
 > JSON structure follows `schemas/exploit_result.schema.json`; field constraints are in `shared/data_contracts.md` Section 9.
@@ -926,7 +926,7 @@ $result = call_python_service("read_template", $safe_name);
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| Exploit result | `$WORK_DIR/exploits/{sink_id}.json` | Final verdict + all round records |
 | PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
 | Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
 

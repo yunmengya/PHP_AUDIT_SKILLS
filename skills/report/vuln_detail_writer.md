@@ -1,5 +1,5 @@
 > **Skill ID**: S-090c | **Phase**: 5 | **Parent**: S-090 (report_writer)
-> **Input**: exploit_results/*.json, traces/*.json, 修复补丁/*.diff
+> **Input**: exploits/*.json, traces/*.json, 修复补丁/*.diff
 > **Output**: `$WORK_DIR/报告/02_漏洞详情_{sink_id}.md` (one per confirmed vulnerability)
 
 # Vulnerability Detail Writer
@@ -16,7 +16,7 @@
 
 | File | Source | Required | Fields Used |
 |------|--------|----------|-------------|
-| exploit_results/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_id`, `sink_type`, `route`, `severity`, `score`, `final_verdict`, `verification_level`, `evidence`, `iterations`, `sink_location` |
+| exploits/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_id`, `sink_type`, `route`, `severity`, `score`, `final_verdict`, `verification_level`, `evidence`, `iterations`, `sink_location` |
 | traces/*.json | `$WORK_DIR/traces/*.json` | ✅ | `source`, `sink`, `chain[]` (data flow steps), `sanitizers` |
 | 修复补丁/*.diff | `$WORK_DIR/修复补丁/*.diff` | ❌ | Before/after code snippets for remediation |
 | remediation output | `$WORK_DIR/exploits/*.json → remediation` | ❌ | `fix_description`, `fix_code` |

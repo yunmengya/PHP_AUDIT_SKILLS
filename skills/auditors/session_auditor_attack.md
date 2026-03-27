@@ -22,7 +22,7 @@
 | CR-2 | MUST NOT exceed 6 attack rounds — if stuck after round 4, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
-| CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
+| CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST demonstrate session fixation/hijacking by achieving authenticated access using victim's session token from a different client | FAIL — same-client session reuse does not prove vulnerability |
 
 ## 6-Round Attack Strategy
@@ -575,7 +575,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger Smart Pivot:
 
 ## Prerequisites & Scoring (MUST be filled)
 
-The output `exploit_results/{sink_id}_result.json` MUST include the following two objects:
+The output `exploits/{sink_id}.json` MUST include the following two objects:
 
 ### prerequisite_conditions
 ```json
@@ -628,9 +628,9 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write; SQLite WAL mode aut
 
 ## Output
 
-After completing all rounds, write the final results to `$WORK_DIR/exploit_results/{sink_id}_result.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
+After completing all rounds, write the final results to `$WORK_DIR/exploits/{sink_id}.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit.json`).
 
-> The `## Per-Round Record Format` above is the internal per-round record format; the final output MUST be aggregated into the exploit_result.json structure.
+> The `## Per-Round Record Format` above is the internal per-round record format; the final output MUST be aggregated into the exploit.json structure.
 
 ## Collaboration
 
@@ -672,8 +672,10 @@ Read the shared findings database before starting the attack phase, leveraging t
 
 | File | Path | Format |
 |------|------|--------|
-| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | JSON per `shared/data_contracts.md` §9 |
+| Exploit result | `$WORK_DIR/exploits/{sink_id}.json` | JSON per `shared/data_contracts.md` §9 |
 | PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Python PoC |
+
+## Examples
 
 ### ✅ GOOD Output Example
 

@@ -26,7 +26,7 @@ This auditor operates in two stages. The orchestrator controls stage transitions
 **Read**: `skills/auditors/filewrite_auditor_attack.md`
 
 - Execute up to 8 rounds of progressive attack testing
-- Produce exploit results: `$WORK_DIR/exploit_results/{sink_id}_result.json`
+- Produce exploit results: `$WORK_DIR/exploits/{sink_id}.json`
 - Generate PoC scripts and patches if confirmed
 
 ## Shared Resources (Injected by Orchestrator)

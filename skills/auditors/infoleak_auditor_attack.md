@@ -1,6 +1,6 @@
 > **Skill ID**: S-050-B | **Phase**: 4 | **Stage**: 2 (Attack)
 > **Input**: attack_plans/{sink_id}_plan.json, Docker container access
-> **Output**: exploit_results/{sink_id}_result.json, PoC脚本/{sink_id}_poc.py
+> **Output**: exploits/{sink_id}.json, PoC脚本/{sink_id}_poc.py
 
 
 ## Identity
@@ -27,7 +27,7 @@
 | CR-2 | MUST NOT exceed 12 attack rounds — if stuck after round 10, execute Smart Pivot or Smart Skip | FAIL — resource exhaustion, blocks other auditors |
 | CR-3 | MUST NOT attack routes not assigned in the task package — stay within allocated sink scope | FAIL — scope violation, duplicate work with other auditors |
 | CR-4 | MUST read `$WORK_DIR/attack_plans/{sink_id}_plan.json` from Stage-1 before starting — do NOT re-analyze from scratch | FAIL — ignores Stage-1 analysis, wastes rounds on already-assessed vectors |
-| CR-5 | MUST write exploit result to `$WORK_DIR/exploit_results/{sink_id}_result.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
+| CR-5 | MUST write exploit result to `$WORK_DIR/exploits/{sink_id}.json` conforming to `schemas/exploit_result.schema.json` | FAIL — downstream QC and report generation cannot process non-conformant output |
 | CR-6 | MUST verify leaked information is security-sensitive (credentials, internal paths, source code, stack traces) — generic error messages are `info` not `confirmed` | FAIL — noise findings inflate vulnerability count |
 
 ## Attack Rounds
@@ -337,7 +337,7 @@ When 3 consecutive rounds fail (current round ≥ 4), trigger a Smart Pivot:
 
 ## Prerequisites and Scoring (MUST be filled)
 
-The output `exploit_results/{sink_id}_result.json` MUST include the following two objects:
+The output `exploits/{sink_id}.json` MUST include the following two objects:
 
 ### prerequisite_conditions (Prerequisites)
 ```json
@@ -390,9 +390,9 @@ Use `bash tools/audit_db.sh memory-write '<json>'` to write; SQLite WAL mode aut
 
 ## Output
 
-After completing all rounds, write the final results to `$WORK_DIR/exploit_results/{sink_id}_result.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit_result.json`).
+After completing all rounds, write the final results to `$WORK_DIR/exploits/{sink_id}.json`, following the format in `shared/data_contracts.md` Section 9 (`exploit.json`).
 
-> The `## Report Format` above is the per-round internal recording format; the final output MUST be consolidated into the exploit_result.json structure.
+> The `## Report Format` above is the per-round internal recording format; the final output MUST be consolidated into the exploit.json structure.
 
 ## Collaboration
 
@@ -422,7 +422,7 @@ Read the shared findings store before starting the attack phase to leverage cred
 
 | Output File | Path | Description |
 |-------------|------|-------------|
-| Exploit result | `$WORK_DIR/exploit_results/{sink_id}_result.json` | Final verdict + all round records |
+| Exploit result | `$WORK_DIR/exploits/{sink_id}.json` | Final verdict + all round records |
 | PoC script | `$WORK_DIR/PoC脚本/{sink_id}_poc.py` | Standalone reproduction script |
 | Patch | `$WORK_DIR/修复补丁/{sink_id}_patch.diff` | Recommended fix |
 

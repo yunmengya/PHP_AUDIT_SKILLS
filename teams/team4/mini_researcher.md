@@ -10,7 +10,7 @@
 ## Input Contract
 | File | Source | Required | Fields Used |
 |------|--------|----------|-------------|
-| `exploit_results/{sink_id}_result.json` (failed) | Phase-4 Auditor | Yes | `sink_id`, `vuln_type`, `failure_reason`, `attempted_methods` |
+| `exploits/{sink_id}.json` (failed) | Phase-4 Auditor | Yes | `sink_id`, `vuln_type`, `failure_reason`, `attempted_methods` |
 | `traces/{sink_id}.json` | Phase-3 | Yes | `framework`, `component`, `version`, `sink_type` |
 | `shared/known_cves.md` | Shared | Yes | Known CVE entries for the target component |
 | `shared/lessons_learned.md` | Shared | No | Historical audit experience for similar scenarios |

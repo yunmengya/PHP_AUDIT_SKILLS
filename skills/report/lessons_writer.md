@@ -1,5 +1,5 @@
 > **Skill ID**: S-090g | **Phase**: 5 | **Parent**: S-090 (report_writer)
-> **Input**: exploit_results/*.json, attack_memory.db query results
+> **Input**: exploits/*.json, attack_memory.db query results
 > **Output**: `$WORK_DIR/经验沉淀/lessons_learned.md`
 
 # Lessons Learned Writer
@@ -16,7 +16,7 @@
 
 | File | Source | Required | Fields Used |
 |------|--------|----------|-------------|
-| exploit_results/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_type`, `final_verdict`, `iterations[]`, `bypass_technique`, `failure_reason`, `severity` |
+| exploits/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_type`, `final_verdict`, `iterations[]`, `bypass_technique`, `failure_reason`, `severity` |
 | attack_graph.json | `$WORK_DIR/attack_graph.json` | ❌ | `chains[]` (for cross-vuln pattern analysis) |
 | environment_status.json | `$WORK_DIR/environment_status.json` | ❌ | `framework`, `framework_version`, `php_version` |
 | attack_memory.db | `$WORK_DIR/audit_session.db` | ❌ | Query: successful payloads, failed attempts, technique effectiveness |

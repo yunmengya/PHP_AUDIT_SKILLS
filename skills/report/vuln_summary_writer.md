@@ -1,5 +1,5 @@
 > **Skill ID**: S-090b | **Phase**: 5 | **Parent**: S-090 (report_writer)
-> **Input**: exploit_results/*.json
+> **Input**: exploits/*.json
 > **Output**: `$WORK_DIR/报告/01_漏洞汇总表.md`
 
 # Vulnerability Summary Writer
@@ -16,7 +16,7 @@
 
 | File | Source | Required | Fields Used |
 |------|--------|----------|-------------|
-| exploit_results/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_id`, `sink_type`, `severity`, `route`, `final_verdict`, `score`, `verification_level` |
+| exploits/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_id`, `sink_type`, `severity`, `route`, `final_verdict`, `score`, `verification_level` |
 | exploit_summary.json | `$WORK_DIR/exploit_summary.json` | ❌ | `total`, `confirmed` (for validation cross-check) |
 
 ## 🚨 CRITICAL Rules

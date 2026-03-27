@@ -18,7 +18,7 @@
 |------|--------|----------|-------------|
 | attack_graph.json | `$WORK_DIR/attack_graph.json` | ✅ | `nodes[]`, `edges[]`, `chains[]` |
 | correlation_findings.json | `$WORK_DIR/correlation_report.json` | ❌ | `graph_correlations[]`, `combined_impact` |
-| exploit_results/*.json | `$WORK_DIR/exploits/*.json` | ❌ | `sink_id`, `sink_type`, `severity` (for node labels) |
+| exploits/*.json | `$WORK_DIR/exploits/*.json` | ❌ | `sink_id`, `sink_type`, `severity` (for node labels) |
 
 ## 🚨 CRITICAL Rules
 

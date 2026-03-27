@@ -1,5 +1,5 @@
 > **Skill ID**: S-090f | **Phase**: 5 | **Parent**: S-090 (report_writer)
-> **Input**: exploit_results/*.json
+> **Input**: exploits/*.json
 > **Output**: `$WORK_DIR/报告/05_未验证风险池.md`
 
 # Risk Pool Writer
@@ -16,7 +16,7 @@
 
 | File | Source | Required | Fields Used |
 |------|--------|----------|-------------|
-| exploit_results/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_id`, `sink_type`, `route`, `final_verdict`, `downgrade_reason`, `suggested_action`, `severity` |
+| exploits/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_id`, `sink_type`, `route`, `final_verdict`, `downgrade_reason`, `suggested_action`, `severity` |
 
 ## 🚨 CRITICAL Rules
 

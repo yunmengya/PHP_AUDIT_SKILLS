@@ -70,7 +70,7 @@ docker exec db mysql -uroot -paudit_root_pass audit_db -e "SELECT * FROM tenants
 
 ### Step 3 — Create Test Accounts for Different Tenants
 
-For each tenant (or create new tenants if possible):
+For each tenant (or create new tenants as needed):
 
 ```bash
 # Identify existing tenants
