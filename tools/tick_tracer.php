@@ -136,10 +136,14 @@ function __tick_flush(): void
 
     if ($__trace_flush_count === 0) {
         // First flush — write new file
-        file_put_contents(
+        $bytes = file_put_contents(
             $__trace_file,
             json_encode($__trace_log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         );
+        if ($bytes === false) {
+            fwrite(STDERR, "[ERROR] Failed to write trace file: {$__trace_file}\n");
+            exit(1);
+        }
     } else {
         // Subsequent flushes — merge with existing data
         $existing = [];
@@ -153,10 +157,14 @@ function __tick_flush(): void
             }
         }
         $merged = array_merge($existing, $__trace_log);
-        file_put_contents(
+        $bytes = file_put_contents(
             $__trace_file,
             json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         );
+        if ($bytes === false) {
+            fwrite(STDERR, "[ERROR] Failed to write trace file: {$__trace_file}\n");
+            exit(1);
+        }
     }
 
     $__trace_flush_count++;
@@ -205,7 +213,11 @@ function __tick_shutdown(): void
     if ($__trace_stdout) {
         fwrite(STDOUT, $json . "\n");
     } else {
-        file_put_contents($__trace_file, $json);
+        $bytes = file_put_contents($__trace_file, $json);
+        if ($bytes === false) {
+            fwrite(STDERR, "[ERROR] Failed to write trace file: {$__trace_file}\n");
+            exit(1);
+        }
     }
 }
 

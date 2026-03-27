@@ -3,6 +3,8 @@
 > Every Phase 4 Auditor **MUST** perform this item-by-item self-check before submitting exploit JSON.
 > If self-check fails, correct and resubmit; MUST NOT skip.
 
+> **NOTE**: The fill-in template version of this checklist is at `skills/shared/general_self_check.md` (S-108). Both files define the same G1-G8 checks. New auditor skills should reference S-108.
+
 ---
 
 ## Universal Self-Check Items (Applicable to All Auditors)

@@ -73,6 +73,12 @@ class TypeJugglingTester {
         }
 
         $response = curl_exec($ch);
+        if ($response === false) {
+            $error = curl_error($ch);
+            fwrite(STDERR, "[FATAL] curl request failed: {$error}\n");
+            curl_close($ch);
+            exit(1);
+        }
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         $responseHeaders = substr($response, 0, $headerSize);
@@ -116,6 +122,12 @@ class TypeJugglingTester {
         }
 
         $response = curl_exec($ch);
+        if ($response === false) {
+            $error = curl_error($ch);
+            fwrite(STDERR, "[FATAL] curl request failed: {$error}\n");
+            curl_close($ch);
+            exit(1);
+        }
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         $responseHeaders = substr($response, 0, $headerSize);
@@ -253,10 +265,13 @@ class TypeJugglingTester {
             curl_setopt($ch, CURLOPT_COOKIE, $this->cookie);
         }
         $response = curl_exec($ch);
+        if ($response === false) {
+            $error = curl_error($ch);
+            fwrite(STDERR, "[FATAL] curl request failed: {$error}\n");
+            curl_close($ch);
+            exit(1);
+        }
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        $responseBody = substr($response, $headerSize);
-        curl_close($ch);
 
         $differs2 = ($httpCode !== $baseline['status'] || strlen($responseBody) !== $baseline['body_length']);
         $result['payloads'][] = [

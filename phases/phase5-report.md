@@ -18,6 +18,17 @@ echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 Print: ━━━ 进入 Phase-5: 清理与报告 ━━━
 ```
 
+**Input Integrity Check (MANDATORY before SPAWN):**
+```
+| # | Required Upstream Artifact | Check Command | Result | Pass |
+|---|--------------------------|---------------|--------|------|
+| 1 | exploits/ has ≥1 JSON file | ls "$WORK_DIR/exploits/"*.json 2>/dev/null | wc -l | {count} | {✅/❌} |
+| 2 | exploit_summary.json exists | test -f "$WORK_DIR/exploit_summary.json" | {exists/missing} | {✅/❌} |
+| 3 | correlation_report.json exists | test -f "$WORK_DIR/correlation_report.json" | {exists/missing} | {✅/❌} |
+| 4 | PHASE4_DEGRADED flag | echo "${PHASE4_DEGRADED:-false}" | {true/false} | {info} |
+IF #1 ❌ AND #2 ❌ → generate "no vulnerabilities found" report. If PHASE4_DEGRADED=true → add [INCOMPLETE AUDIT] disclaimer to report.
+```
+
 **Step 2 — SPAWN:**
 ```
 spawn cleanup_agent (foreground, read teams/team5/env_cleaner.md)

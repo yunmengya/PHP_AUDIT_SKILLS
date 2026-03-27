@@ -17,6 +17,16 @@ echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 Print: ━━━ 进入 Phase-2: 静态资产侦察 ━━━
 ```
 
+**Input Integrity Check (MANDATORY before SPAWN):**
+```
+| # | Required Upstream Artifact | Check Command | Result | Pass |
+|---|--------------------------|---------------|--------|------|
+| 1 | environment_status.json exists | test -f "$WORK_DIR/environment_status.json" | {exists/missing} | {✅/❌} |
+| 2 | environment_status.json valid JSON | python3 -m json.tool "$WORK_DIR/environment_status.json" | {valid/invalid} | {✅/❌} |
+| 3 | framework field present | jq -e '.framework' "$WORK_DIR/environment_status.json" | {value} | {✅/❌} |
+IF any ❌ → DO NOT spawn agents. Return to Phase-1 recovery (see failure_recovery.md).
+```
+
 **Step 2 — SPAWN:**
 ```
 spawn psalm-scanner         (Task #5a, background, read skills/scanners/psalm_scanner.md)

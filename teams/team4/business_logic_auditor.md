@@ -29,6 +29,14 @@ This auditor operates in two stages. The orchestrator controls stage transitions
 - Produce exploit results: `$WORK_DIR/exploits/{sink_id}.json`
 - Generate PoC scripts and patches if confirmed
 
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST read the sub-skill file completely before responding — partial reading leads to missing attack vectors | Missed vulnerabilities |
+| CR-2 | Stage-1 MUST NOT access the Docker container or send HTTP requests — analysis only | Stage violation → QC FAIL |
+| CR-3 | MUST follow `shared/degradation_check.md` Step 0 before processing | Degraded data treated as complete |
+| CR-4 | Output MUST pass `shared/pre_submission_checklist.md` P1-P8 before returning to orchestrator | Known-bad output wastes QC cycle |
+
 ## Shared Resources (Injected by Orchestrator)
 
 - L1 (all agents): `shared/anti_hallucination.md`, `shared/data_contracts.md`, `shared/evidence_contract.md`

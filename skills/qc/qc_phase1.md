@@ -158,7 +158,7 @@ What's wrong: Check 2 (PHP Version) failed but verdict is still "pass". Violates
 | Malformed JSON in `environment_status.json` | FAIL — data integrity issue; re-run docker_builder |
 | Docker daemon not running | FAIL — prerequisite not met; cannot verify containers |
 | Schema validation errors on required fields | FAIL — re-run docker_builder |
-| Schema validation errors on optional fields | WARN — continue with annotation |
+| Schema validation errors on optional fields | WARN — annotate which fields are missing and propagate as `[OPTIONAL_MISSING: field_name]` to downstream. If `framework_version` or `db_type` optional fields are missing → upgrade to FAIL (these are critical for Phase-4 auditor behavior) |
 | Xdebug not working | CONDITIONAL_PASS — Phase 3 degrades to static-only tracing |
 | 1st redo attempt | Return to docker_builder with specific fix requirements |
 | 2nd redo attempt | Retry with alternative remediation strategy |

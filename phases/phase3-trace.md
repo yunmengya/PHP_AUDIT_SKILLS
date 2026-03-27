@@ -21,6 +21,17 @@ echo "$(date +%s)" > "$WORK_DIR/.audit_state/phase_start_time"
 Print: ━━━ 进入 Phase-3: 鉴权模拟与动态追踪 ━━━
 ```
 
+**Input Integrity Check (MANDATORY before SPAWN):**
+```
+| # | Required Upstream Artifact | Check Command | Result | Pass |
+|---|--------------------------|---------------|--------|------|
+| 1 | route_map.json exists with ≥1 route | jq '.routes | length' "$WORK_DIR/route_map.json" | {count} | {✅/❌} |
+| 2 | priority_queue.json exists with ≥1 sink | jq '. | length' "$WORK_DIR/priority_queue.json" | {count} | {✅/❌} |
+| 3 | context_packs/ has ≥1 file | ls "$WORK_DIR/context_packs/"*.json 2>/dev/null | wc -l | {count} | {✅/❌} |
+| 4 | PHASE2_DEGRADED flag | echo "${PHASE2_DEGRADED:-false}" | {true/false} | {info} |
+IF #1 AND #2 both ❌ → HALT (nothing to trace). If PHASE2_DEGRADED=true → proceed with caution, skip sinks without context_pack.
+```
+
 **Step 2 — SPAWN:**
 ```
 spawn auth_simulator (Task #12, foreground, read teams/team3/auth_simulator.md)

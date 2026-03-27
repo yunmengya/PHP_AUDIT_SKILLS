@@ -220,6 +220,23 @@ On failure, the lead MUST inject the following **structured redo prompt** verbat
 2. `Fix Requirement` MUST be a concrete action verb phrase (e.g., "re-run Psalm scan", "add missing `auth_level` field"), NOT vague instructions like "fix it"
 3. If QC report contains `remediation` text for a failed item, copy it verbatim into `Fix Requirement`
 
+### Redo Change Verification (MANDATORY for redo_count ≥ 1)
+
+When an agent resubmits after a redo, the lead MUST require the agent to fill the following **Redo Change Summary** table in its output. This prevents agents from resubmitting identical failed output.
+
+```
+### Redo Change Summary
+
+| # | Failed Item (from QC) | Previous Output (what I wrote before) | New Output (what I changed to) | Specific Change Made |
+|---|----------------------|---------------------------------------|-------------------------------|---------------------|
+| {row per failed item} | {check item name} | {exact previous value that failed} | {exact new value after fix} | {concrete action taken — e.g., "re-read UserController.php:45, corrected sink function from query() to prepare()"} |
+```
+
+**Redo Change Rules:**
+1. `New Output` MUST differ from `Previous Output` for EVERY row — identical resubmission triggers immediate degradation (skip remaining redo attempts)
+2. `Specific Change Made` MUST NOT be generic ("fixed it", "corrected"). MUST describe the concrete action with file/line references where applicable
+3. If all rows show identical Previous/New values → the lead MUST NOT re-invoke QC. Instead, immediately mark agent as `degraded` in checkpoint and print: `"⚠️ {agent} resubmitted identical output — forced degradation"`
+
 ---
 
 ## Final Quality Report Generation

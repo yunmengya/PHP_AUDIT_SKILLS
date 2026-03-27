@@ -845,3 +845,27 @@ Key fields:
 - `applicable_sinks` — which other sinks might benefit
 
 Location: `$WORK_DIR/shared_findings.jsonl` (append-only JSONL)
+
+---
+
+## Null / Optional Field Handling Rules
+
+The following fields MAY be `null` or absent in certain conditions. Consuming agents MUST handle these gracefully:
+
+| Field | File | Null When | Consumer Action |
+|-------|------|-----------|-----------------|
+| `framework_version` | environment_status.json | Framework not detected | Use `"unknown"` — do NOT skip framework-specific auditors |
+| `db_type` | environment_status.json | No database found | Skip DB-dependent auditors (SQLi, NoSQL) — mark `"not_applicable"` |
+| `xdebug_available` | environment_status.json | Xdebug not installed | Degrade to static-only tracing — set `XDEBUG_AVAILABLE=false` |
+| `refresh_token` | credentials.json → oauth2 | OAuth not token-refresh capable | Skip token refresh testing — not a vulnerability |
+| `bypass_method` | exploit_result → prerequisite_conditions | No auth bypass found | Set to `"none"` — MUST NOT leave as empty string |
+| `other_preconditions` | exploit_result → prerequisite_conditions | No special preconditions | Set to empty array `[]` — MUST NOT set to `null` |
+| `failure_reason` | exploit_result → rounds[] | Round succeeded | Set to `null` — only filled on failed rounds |
+| `attack_graph_data` | Phase-4.5 output | No multi-step chains found | Skip attack chain chapter in report — write "No multi-step attack chains identified" |
+| `race_condition_results` | exploit_result | Not a race condition auditor | Set to `null` — MUST NOT fabricate empty race results |
+
+**Rule**: When consuming ANY JSON field, check for `null` / missing BEFORE processing. Pattern:
+```
+IF field is null OR field is missing → use default value from table above
+MUST NOT → crash, skip entire file, or fabricate data
+```

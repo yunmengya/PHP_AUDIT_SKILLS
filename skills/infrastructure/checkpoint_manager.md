@@ -36,7 +36,11 @@ checkpoint.json core fields (see `schemas/checkpoint.schema.json`):
       "completed_at": "2024-01-01T10:12:00Z",
       "qc_verdict": "pass",
       "redo_count": 0,
-      "pivot_triggered": false
+      "pivot_triggered": false,
+      "sink_redo_detail": {
+        "sink_001": {"redo_count": 0, "last_verdict": "confirmed"},
+        "sink_002": {"redo_count": 1, "last_verdict": "suspected", "redo_reason": "insufficient evidence"}
+      }
     }
   },
   "phases": {

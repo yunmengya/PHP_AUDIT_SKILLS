@@ -102,7 +102,9 @@ Execute all steps from `skills/infrastructure/workspace_init.md`:
 2. Create `$WORK_DIR` with 12 subdirectories (`.audit_state/`, `exploits/`, `报告/`, `PoC脚本/`, `修复补丁/`, etc.)
 3. Initialize memory and graph databases via `audit_db.sh`
 4. Initialize state machine: write "INIT" to `current_phase`
-5. Generate `gate_check.sh` (validates file existence, JSON syntax, UTF-8 encoding, schema spot-checks)
+5. Generate `gate_check.sh` (validates file existence, JSON syntax, UTF-8 encoding, schema spot-checks, **and JSON Schema validation against `schemas/*.schema.json`**)
+   - Gate schema validation: for each gate artifact, run `python3 -c "import json,jsonschema; jsonschema.validate(json.load(open('FILE')),json.load(open('SCHEMA')))"` — FAIL if validation error
+   - If `python3` or `jsonschema` unavailable, fall back to required-field spot-checks via `jq`
 6. Generate `phase_transition.sh` (enforces EXPECTED_CURRENT → NEXT_PHASE transitions)
 
 ### Step 4: Resume Detection & Checkpoint Management

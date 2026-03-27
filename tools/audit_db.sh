@@ -49,17 +49,21 @@ MEMORY_DB="${MEMORY_DIR}/attack_memory.db"
 # ── SQLite 配置：WAL 模式 + 合理超时 ──
 sql() {
     local db="$1"; shift
-    sqlite3 -batch -json "$db" ".timeout 5000" "$@" 2>/dev/null
+    sqlite3 -batch -json "$db" ".timeout 5000" "$@" 2>>"${WORK_DIR:-.}/.audit_state/error.log"
 }
 
 sql_exec() {
     local db="$1"; shift
-    sqlite3 -batch "$db" ".timeout 5000" "$@" 2>/dev/null
+    sqlite3 -batch "$db" ".timeout 5000" "$@" 2>>"${WORK_DIR:-.}/.audit_state/error.log"
 }
 
 sql_raw() {
     local db="$1"; shift
-    sqlite3 -batch "$db" "$@" 2>/dev/null
+    sqlite3 -batch "$db" "$@" 2>>"${WORK_DIR:-.}/.audit_state/error.log"
+}
+
+escape_sql() {
+    printf '%s' "${1//\'/\'\'}"
 }
 
 # ===========================================================
@@ -234,10 +238,10 @@ memory_query() {
     local php_major="${3:-}"
     local waf_type="${4:-}"
 
-    local where="sink_type = '${sink_type}'"
-    [ -n "$framework" ] && where="${where} AND framework = '${framework}'"
-    [ -n "$php_major" ] && where="${where} AND php_version LIKE '${php_major}.%'"
-    [ -n "$waf_type" ]  && where="${where} AND waf_type = '${waf_type}'"
+    local where="sink_type = '$(escape_sql "$sink_type")'"
+    [ -n "$framework" ] && where="${where} AND framework = '$(escape_sql "$framework")'"
+    [ -n "$php_major" ] && where="${where} AND php_version LIKE '$(escape_sql "$php_major").%'"
+    [ -n "$waf_type" ]  && where="${where} AND waf_type = '$(escape_sql "$waf_type")'"
 
     sql "$MEMORY_DB" "
         SELECT sink_type, sink_function, framework, php_version, waf_type,
@@ -379,8 +383,8 @@ finding_read() {
     local session_db="${work_dir}/audit_session.db"
 
     local where="1=1"
-    [ -n "$finding_type" ] && where="${where} AND finding_type = '${finding_type}'"
-    [ -n "$not_consumed_by" ] && where="${where} AND consumed_by NOT LIKE '%\"${not_consumed_by}\"%'"
+    [ -n "$finding_type" ] && where="${where} AND finding_type = '$(escape_sql "$finding_type")'"
+    [ -n "$not_consumed_by" ] && where="${where} AND consumed_by NOT LIKE '%\"$(escape_sql "$not_consumed_by")\"%'"
 
     sql "$session_db" "
         SELECT id, timestamp, source_agent, finding_type, priority,
@@ -405,9 +409,9 @@ finding_consume() {
 
     sql_exec "$session_db" "
         UPDATE shared_findings
-        SET consumed_by = json_insert(consumed_by, '\$[#]', '${agent_name}')
+        SET consumed_by = json_insert(consumed_by, '\$[#]', '$(escape_sql "$agent_name")')
         WHERE id = ${finding_id}
-        AND consumed_by NOT LIKE '%\"${agent_name}\"%';
+        AND consumed_by NOT LIKE '%\"$(escape_sql "$agent_name")\"%';
     "
     echo "✅ 已标记消费: finding #${finding_id} by ${agent_name}"
 }
@@ -508,7 +512,7 @@ qc_write() {
     redo=$(echo "$json" | jq -r '.redo_count // 0')
 
     sql_exec "$session_db" \
-        "INSERT OR REPLACE INTO qc_records (qc_id, phase, target_agent, verdict, pass_count, total_count, failed_items, warn_items, metrics, redo_count) VALUES ('${qc_id}','${phase}','${agent}','${verdict}',${pass_count},${total_count},'${failed}','${warn}','${metrics}',${redo})"
+        "INSERT OR REPLACE INTO qc_records (qc_id, phase, target_agent, verdict, pass_count, total_count, failed_items, warn_items, metrics, redo_count) VALUES ('$(escape_sql "$qc_id")','$(escape_sql "$phase")','$(escape_sql "$agent")','$(escape_sql "$verdict")',${pass_count},${total_count},'$(escape_sql "$failed")','$(escape_sql "$warn")','$(escape_sql "$metrics")',${redo})"
     echo "✅ 质检记录已写入: phase=${phase} agent=${agent} verdict=${verdict}"
 }
 
@@ -523,7 +527,7 @@ qc_read() {
     [ -f "$session_db" ] || { echo "[]"; return 0; }
 
     if [ -n "$phase" ]; then
-        sql "$session_db" "SELECT * FROM qc_records WHERE phase='$phase' ORDER BY timestamp"
+        sql "$session_db" "SELECT * FROM qc_records WHERE phase='$(escape_sql "$phase")' ORDER BY timestamp"
     else
         sql "$session_db" "SELECT * FROM qc_records ORDER BY phase, timestamp"
     fi
@@ -622,15 +626,15 @@ graph_node_write() {
         INSERT OR REPLACE INTO memory_nodes
             (node_id, vuln_type, sink_id, route, severity, status, framework, data_object, summary)
         VALUES
-            ('$(echo "$node_id" | sed "s/'/''/g")',
-             '$(echo "$vuln_type" | sed "s/'/''/g")',
-             '$(echo "$sink_id" | sed "s/'/''/g")',
-             '$(echo "$route" | sed "s/'/''/g")',
-             '$(echo "$severity" | sed "s/'/''/g")',
-             '$(echo "$status" | sed "s/'/''/g")',
-             '$(echo "$framework" | sed "s/'/''/g")',
-             '$(echo "$data_object" | sed "s/'/''/g")',
-             '$(echo "$summary" | sed "s/'/''/g")');
+            ('$(escape_sql "$node_id")',
+             '$(escape_sql "$vuln_type")',
+             '$(escape_sql "$sink_id")',
+             '$(escape_sql "$route")',
+             '$(escape_sql "$severity")',
+             '$(escape_sql "$status")',
+             '$(escape_sql "$framework")',
+             '$(escape_sql "$data_object")',
+             '$(escape_sql "$summary")');
     "
     echo "✅ 节点写入: $node_id ($vuln_type)"
 }
@@ -664,13 +668,13 @@ graph_edge_write() {
         INSERT OR REPLACE INTO memory_edges
             (source_node, target_node, relation, direction, confidence, evidence, combined_severity)
         VALUES
-            ('$(echo "$source_node" | sed "s/'/''/g")',
-             '$(echo "$target_node" | sed "s/'/''/g")',
-             '$(echo "$relation" | sed "s/'/''/g")',
-             '$(echo "$direction" | sed "s/'/''/g")',
-             '$(echo "$confidence" | sed "s/'/''/g")',
-             '$(echo "$evidence" | sed "s/'/''/g")',
-             '$(echo "$combined_severity" | sed "s/'/''/g")');
+            ('$(escape_sql "$source_node")',
+             '$(escape_sql "$target_node")',
+             '$(escape_sql "$relation")',
+             '$(escape_sql "$direction")',
+             '$(escape_sql "$confidence")',
+             '$(escape_sql "$evidence")',
+             '$(escape_sql "$combined_severity")');
     "
     echo "✅ 边写入: $source_node --[$relation]--> $target_node"
 }
@@ -702,7 +706,7 @@ graph_neighbors() {
         )
         FROM memory_edges e
         JOIN memory_nodes n ON e.target_node = n.node_id
-        WHERE e.source_node = '$(echo "$node_id" | sed "s/'/''/g")'
+        WHERE e.source_node = '$(escape_sql "$node_id")'
         UNION ALL
         SELECT json_object(
             'direction', 'incoming',
@@ -722,7 +726,7 @@ graph_neighbors() {
         )
         FROM memory_edges e
         JOIN memory_nodes n ON e.source_node = n.node_id
-        WHERE e.target_node = '$(echo "$node_id" | sed "s/'/''/g")'
+        WHERE e.target_node = '$(escape_sql "$node_id")'
         ORDER BY 1;
     "
 }
@@ -748,7 +752,7 @@ graph_by_data_object() {
             'summary', summary
         )
         FROM memory_nodes
-        WHERE data_object = '$(echo "$data_object" | sed "s/'/''/g")'
+        WHERE data_object = '$(escape_sql "$data_object")'
         ORDER BY created_at DESC;
     ")
 
@@ -763,8 +767,8 @@ graph_by_data_object() {
             'combined_severity', e.combined_severity
         )
         FROM memory_edges e
-        WHERE e.source_node IN (SELECT node_id FROM memory_nodes WHERE data_object = '$(echo "$data_object" | sed "s/'/''/g")')
-           OR e.target_node IN (SELECT node_id FROM memory_nodes WHERE data_object = '$(echo "$data_object" | sed "s/'/''/g")')
+        WHERE e.source_node IN (SELECT node_id FROM memory_nodes WHERE data_object = '$(escape_sql "$data_object")')
+           OR e.target_node IN (SELECT node_id FROM memory_nodes WHERE data_object = '$(escape_sql "$data_object")')
         ORDER BY e.created_at DESC;
     ")
 

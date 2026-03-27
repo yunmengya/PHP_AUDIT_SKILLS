@@ -116,7 +116,7 @@ Free-form messages like "QC failed, please redo" are **PROHIBITED** — the agen
 
 | Phase | QC Failure Recovery | Redo Limit | Over-Limit Action |
 |-------|--------------------|------------|-------------------|
-| Phase-1 (env build) | Re-invoke docker-builder with structured redo prompt | 3 | Halt for user intervention — NO degradation allowed, Docker MUST succeed |
+| Phase-1 (env build) | Re-invoke docker-builder with structured redo prompt | 3 | If Docker absolutely cannot start: switch to static-only mode — set `PHASE1_DEGRADED=true`, generate minimal `environment_status.json` with `docker_status: "unavailable"`, skip container-dependent phases (Phase-3 auth, Phase-4 Stage-2 attacks). MUST continue to Phase-2 in static-only mode |
 | Phase-2 (static recon) | Map failed items → responsible agents, re-invoke each with structured redo prompt | 2 | Mark degraded, note coverage gap in report. MUST continue to Phase-3, Phase-4, Phase-5 |
 | Phase-3 (dynamic trace) | Re-invoke trace_dispatcher with structured redo prompt | 2 | Fall back to static analysis for broken routes. MUST continue to Phase-4, Phase-5 |
 | Phase-4 (evidence) | Re-invoke failed auditor with structured redo prompt | 2 | Mark as degraded, downgrade verdict to "insufficient evidence". MUST continue to Phase-4.5, Phase-5 |
@@ -134,6 +134,23 @@ When a phase degrades, fill in the propagation targets:
 | Flag Name | `PHASE____DEGRADED=true` |
 | Downstream Phases Affected | `Phase-___, Phase-___, ...` |
 | Impact on Findings | `___` (e.g., mark as "suspected", skip sinks, note incomplete) |
+
+### Procedure C2: Minimum Viable Data Threshold
+
+Before proceeding from a degraded phase, verify the output meets minimum usable levels:
+
+| Phase | Minimum Viable Output | Check | Pass |
+|-------|-----------------------|-------|------|
+| Phase-1 | `environment_status.json` exists with `framework` field | {fill-in: framework value or "MISSING"} | {✅/❌} |
+| Phase-2 | `route_map.json` has ≥ 1 route AND `ast_sinks.json` has ≥ 1 sink | {fill-in: route_count, sink_count} | {✅/❌} |
+| Phase-3 | `credentials.json` exists (even if empty array) AND ≥ 1 trace file | {fill-in: cred_count, trace_count} | {✅/❌} |
+| Phase-4 | ≥ 60% sink coverage AND 100% P0 coverage | {fill-in: coverage %, P0 %} | {✅/❌} |
+| Phase-4.5 | `correlation_report.json` exists | {fill-in: exists true/false} | {✅/❌} |
+
+**Threshold enforcement:**
+- ANY ❌ AND NOT degraded → GATE FAIL, trigger retry
+- ANY ❌ AND degraded → proceed with `[MINIMUM DATA NOT MET]` tag, downstream agents receive warning
+- Phase-2 with 0 routes AND 0 sinks → HALT (nothing to audit)
 
 **Propagation rules by degraded phase:**
 

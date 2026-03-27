@@ -46,6 +46,12 @@ class WafDetector {
         }
 
         $response = curl_exec($ch);
+        if ($response === false) {
+            $error = curl_error($ch);
+            fwrite(STDERR, "[FATAL] curl request failed: {$error}\n");
+            curl_close($ch);
+            exit(1);
+        }
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         $responseHeaders = substr($response, 0, $headerSize);

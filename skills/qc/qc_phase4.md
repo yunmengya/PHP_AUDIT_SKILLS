@@ -95,6 +95,34 @@
 | 3 | Bypass strategies are reasonable (e.g., `htmlspecialchars` bypass not claimed via SQL comment technique) | strategies consistent with filter type | {fill-in: unreasonable strategy count} | {✅/❌} |
 | 4 | Cross-validated with variant payloads for confirmed findings | variant payload validation done | {fill-in: unvalidated finding count} | {✅/❌} |
 
+### Procedure G2: Anti-Hallucination Verification (per `shared/anti_hallucination.md`)
+
+For EACH `confirmed` or `suspected` exploit result, verify the following rules:
+
+| # | Anti-Hallucination Rule | Check Method | Actual | Status |
+|---|------------------------|--------------|--------|--------|
+| 1 | No speculation — conclusions backed by code evidence | Every conclusion has `file:line` citation | {fill-in: unsupported conclusion count} | {✅/❌} |
+| 2 | Source code snippets present | Each finding includes actual code snippet (not paraphrased) | {fill-in: missing snippet count} | {✅/❌} |
+| 3 | Uncertain findings marked `[Needs Verification]` | Findings without full evidence chain marked | {fill-in: unmarked uncertain count} | {✅/❌} |
+| 4 | Call chain evidence complete | Every link in call chain has code evidence | {fill-in: broken chain count} | {✅/❌} |
+| 5 | Payload results from actual HTTP responses | `confirmed` has real response data, not fabricated | {fill-in: fabricated response count} | {✅/❌} |
+| 6 | Response mismatch = not confirmed | If expected vs actual response differ → verdict ≠ confirmed | {fill-in: mismatch-but-confirmed count} | {✅/❌} |
+| 7 | Code re-read, not from memory | Evidence references match actual file content — for EACH `file:line` citation, run `sed -n '{line}p' $TARGET_PATH/{file}` and compare with quoted code | {fill-in: stale reference count} | {✅/❌} |
+| 8 | Non-vulnerability analysis present | Safe sinks documented with reason | {fill-in: undocumented safe count} | {✅/❌} |
+| 9 | Multi-agent conflict resolved | Contradictory findings between auditors reconciled | {fill-in: unresolved conflict count} | {✅/❌} |
+| 10 | Complete reproduction materials | PoC script + exact curl command + expected output | {fill-in: incomplete reproduction count} | {✅/❌} |
+| 11 | Race condition statistical significance | Race findings have ≥3 successful reproductions | {fill-in: insufficient evidence count} | {✅/❌} |
+| 12 | NoSQL/GraphQL semantics correct | NoSQL/GraphQL-specific syntax not confused with SQL | {fill-in: semantic error count} | {✅/❌} |
+| 13 | Business logic context present | Business logic vulns have workflow context documented | {fill-in: missing context count} | {✅/❌} |
+| 14 | Crypto exploitability verified | Crypto findings have practical exploit demonstration | {fill-in: theoretical-only crypto count} | {✅/❌} |
+| 15 | WordPress core/plugin/theme distinction | WordPress findings correctly attribute component | {fill-in: misattribution count} | {✅/❌} |
+| 16 | No fabrication on tool failure | If tool returned error, finding not fabricated from assumption | {fill-in: post-failure fabrication count} | {✅/❌} |
+| 17 | Output size within limits | Each exploit JSON ≤ 50KB; total exploits/ ≤ 5MB | {fill-in: oversized file count} | {✅/❌} |
+
+**Anti-hallucination verdict:**
+- ANY of rules 1-6 has count > 0 for `confirmed` findings → FAIL (critical fabrication risk)
+- Rules 7-17 with count > 0 → WARN (quality concern, does not block gate)
+
 ### Procedure H: Final Verdict Determination
 | Field | Fill-in Value |
 |-------|--------------|
