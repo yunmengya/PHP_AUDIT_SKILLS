@@ -1,5 +1,7 @@
 # Phase 2: Static Asset Reconnaissance
 
+> 📄 **Route sub-skills**: `skills/routes/` (S-030a~S-030h)
+
 The main dispatcher has set variables: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_RESOURCES
 Refer to the prompt template in phase1-env.md.
 
