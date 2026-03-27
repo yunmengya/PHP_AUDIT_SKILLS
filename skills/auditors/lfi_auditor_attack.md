@@ -991,3 +991,14 @@ After completing the exploit JSON, self-check item by item per `shared/auditor_s
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| Path traversal blocked by open_basedir or chroot | Attempt wrapper bypass (`php://filter`, `zip://`, `data://`); if all blocked → record `"status": "basedir_enforced"` |
+| Target file not readable (permission denied) | Try alternative sensitive files (`/etc/passwd`, `config.php`, `.env`); if none readable → record `"status": "read_denied"` |
+| Null byte injection ineffective (PHP ≥ 5.3.4) | Switch to path truncation or double encoding; if all fail → record `"status": "null_byte_patched"` |
+| Payload blocked by WAF/filter | Log filter type, switch to encoding-bypass variant; if all variants fail → record `"waf_blocked": true` |

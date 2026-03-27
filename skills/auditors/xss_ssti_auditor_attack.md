@@ -528,3 +528,14 @@ After completing the exploit JSON, perform item-by-item self-checks per `shared/
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| CSP blocks script execution | Attempt CSP bypass (unsafe-eval, base-uri, trusted-types abuse); if enforced → record `"csp_enforced": true` |
+| Output encoding neutralizes XSS payload | Try context-specific bypass (attribute, event handler, SVG, MathML); if encoded → record `"status": "output_encoded"` |
+| Template engine sandbox blocks SSTI payload | Attempt sandbox escape via built-in objects or prototype chain; if sandboxed → record `"status": "ssti_sandboxed"` |
+| Payload blocked by WAF/filter | Log filter type, switch to obfuscated payload variant; if all variants fail → record `"waf_blocked": true` |

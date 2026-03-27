@@ -589,3 +589,14 @@ After completing the exploit JSON, perform item-by-item self-check per `shared/a
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| Timing window too narrow to exploit reliably | Increase concurrent request count, reduce payload size; if still fails → record `"status": "window_too_narrow"` |
+| Database lock prevents concurrent modification | Test with optimistic locking bypass or transaction isolation exploit; if locked → record `"status": "db_locked"` |
+| Non-deterministic results across repeated attempts | Run 5 iterations minimum, use statistical majority; note confidence level in scoring |
+| Thread/process pool exhaustion during concurrent requests | Reduce concurrency, stagger request timing, retry with smaller batch |

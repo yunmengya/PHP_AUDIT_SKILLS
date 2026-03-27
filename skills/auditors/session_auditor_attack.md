@@ -723,3 +723,14 @@ After completing the exploit JSON, perform self-check item by item per `shared/a
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| Session ID regenerated on each request | Verify if fixation/prediction still viable with new IDs; if secure → record `"status": "session_regenerated"` |
+| HttpOnly/Secure flags prevent cookie theft | Test session ID exposure via URL, Referer, or logs; if protected → record `"session_hardened": true` |
+| Session storage backend unreachable | Retry with alternative session handler detection; if unavailable → record `"status": "session_backend_error"` |
+| Authentication token expired mid-attack | Re-fetch credentials from auth_credentials.json, retry current round |

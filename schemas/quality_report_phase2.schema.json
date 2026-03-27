@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Quality Report Phase 2",
+  "description": "Phase-2 QC report: static reconnaissance validation (route map, auth matrix, priority queue, scanners, context packs, dep risk, schema)",
+  "type": "object",
+  "required": [
+    "qc_id",
+    "phase",
+    "target_agent",
+    "timestamp",
+    "verdict",
+    "checks",
+    "pass_count",
+    "total_count",
+    "failed_items"
+  ],
+  "properties": {
+    "qc_id": {
+      "type": "string",
+      "pattern": "^qc-phase2-.+"
+    },
+    "phase": {
+      "type": "string",
+      "const": "2"
+    },
+    "target_agent": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "fail", "conditional_pass"]
+    },
+    "checks": {
+      "type": "object",
+      "required": [
+        "route_map",
+        "auth_matrix",
+        "priority_queue",
+        "scanners",
+        "context_packs",
+        "dep_risk",
+        "schema_valid"
+      ],
+      "properties": {
+        "route_map": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "route_count": { "type": "integer", "minimum": 0 },
+            "spot_check_results": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "auth_matrix": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "orphan_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "priority_queue": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "total": { "type": "integer", "minimum": 0 },
+            "p0_count": { "type": "integer", "minimum": 0 },
+            "duplicates": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "scanners": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "files_found": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "ast_sink_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "context_packs": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "pack_count": { "type": "integer", "minimum": 0 },
+            "breakpoint_rate_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "dep_risk": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "cve_matches": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "schema_valid": {
+          "type": "object",
+          "required": ["status", "errors"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "coverage_route": { "type": "string" },
+        "coverage_auth": { "type": "string" },
+        "coverage_sink": { "type": "string" },
+        "context_pack_breakpoint_rate": { "type": "string" }
+      }
+    },
+    "pass_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "failed_items": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "definitions": {
+    "check_status": {
+      "type": "string",
+      "enum": ["pass", "fail", "warn"]
+    }
+  }
+}

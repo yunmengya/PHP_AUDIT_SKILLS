@@ -1039,3 +1039,14 @@ After completing the exploit JSON, perform item-by-item self-check per `shared/a
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| No exploitable gadget chain found | Try alternative chains (Monolog, Guzzle, Laravel); if none available → record `"status": "no_gadget_chain"` |
+| Phar wrapper disabled | Switch to direct `unserialize()` injection vector; if blocked → record `"phar_disabled": true` |
+| Serialized payload rejected by type validation | Attempt type juggling or polymorphic payload; if rejected → record `"status": "type_enforced"` |
+| Authentication token expired mid-attack | Re-fetch credentials from auth_credentials.json, retry current round |

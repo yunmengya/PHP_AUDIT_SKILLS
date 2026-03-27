@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Quality Report Phase 3",
+  "description": "Phase-3 QC report: dynamic tracing validation (credentials, trace chains, chain completeness, dynamic bindings, filter annotations, cross-validation, schema)",
+  "type": "object",
+  "required": [
+    "qc_id",
+    "phase",
+    "target_agent",
+    "timestamp",
+    "verdict",
+    "checks",
+    "pass_count",
+    "total_count",
+    "failed_items",
+    "degradation_flags"
+  ],
+  "properties": {
+    "qc_id": {
+      "type": "string",
+      "pattern": "^qc-phase3-.+"
+    },
+    "phase": {
+      "type": "string",
+      "const": "3"
+    },
+    "target_agent": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "fail", "conditional_pass"]
+    },
+    "checks": {
+      "type": "object",
+      "required": [
+        "credentials",
+        "trace_chains",
+        "chain_completeness",
+        "dynamic_bindings",
+        "filter_annotations",
+        "cross_validation",
+        "schema_valid"
+      ],
+      "properties": {
+        "credentials": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "valid_levels": { "type": "integer", "minimum": 0 },
+            "total_levels": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "trace_chains": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "trace_count": { "type": "integer", "minimum": 0 },
+            "empty_chain_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "chain_completeness": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "completeness_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "broken_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "dynamic_bindings": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "unresolved_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "filter_annotations": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "missing_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "cross_validation": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "difference_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "schema_valid": {
+          "type": "object",
+          "required": ["status", "errors"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "credential_availability": { "type": "string" },
+        "chain_completeness_rate": { "type": "string" },
+        "priority_route_coverage": { "type": "string" },
+        "p0_p1_coverage": { "type": "string" }
+      }
+    },
+    "pass_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "failed_items": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "degradation_flags": {
+      "type": "object",
+      "required": ["phase3_degraded"],
+      "properties": {
+        "phase3_degraded": { "type": "boolean" },
+        "degradation_reason": { "type": "string" }
+      }
+    }
+  },
+  "definitions": {
+    "check_status": {
+      "type": "string",
+      "enum": ["pass", "fail", "warn"]
+    }
+  }
+}

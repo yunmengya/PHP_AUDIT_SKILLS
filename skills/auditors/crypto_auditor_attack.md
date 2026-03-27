@@ -494,3 +494,13 @@ After completing the exploit JSON, perform item-by-item self-check per `shared/a
 // ❌ "somewhere" — must specify exact code location
 // ❌ severity missing scores and reasons
 ```
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| Cipher suite negotiation fails | Fallback to TLS 1.2/1.1 probes; if connection refused → record `"status": "crypto_handshake_failed"` |
+| Encrypted token not decryptable for analysis | Attempt known-plaintext and padding oracle attacks; if infeasible → record `"status": "encryption_opaque"` |
+| No weak cryptographic implementation detected | Record `"status": "crypto_secure"`, set `final_verdict: "not_vulnerable"` |

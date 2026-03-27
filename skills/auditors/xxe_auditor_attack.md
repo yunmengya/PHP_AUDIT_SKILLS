@@ -484,3 +484,14 @@ After completing the exploit JSON, perform item-by-item self-checks per `shared/
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| XML parser configured to disable external entities | Test with parameter entities and XInclude; if all disabled → record `"status": "xxe_disabled"` |
+| DTD loading blocked by network policy | Attempt local DTD reuse (`/usr/share/xml/`); if blocked → record `"dtd_blocked": true` |
+| No XML input accepted by target endpoint | Record `"status": "no_xml_endpoint"`, set `final_verdict: "not_vulnerable"` |
+| Payload blocked by WAF/filter | Log filter type, switch to encoded XML variant; if all variants fail → record `"waf_blocked": true` |

@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Quality Report Phase 1",
+  "description": "Phase-1 QC report: environment setup validation (container health, PHP version, framework, composer, Xdebug, schema)",
+  "type": "object",
+  "required": [
+    "qc_id",
+    "phase",
+    "target_agent",
+    "timestamp",
+    "verdict",
+    "checks",
+    "pass_count",
+    "total_count",
+    "failed_items"
+  ],
+  "properties": {
+    "qc_id": {
+      "type": "string",
+      "pattern": "^qc-phase1-.+"
+    },
+    "phase": {
+      "type": "string",
+      "const": "1"
+    },
+    "target_agent": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "fail", "conditional_pass"]
+    },
+    "checks": {
+      "type": "object",
+      "required": [
+        "container_health",
+        "php_version",
+        "framework_id",
+        "composer_parsed",
+        "xdebug_trace",
+        "schema_valid"
+      ],
+      "properties": {
+        "container_health": {
+          "$ref": "#/definitions/check_item_with_details"
+        },
+        "php_version": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "expected": { "type": "string" },
+            "actual": { "type": "string" }
+          }
+        },
+        "framework_id": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "detected": { "type": "string" }
+          }
+        },
+        "composer_parsed": {
+          "$ref": "#/definitions/check_item_with_details"
+        },
+        "xdebug_trace": {
+          "$ref": "#/definitions/check_item_with_details"
+        },
+        "schema_valid": {
+          "type": "object",
+          "required": ["status", "errors"],
+          "properties": {
+            "status": { "$ref": "#/definitions/check_status" },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "pass_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "failed_items": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "degradation_impact": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "check_status": {
+      "type": "string",
+      "enum": ["pass", "fail", "warn"]
+    },
+    "check_item_with_details": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "$ref": "#/definitions/check_status" },
+        "details": { "type": "string" }
+      }
+    }
+  }
+}

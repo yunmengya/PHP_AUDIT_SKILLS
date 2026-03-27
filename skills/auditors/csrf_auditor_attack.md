@@ -823,3 +823,13 @@ After completing the exploit JSON, perform item-by-item self-check per `shared/a
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| Anti-CSRF token present and validated | Attempt token reuse, token prediction, or subdomain bypass; if all fail → record `"status": "csrf_protected"` |
+| SameSite cookie attribute blocks cross-origin request | Test with subdomain or same-site vector; if blocked → record `"csrf_mitigated": true` |
+| Payload blocked by WAF/filter | Log filter type, switch to alternative form submission method; if all variants fail → record `"waf_blocked": true` |

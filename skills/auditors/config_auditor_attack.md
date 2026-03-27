@@ -828,3 +828,13 @@ After completing the exploit JSON, perform item-by-item self-checks per `shared/
 > 📄 `skills/shared/attack_memory_writer.md` (S-105) — Memory write
 > 📄 `skills/shared/second_order_tracking.md` (S-106) — Second-order tracking
 > 📄 `skills/shared/general_self_check.md` (S-108) — G1-G8 self-check
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Container unreachable or crashed | Restart container, retry current round; if 2nd failure → mark `"status": "container_failed"`, skip remaining rounds |
+| Target endpoint returns 500 | Reduce payload complexity, retry once; if persistent → record `"status": "target_error"`, continue next round |
+| Timeout during exploitation (>AGENT_TIMEOUT_MIN) | Save partial results, set `"status": "timeout_partial"`, proceed to scoring |
+| Configuration file not accessible or permission denied | Try alternative config paths (`.env`, `php.ini`, `httpd.conf`); if all fail → record `"status": "config_inaccessible"` |
+| Default credentials list exhausted without success | Record `"status": "defaults_patched"`, set `final_verdict: "not_vulnerable"` |
+| Server version/header information suppressed | Use behavioral fingerprinting as fallback; note reduced confidence in scoring |
