@@ -1,58 +1,44 @@
-# Skill S-007: Failure Recovery
+# Failure Recovery
 
-## IDENTITY
-- **Skill ID**: S-007
-- **Phase**: Cross-phase infrastructure
-- **Responsibility**: Define and execute the 3-level gate failure recovery strategy and QC failure recovery strategy for all phases.
+## Identity
+| Field | Value |
+|-------|-------|
+| Skill ID | S-005 |
+| Category | Infrastructure |
+| Responsibility | Define and execute the 3-level gate failure recovery strategy and QC failure recovery strategy for all phases |
 
-## INPUT CONTRACT
-
-| Input | Source | Required | Fields Used |
-|-------|--------|----------|-------------|
+## Input Contract
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
 | Gate result | gate_check.sh output | Yes | PASS/FAIL + failure details |
 | QC result | quality_checker output | Yes | pass/fail + failed_items |
 | checkpoint.json | S-003 | Yes | agent_states, phases, redo_count |
 
-## 3-LEVEL GATE FAILURE RECOVERY
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | On QC failure, MUST continue to all subsequent phases — each QC has independent recovery | Skipping downstream phases = audit abort, violates pipeline integrity |
+| CR-2 | Phase-1 (env build) does NOT allow degradation — Docker MUST succeed | If Phase-1 retries exhausted, halt for user intervention (Level 3) |
+| CR-3 | Never retry beyond the phase redo limit | Exceeding redo limit wastes time; must escalate to degraded or halt |
+| CR-4 | When a phase degrades, inject degradation flag (PHASE{N}_DEGRADED=true) into ALL downstream agent prompts | Missing flag causes downstream agents to treat partial data as complete |
+| CR-5 | Degraded status write to checkpoint.json MUST be atomic (write to .tmp then mv) | Non-atomic write risks checkpoint corruption on crash |
 
-Applies to ALL gates (GATE-1 through GATE-5):
+## Fill-in Procedure
 
-```
-Level 1 — AUTO RETRY:
-  Re-spawn failed agent(s) with same inputs. Max 2 retries.
+### Procedure A: 3-Level Gate Failure Recovery
 
-Level 2 — DEGRADED:
-  If retries exhausted, write degraded status to checkpoint:
-    jq '.phases.CURRENT_PHASE_NAME.mode = "degraded" |
-        .phases.CURRENT_PHASE_NAME.degradation_reason = "REASON" |
-        .mode = "degraded"'
-        "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" &&
-        mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
-  Continue to next phase with available artifacts.
-  Print: "⚠️ Phase-N degraded: {reason}. Continuing with partial data."
+Applies to ALL gates (GATE-1 through GATE-5). On gate FAIL, determine recovery level:
 
-Level 3 — USER HALT:
-  If critical artifacts missing (no fallback possible), STOP.
-  Print: "🛑 Phase-N failed: {missing artifacts}. 需要用户介入。"
-  Wait for user input before continuing.
-```
+| Field | Fill-in Value |
+|-------|--------------|
+| Failed Gate | `GATE-___` (1–5) |
+| Failed Agent(s) | `___` (from gate_check.sh output) |
+| Failed Files/Checks | `___` (from gate_check.sh failure details) |
+| Current redo_count | `___` (from checkpoint.json agent_states) |
+| Max Retries for Phase | `___` (see QC Failure Recovery table below) |
+| Recovery Level | `Level ___` (1 = Auto Retry / 2 = Degraded / 3 = User Halt) |
 
-## QC FAILURE RECOVERY STRATEGY
-
-**CRITICAL: On QC failure, MUST continue to all subsequent phases. Each QC has independent recovery.**
-
-| Phase | QC Failure Recovery | Redo Limit | Over-Limit Action |
-|-------|--------------------|------------|-------------------|
-| **Phase-1** (env build) | Re-send failed_items to docker-builder | **3** retries | Halt for user intervention — **NO degradation allowed**, Docker MUST succeed |
-| **Phase-2** (static recon) | Identify responsible agent via failed_items, re-run | **2** retries | Mark degraded, note coverage gap in report. **MUST continue to Phase-3, Phase-4, Phase-5** |
-| **Phase-3** (dynamic trace) | Re-run trace_dispatcher with failed items | **2** retries | Fall back to static analysis for broken routes. **MUST continue to Phase-4, Phase-5** |
-| **Phase-4** (evidence) | Re-run failed auditor | **2** retries | Mark as degraded, downgrade verdict to "insufficient evidence". **MUST continue to Phase-4.5, Phase-5** |
-| **Phase-4.5** (correlation) | Re-run failed agent | **1** retry | Use team4_progress.json directly. **MUST continue to Phase-5** |
-| **Phase-5** (report) | Revise and resubmit | **2** retries | Force output whatever is available (with WARN tag) |
-
-## FILL-IN PROCEDURE
-
-### Step 1: On Gate FAIL — Determine Recovery Level
+**Decision logic:**
 
 ```
 Read gate_check.sh output → identify which files/checks failed
@@ -75,51 +61,92 @@ ELSE:
   → Wait for user input
 ```
 
-### Step 2: On QC FAIL — Route Fix to Responsible Agent
+**Level 2 — Degraded status write (bash):**
 
-```
-Read QC report → extract failed_items list
-Map failed_items to responsible agent:
-  - route_map.json failed → route_mapper
-  - auth_matrix.json failed → auth_auditor
-  - exploits/{sink_id}.json failed → corresponding auditor
-  - 审计报告.md failed → report_writer
-
-Check redo_count for that agent in checkpoint.json
-IF under limit → re-spawn agent with fix_requirements
-ELSE → apply over-limit action from table above
+```bash
+jq '.phases.CURRENT_PHASE_NAME.mode = "degraded" |
+    .phases.CURRENT_PHASE_NAME.degradation_reason = "REASON" |
+    .mode = "degraded"' \
+    "$WORK_DIR/checkpoint.json" > "$WORK_DIR/checkpoint.json.tmp" && \
+    mv "$WORK_DIR/checkpoint.json.tmp" "$WORK_DIR/checkpoint.json"
 ```
 
-### Step 3: Downstream Impact Propagation
+**Level 2 output:** `"⚠️ Phase-N degraded: {reason}. Continuing with partial data."`
 
-When a phase degrades, inject degradation flag into ALL downstream agents:
+**Level 3 output:** `"🛑 Phase-N failed: {missing artifacts}. User intervention required."`
+
+### Procedure B: QC Failure — Route Fix to Responsible Agent
+
+On QC FAIL, identify the responsible agent and apply per-phase recovery:
+
+| Field | Fill-in Value |
+|-------|--------------|
+| Failed Phase | `Phase-___` (1 / 2 / 3 / 4 / 4.5 / 5) |
+| Failed Items | `___` (from QC report failed_items) |
+| Responsible Agent | `___` (mapped from failed artifact, see mapping below) |
+| Current redo_count | `___` (from checkpoint.json) |
+| Phase Redo Limit | `___` (from recovery table below) |
+| Action Taken | `___` (re-spawn / over-limit action) |
+
+**Failed-item to agent mapping:**
 
 ```
+route_map.json failed        → route_mapper
+auth_matrix.json failed      → auth_auditor
+exploits/{sink_id}.json failed → corresponding auditor
+审计报告.md failed             → report_writer
+```
+
+**QC Failure Recovery table (per-phase redo limits and over-limit actions):**
+
+| Phase | QC Failure Recovery | Redo Limit | Over-Limit Action |
+|-------|--------------------|------------|-------------------|
+| Phase-1 (env build) | Re-send failed_items to docker-builder | 3 | Halt for user intervention — NO degradation allowed, Docker MUST succeed |
+| Phase-2 (static recon) | Identify responsible agent via failed_items, re-run | 2 | Mark degraded, note coverage gap in report. MUST continue to Phase-3, Phase-4, Phase-5 |
+| Phase-3 (dynamic trace) | Re-run trace_dispatcher with failed items | 2 | Fall back to static analysis for broken routes. MUST continue to Phase-4, Phase-5 |
+| Phase-4 (evidence) | Re-run failed auditor | 2 | Mark as degraded, downgrade verdict to "insufficient evidence". MUST continue to Phase-4.5, Phase-5 |
+| Phase-4.5 (correlation) | Re-run failed agent | 1 | Use team4_progress.json directly. MUST continue to Phase-5 |
+| Phase-5 (report) | Revise and resubmit | 2 | Force output whatever is available (with WARN tag) |
+
+### Procedure C: Downstream Impact Propagation
+
+When a phase degrades, fill in the propagation targets:
+
+| Field | Fill-in Value |
+|-------|--------------|
+| Degraded Phase | `Phase-___` |
+| Degradation Reason | `___` |
+| Flag Name | `PHASE____DEGRADED=true` |
+| Downstream Phases Affected | `Phase-___, Phase-___, ...` |
+| Impact on Findings | `___` (e.g., mark as "suspected", skip sinks, note incomplete) |
+
+**Propagation rules by degraded phase:**
+
+```
+Phase-2 degraded (partial context):
+  → Inject PHASE2_DEGRADED=true into Phase-3 and Phase-4 prompts
+  → Missing context_packs → auditors skip those sinks
+
 Phase-3 degraded (auth failed):
   → Inject PHASE3_DEGRADED=true into ALL Phase-4 auditor prompts
   → All auth-dependent findings marked "suspected" not "confirmed"
   → Print: "⚠️ Phase-3 was degraded — auth-dependent findings will be marked 'suspected'"
 
-Phase-2 degraded (partial context):
-  → Inject PHASE2_DEGRADED=true into Phase-3 and Phase-4 prompts
-  → Missing context_packs → auditors skip those sinks
-
 Phase-4 degraded (auditor failed):
   → Phase-4.5 correlation uses available exploits/ only
-  → Phase-5 report notes "部分审计器未完成，结果可能不完整"
+  → Phase-5 report notes incomplete audit coverage
 ```
 
-## OUTPUT CONTRACT
+## Output Contract
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| checkpoint.json | `$WORK_DIR/checkpoint.json` | JSON with .phases, .agent_states, .mode | Degradation flags, redo_counts, agent status |
+| Console output | stdout | Text with ⚠️/🛑 prefixes | Recovery action messages |
+| Downstream flags | Agent prompt injection | `PHASE{N}_DEGRADED=true` | Degradation awareness for downstream agents |
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Updated checkpoint.json | `$WORK_DIR/checkpoint.json` | Degradation flags, redo_counts |
-| Console output | stdout | Recovery action messages (⚠️/🛑) |
-| Downstream flags | Agent prompt injection | PHASE{N}_DEGRADED=true |
+## Examples
 
-## EXAMPLES
-
-✅ GOOD — Phase-3 QC fail with graceful degradation:
+### ✅ GOOD: Phase-3 QC fail with graceful degradation
 ```
 QC-Phase3 FAIL: credentials.json missing "admin" level
 → Check redo_count: 0 < 2 → Level 1: retry auth_simulator
@@ -128,26 +155,26 @@ QC-Phase3 FAIL: credentials.json missing "admin" level
 → Auth_simulator retry → still fails
 → redo_count: 2 >= 2 → Level 2: DEGRADED
 → Write: .phases.phase3.mode = "degraded"
-→ Print: "⚠️ Phase-3 degraded: 鉴权模拟失败，退回静态分析模式"
+→ Print: "⚠️ Phase-3 degraded: auth simulation failed, falling back to static analysis"
 → Inject PHASE3_DEGRADED=true into Phase-4 prompts
 → Continue to Phase-4
 ```
+Explanation: Exhausts retries within limit, then properly degrades and propagates flag downstream before continuing ✅
 
-❌ BAD — Skipping remaining phases on failure:
+### ❌ BAD: Skipping remaining phases on failure
 ```
 Phase-3 QC FAIL → "🛑 Audit aborted due to Phase-3 failure"
-← WRONG: MUST continue to Phase-4, Phase-5 (with degraded flag)
 ```
+What's wrong: MUST continue to Phase-4, Phase-5 with degraded flag — violates CR-1 ❌
 
-❌ BAD — Retrying beyond limit:
+### ❌ BAD: Retrying beyond limit
 ```
 Phase-4 auditor QC FAIL, redo_count=2
 → "Retrying auditor (attempt 3/2)"
-← WRONG: redo limit is 2, must mark degraded and continue
 ```
+What's wrong: Redo limit is 2, must mark degraded and continue — violates CR-3 ❌
 
-## ERROR HANDLING
-
+## Error Handling
 | Error | Action |
 |-------|--------|
 | Cannot determine which agent failed | Re-run entire phase (last resort) |

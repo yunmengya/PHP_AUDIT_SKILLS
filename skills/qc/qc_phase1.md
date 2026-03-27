@@ -1,107 +1,147 @@
-> **Skill ID**: S-080 | **Phase**: 1 (QC) | **Gate**: GATE_1
-> **Input**: Phase 1 outputs
-> **Output**: quality_report_phase1.json
-
-# Phase-1 Quality Check — Environment Setup
+# Phase-1 QC — Environment Setup
 
 ## Identity
-
-Quality checker for Phase 1. Validates environment detection and Docker build outputs before GATE_1 passage. Ensures Docker containers are running, PHP version is correctly detected, framework is identified, and composer.json is properly parsed.
+| Field | Value |
+|-------|-------|
+| Skill ID | S-080 |
+| Category | QC |
+| Responsibility | Validate environment detection and Docker build outputs before GATE_1 passage |
 
 ## Input Contract
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| `environment_status.json` | docker_builder | YES | `php_version`, `framework`, `framework_version`, `db_type`, `xdebug_working`, `web_accessible`, `routes_accessible`, `routes_error`, `routes_inaccessible`, all schema-required fields |
+| `docker-compose.yml` | docker_builder | YES | Service definitions, container names |
+| `docker/` directory | docker_builder | YES | Dockerfile(s) presence |
 
-| Source | Path | Required | Validation |
-|--------|------|----------|------------|
-| Environment status | `$WORK_DIR/environment_status.json` | YES | Must exist, valid JSON, pass `schemas/environment_status.schema.json` |
-| Docker Compose config | `$WORK_DIR/docker-compose.yml` | YES | Must exist, YAML parseable |
-| Docker directory | `$WORK_DIR/docker/` | YES | Directory exists, contains Dockerfile(s) |
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | Checks 1–4 (Container Health, PHP Version, Framework ID, Composer) ALL must pass | Verdict = PASS |
+| CR-2 | Any of Checks 1–4 fails | Verdict = FAIL — environment not viable for audit |
+| CR-3 | Checks 5–6 partially fail (Xdebug or SSRF issues) while 1–4 pass | Verdict = CONDITIONAL_PASS — record degradation impact: Phase 3 may fall back to static tracing |
+| CR-4 | MUST-PASS items: container status, PHP version, web accessible, database connection | Failure of any MUST-PASS item → immediate FAIL |
+| CR-5 | MAY-WARN items: Xdebug, SSRF target, route classification completeness | Failure only degrades — does not block gate |
 
-## Check Procedure
+## Fill-in Procedure
 
-### Check 1: Container Health
-- [ ] All Docker services in `running` state — no `restarting` or `exited` containers
-- [ ] `docker compose ps` shows all defined services healthy
-- [ ] Web service responds: `http://nginx:80/` returns HTTP 200/301/302
+### Procedure A: Container Health
+| # | Check Item | Result | Details |
+|---|-----------|--------|---------|
+| 1.1 | All Docker services in `running` state (no `restarting` / `exited`) | `{pass/fail}` | `{list service states}` |
+| 1.2 | `docker compose ps` shows all defined services healthy | `{pass/fail}` | `{healthy count / total count}` |
+| 1.3 | Web service responds: `http://nginx:80/` returns HTTP 200/301/302 | `{pass/fail}` | `{HTTP status code}` |
 
-### Check 2: PHP Version Detection
-- [ ] `environment_status.json.php_version` is non-empty and matches semver format (e.g. `8.1.27`)
-- [ ] Actual container PHP version (`docker exec php php -v`) matches `php_version` field
-- [ ] Required PHP extensions loaded: `pdo`, `pdo_mysql`/`pdo_pgsql`, `mbstring`, `xml`, `curl`, `json`, `Xdebug`
+### Procedure B: PHP Version Detection
+| # | Check Item | Result | Details |
+|---|-----------|--------|---------|
+| 2.1 | `php_version` is non-empty and matches semver (e.g. `8.1.27`) | `{pass/fail}` | `{detected version}` |
+| 2.2 | Container PHP version (`docker exec php php -v`) matches `php_version` field | `{pass/fail}` | `{expected vs actual}` |
+| 2.3 | Required extensions loaded: `pdo`, `pdo_mysql`/`pdo_pgsql`, `mbstring`, `xml`, `curl`, `json`, `Xdebug` | `{pass/fail}` | `{missing extensions list}` |
 
-### Check 3: Framework Identification
-- [ ] `framework` field is one of: `Laravel`, `ThinkPHP`, `Yii2`, `Symfony`, `CakePHP`, `CodeIgniter`, `Native`
-- [ ] `framework_version` is non-empty when framework ≠ `Native`
-- [ ] Framework identification is consistent with source code markers (e.g. `artisan` for Laravel, `think` for ThinkPHP)
+### Procedure C: Framework Identification
+| # | Check Item | Result | Details |
+|---|-----------|--------|---------|
+| 3.1 | `framework` is one of: `Laravel`, `ThinkPHP`, `Yii2`, `Symfony`, `CakePHP`, `CodeIgniter`, `Native` | `{pass/fail}` | `{detected framework}` |
+| 3.2 | `framework_version` is non-empty when framework ≠ `Native` | `{pass/fail}` | `{version value}` |
+| 3.3 | Framework consistent with source code markers (e.g. `artisan` → Laravel, `think` → ThinkPHP) | `{pass/fail}` | `{marker found}` |
 
-### Check 4: Composer Parsing
-- [ ] `composer.json` exists in target project and was successfully parsed
-- [ ] `db_type` is one of: `mysql`, `pgsql`, `sqlite`
-- [ ] Database connection is functional — PDO connection succeeds from within container
+### Procedure D: Composer Parsing
+| # | Check Item | Result | Details |
+|---|-----------|--------|---------|
+| 4.1 | `composer.json` exists and was successfully parsed | `{pass/fail}` | `{parse status}` |
+| 4.2 | `db_type` is one of: `mysql`, `pgsql`, `sqlite` | `{pass/fail}` | `{detected db_type}` |
+| 4.3 | Database connection functional — PDO connection succeeds from within container | `{pass/fail}` | `{connection result}` |
 
-### Check 5: Xdebug & Route Classification
-- [ ] `xdebug_working` is `true` — `xdebug.mode` includes `trace`
-- [ ] `routes_accessible + routes_error + routes_inaccessible > 0` — route classification completed
-- [ ] SSRF target reachable: `http://ssrf-target:80/` returns 200
+### Procedure E: Xdebug & Route Classification
+| # | Check Item | Result | Details |
+|---|-----------|--------|---------|
+| 5.1 | `xdebug_working` is `true` — `xdebug.mode` includes `trace` | `{pass/fail/warn}` | `{xdebug.mode value}` |
+| 5.2 | `routes_accessible + routes_error + routes_inaccessible > 0` — route classification completed | `{pass/fail/warn}` | `{route counts}` |
+| 5.3 | SSRF target reachable: `http://ssrf-target:80/` returns 200 | `{pass/fail/warn}` | `{HTTP status}` |
 
-### Check 6: Schema Validation
-- [ ] `environment_status.json` passes `schemas/environment_status.schema.json` validation
-- [ ] All required fields present per schema: `mode`, `framework`, `framework_version`, `php_version`, `db_type`, `startup_rounds`, `fixes_applied`, `web_accessible`, `routes_accessible`, `routes_error`, `routes_inaccessible`, `xdebug_working`, `db_tables_total`, `db_tables_from_migration`, `db_tables_from_inference`, `disabled_features`, `encrypted_files`
-- [ ] No placeholder residue: `grep '【填写】\|TODO\|TBD\|PLACEHOLDER'` returns 0 hits
+### Procedure F: Schema Validation
+| # | Check Item | Result | Details |
+|---|-----------|--------|---------|
+| 6.1 | `environment_status.json` passes `schemas/environment_status.schema.json` | `{pass/fail}` | `{validation errors}` |
+| 6.2 | All required fields present: `mode`, `framework`, `framework_version`, `php_version`, `db_type`, `startup_rounds`, `fixes_applied`, `web_accessible`, `routes_accessible`, `routes_error`, `routes_inaccessible`, `xdebug_working`, `db_tables_total`, `db_tables_from_migration`, `db_tables_from_inference`, `disabled_features`, `encrypted_files` | `{pass/fail}` | `{missing fields}` |
+| 6.3 | No placeholder residue: `grep 'TODO\|TBD\|PLACEHOLDER'` returns 0 hits | `{pass/fail}` | `{hit count}` |
 
-## Verdict Rules
+### Procedure G: Verdict Determination
 
-| Condition | Verdict |
-|-----------|---------|
-| Checks 1–4 all pass (containers, PHP, framework, composer) | PASS |
-| Checks 5–6 partially fail (Xdebug or SSRF target issues) | CONDITIONAL_PASS — record degradation impact: Phase 3 may fall back to static tracing |
-| Any of Checks 1–4 fail | FAIL — environment not viable for audit |
-
-**MUST-PASS items:** Container status, PHP version, web accessible, database connection
-**MAY-WARN items:** Xdebug, SSRF target, route classification completeness
+| Field | Fill-in Value |
+|-------|--------------|
+| Checks 1–4 all pass? | `{yes/no}` |
+| Checks 5–6 status | `{all_pass / partial_fail / all_fail}` |
+| Final verdict | `{pass / conditional_pass / fail}` |
+| Degradation impact (if conditional_pass) | `{description}` |
+| pass_count | `{N}` / 6 |
+| failed_items | `{list}` |
 
 ## Output Contract
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| QC report | `$WORK_DIR/质量报告/quality_report_phase1.json` | `schemas/quality_report_phase1.schema.json` | Per-check pass/fail results with details |
 
-| Output | Path | Description |
-|--------|------|-------------|
-| QC report | `$WORK_DIR/质量报告/quality_report_phase1.json` | Detailed check results with per-item pass/fail |
+## Examples
 
-**Output JSON structure:**
+### ✅ GOOD: All core checks pass, Xdebug working
 ```json
 {
-  "qc_id": "qc-phase1-docker_builder-{timestamp}",
+  "qc_id": "qc-phase1-docker_builder-20250101T120000",
   "phase": "1",
   "target_agent": "docker_builder",
-  "timestamp": "ISO-8601",
-  "verdict": "pass|conditional_pass|fail",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "verdict": "pass",
   "checks": {
-    "container_health": { "status": "pass|fail", "details": "..." },
-    "php_version": { "status": "pass|fail", "expected": "...", "actual": "..." },
-    "framework_id": { "status": "pass|fail", "detected": "..." },
-    "composer_parsed": { "status": "pass|fail", "details": "..." },
-    "xdebug_trace": { "status": "pass|fail|warn", "details": "..." },
-    "schema_valid": { "status": "pass|fail", "errors": [] }
+    "container_health": { "status": "pass", "details": "3/3 services running and healthy" },
+    "php_version": { "status": "pass", "expected": "8.1.27", "actual": "8.1.27" },
+    "framework_id": { "status": "pass", "detected": "Laravel 10.x" },
+    "composer_parsed": { "status": "pass", "details": "composer.json parsed, db_type=mysql, PDO connected" },
+    "xdebug_trace": { "status": "pass", "details": "xdebug.mode=trace, SSRF target reachable" },
+    "schema_valid": { "status": "pass", "errors": [] }
   },
-  "pass_count": 0,
+  "pass_count": 6,
   "total_count": 6,
   "failed_items": [],
   "degradation_impact": ""
 }
 ```
+Explanation: All 6 checks pass — containers healthy, PHP version matches, framework detected, composer parsed, Xdebug functional, schema valid. Verdict is PASS. ✅
+
+### ❌ BAD: PHP version mismatch causes FAIL
+```json
+{
+  "qc_id": "qc-phase1-docker_builder-20250101T120000",
+  "phase": "1",
+  "target_agent": "docker_builder",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "verdict": "pass",
+  "checks": {
+    "container_health": { "status": "pass", "details": "all running" },
+    "php_version": { "status": "fail", "expected": "8.1.27", "actual": "7.4.33" },
+    "framework_id": { "status": "pass", "detected": "Laravel" },
+    "composer_parsed": { "status": "pass", "details": "ok" },
+    "xdebug_trace": { "status": "pass", "details": "ok" },
+    "schema_valid": { "status": "pass", "errors": [] }
+  },
+  "pass_count": 5,
+  "total_count": 6,
+  "failed_items": ["php_version"],
+  "degradation_impact": ""
+}
+```
+What's wrong: Check 2 (PHP Version) failed but verdict is still "pass". Violates CR-2 — any failure in Checks 1–4 must produce verdict = "fail". ❌
 
 ## Error Handling
-
 | Error | Action |
 |-------|--------|
-| Missing `environment_status.json` | FAIL — cannot validate; docker_builder did not produce output |
+| Missing `environment_status.json` | FAIL — docker_builder did not produce output |
 | Malformed JSON in `environment_status.json` | FAIL — data integrity issue; re-run docker_builder |
 | Docker daemon not running | FAIL — prerequisite not met; cannot verify containers |
-| Schema validation errors | FAIL on required fields; WARN on optional fields |
+| Schema validation errors on required fields | FAIL — re-run docker_builder |
+| Schema validation errors on optional fields | WARN — continue with annotation |
 | Xdebug not working | CONDITIONAL_PASS — Phase 3 degrades to static-only tracing |
-
-## Redo Rules
-
-| Attempt | Action |
-|---------|--------|
-| 1st failure | Return to docker_builder with specific fix requirements |
-| 2nd failure | Retry with alternative remediation strategy |
-| 3rd failure | Phase-1 cannot degrade — halt for user intervention |
+| 1st redo attempt | Return to docker_builder with specific fix requirements |
+| 2nd redo attempt | Retry with alternative remediation strategy |
+| 3rd redo attempt | Phase-1 cannot degrade — halt for user intervention |

@@ -1,46 +1,49 @@
-> **Skill ID**: S-073 | **Phase**: 4.5 | **Category**: Correlation Rule
-> **Input**: exploit_results/*.json, priority_queue.json
-> **Output**: correlation_findings.json (appended)
-
 # False Positive Filter
 
 ## Identity
 
-Correlation rule skill for filtering false positives. Part of the correlation engine (Phase 4.5).
-
-These rules compare confirmed findings against known false positive patterns, framework-level protections, and global WAF/middleware configurations to flag suspected false positives for manual review. This skill MUST NOT auto-downgrade any confirmed vulnerability — it SHALL only flag warnings.
+| Field | Value |
+|-------|-------|
+| Skill ID | S-071 |
+| Category | Correlation |
+| Responsibility | Flag suspected false positives by comparing confirmed findings against known FP patterns, framework protections, and WAF/middleware configurations |
 
 ## Input Contract
 
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
 | Exploit results | `$WORK_DIR/exploits/*.json` | YES | final_verdict, evidence, sink_type, auth_level |
 | Priority queue | `$WORK_DIR/priority_queue.json` | YES | sink_type, priority, routes |
 | False positive patterns | `${SKILL_DIR}/shared/false_positive_patterns.md` | YES | pattern definitions, framework protections |
 | Attack plans | `$WORK_DIR/attack_plans/*.json` | NO | planned_vectors, filter_analysis |
 
+## 🚨 CRITICAL Rules
+
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | MUST NOT downgrade confirmed vulnerabilities — SHALL only flag false positive warnings for manual confirmation | Auto-downgrading removes real vulnerabilities from the report, causing missed findings |
+| CR-2 | MUST NOT auto-remove or auto-reclassify any finding | Removing findings without human review violates audit integrity |
+| CR-3 | Flagged findings retain their original severity until manual review | Premature severity changes corrupt the severity distribution in the final report |
+
 ## Fill-in Procedure
 
-### Step 1: Load Confirmed Findings
+### Procedure A: Load Confirmed Findings
 
 1. Load all exploit results from `$WORK_DIR/exploits/*.json`
 2. Filter to findings with `final_verdict = "confirmed"`
 3. Load the false positive pattern library from `shared/false_positive_patterns.md`
 
-### Step 2: Check Against Known False Positive Patterns
+### Procedure B: Check Against Known False Positive Patterns
 
-For each confirmed finding:
+For each confirmed finding, compare the finding's characteristics against each pattern in `shared/false_positive_patterns.md`. If a match is found, fill in:
 
-1. Compare the finding's characteristics against each pattern in `shared/false_positive_patterns.md`
-2. If a match is found, create a false positive warning entry
+| Field | Fill-in Value |
+|-------|--------------|
+| `finding_id` | {ID of the confirmed finding} |
+| `reason` | {Why this finding may be a false positive — reference the matched pattern} |
+| `matched_pattern` | {Name of the matched false positive pattern from the pattern library} |
 
-| Field | Value |
-|-------|-------|
-| `finding_id` | ID of the confirmed finding |
-| `reason` | Why this finding may be a false positive |
-| `matched_pattern` | Name of the matched false positive pattern |
-
-### Step 3: Check Framework-Level Protections
+### Procedure C: Check Framework-Level Protections
 
 Check whether built-in framework protections were overlooked by the auditor:
 
@@ -50,43 +53,43 @@ Check whether built-in framework protections were overlooked by the auditor:
 - WordPress: Nonce verification patterns
 - Other framework-specific global protections
 
-If a finding contradicts an active framework protection, flag it:
+If a finding contradicts an active framework protection, fill in:
 
-| Field | Value |
-|-------|-------|
-| `finding_id` | ID of the finding |
-| `reason` | "Framework protection X is globally enabled, which should prevent this vulnerability" |
-| `matched_pattern` | `framework_protection::<framework_name>::<protection_type>` |
+| Field | Fill-in Value |
+|-------|--------------|
+| `finding_id` | {ID of the finding} |
+| `reason` | {"Framework protection X is globally enabled, which should prevent this vulnerability"} |
+| `matched_pattern` | {`framework_protection::<framework_name>::<protection_type>`} |
 
-### Step 4: Check Global WAF/Middleware Blocking
+### Procedure D: Check Global WAF/Middleware Blocking
 
 Check whether a global WAF or middleware has blocked the attack but the auditor did not account for it:
 
 1. Look for evidence of WAF/middleware in the application configuration
-2. If the exploit evidence shows the payload was blocked (HTTP 403, WAF error page, etc.) but the finding is still marked `confirmed`, flag it
+2. If the exploit evidence shows the payload was blocked (HTTP 403, WAF error page, etc.) but the finding is still marked `confirmed`, fill in:
 
-| Field | Value |
-|-------|-------|
-| `finding_id` | ID of the finding |
-| `reason` | "Global WAF/middleware appears to block this attack vector" |
-| `matched_pattern` | `waf_blocked::<waf_type>` |
+| Field | Fill-in Value |
+|-------|--------------|
+| `finding_id` | {ID of the finding} |
+| `reason` | {"Global WAF/middleware appears to block this attack vector"} |
+| `matched_pattern` | {`waf_blocked::<waf_type>`} |
 
-### Step 5: Same Root Cause Deduplication
+### Procedure E: Same Root Cause Deduplication
 
 1. Group all confirmed findings by `(vuln_type, root_cause_file, root_cause_line)` or `(vuln_type, shared_function)`
 2. If multiple findings share the same root cause (e.g., all pass through the same unsanitized function), flag duplicates:
 
-| Field | Value |
-|-------|-------|
-| `finding_id` | ID of the duplicate finding |
-| `reason` | "Same root cause as finding X — shared vulnerable function/code path" |
-| `matched_pattern` | `same_root_cause::<primary_finding_id>` |
+| Field | Fill-in Value |
+|-------|--------------|
+| `finding_id` | {ID of the duplicate finding} |
+| `reason` | {"Same root cause as finding X — shared vulnerable function/code path"} |
+| `matched_pattern` | {`same_root_cause::<primary_finding_id>`} |
 
 ## Output Contract
 
-| Output | Path | Description |
-|--------|------|-------------|
-| Correlation findings | `$WORK_DIR/correlation_findings.json` | Append `potential_false_positives` array entries |
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| Correlation findings | `$WORK_DIR/correlation_findings.json` | See schema below | Append `potential_false_positives` array entries |
 
 ### Output Schema (per false positive entry)
 
@@ -98,6 +101,46 @@ Check whether a global WAF or middleware has blocked the attack but the auditor 
 }
 ```
 
+## Examples
+
+### ✅ GOOD: Framework CSRF Protection Flags a CSRF Finding
+
+```json
+{
+  "finding_id": "csrf-auditor-f-005",
+  "reason": "Framework protection VerifyCsrfToken middleware is globally enabled in app/Http/Kernel.php $middlewareGroups['web'], which should prevent this CSRF vulnerability",
+  "matched_pattern": "framework_protection::laravel::csrf_middleware"
+}
+```
+
+Explanation: The finding is flagged (not removed or downgraded) with a clear reason referencing the specific framework protection. The original severity is preserved for manual review. Complies with CR-1 and CR-3. ✅
+
+### ❌ BAD: Auto-Downgrading a Confirmed Finding
+
+```json
+{
+  "finding_id": "xss-auditor-f-009",
+  "reason": "CodeIgniter global XSS filtering is enabled",
+  "matched_pattern": "framework_protection::codeigniter::xss_filter",
+  "original_severity": "High",
+  "adjusted_severity": "Info"
+}
+```
+
+What's wrong: The output includes `adjusted_severity`, which auto-downgrades the finding from High to Info. CR-1 forbids downgrading confirmed vulnerabilities — this skill SHALL only flag warnings. The `adjusted_severity` field must not exist in the output. ❌
+
+### ✅ GOOD: Same Root Cause Deduplication
+
+```json
+{
+  "finding_id": "sqli-auditor-f-014",
+  "reason": "Same root cause as finding sqli-auditor-f-002 — both pass through unsanitized function db_query() in app/Models/BaseModel.php:45",
+  "matched_pattern": "same_root_cause::sqli-auditor-f-002"
+}
+```
+
+Explanation: The duplicate is flagged with a clear reference to the primary finding and the shared root cause function. The finding is not removed, just flagged for manual review. ✅
+
 ## Error Handling
 
 | Error | Action |
@@ -106,9 +149,3 @@ Check whether a global WAF or middleware has blocked the attack but the auditor 
 | Missing fields in exploit JSON | Use defaults, mark finding as "low_confidence" |
 | false_positive_patterns.md not available | Skip pattern matching, only perform framework/WAF checks |
 | No confirmed findings to check | Skip entirely, report zero false positive warnings |
-
-## Constraints
-
-- MUST NOT downgrade confirmed vulnerabilities; SHALL only flag false positive warnings for manual confirmation
-- MUST NOT auto-remove or auto-reclassify any finding
-- Flagged findings retain their original severity until manual review
