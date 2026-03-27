@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Skill ID | S-058 |
+| Skill ID | S-059 |
 | Phase | Phase-4 |
 | Type | 2-Stage Dispatcher |
 | Responsibility | Dispatch to analyze (Stage-1) and attack (Stage-2) sub-skills |
