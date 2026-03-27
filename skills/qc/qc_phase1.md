@@ -26,46 +26,46 @@
 ## Fill-in Procedure
 
 ### Procedure A: Container Health
-| # | Check Item | Result | Details |
-|---|-----------|--------|---------|
-| 1.1 | All Docker services in `running` state (no `restarting` / `exited`) | `{pass/fail}` | `{list service states}` |
-| 1.2 | `docker compose ps` shows all defined services healthy | `{pass/fail}` | `{healthy count / total count}` |
-| 1.3 | Web service responds: `http://nginx:80/` returns HTTP 200/301/302 | `{pass/fail}` | `{HTTP status code}` |
+| # | Check Item | Expected | Actual | Status |
+|---|-----------|----------|--------|--------|
+| 1.1 | All Docker services in `running` state (no `restarting` / `exited`) | all services `running` | `{fill-in: list service states}` | `{✅/❌}` |
+| 1.2 | `docker compose ps` shows all defined services healthy | healthy count = total count | `{fill-in: healthy count / total count}` | `{✅/❌}` |
+| 1.3 | Web service responds: `http://nginx:80/` returns HTTP 200/301/302 | HTTP 200/301/302 | `{fill-in: HTTP status code}` | `{✅/❌}` |
 
 ### Procedure B: PHP Version Detection
-| # | Check Item | Result | Details |
-|---|-----------|--------|---------|
-| 2.1 | `php_version` is non-empty and matches semver (e.g. `8.1.27`) | `{pass/fail}` | `{detected version}` |
-| 2.2 | Container PHP version (`docker exec php php -v`) matches `php_version` field | `{pass/fail}` | `{expected vs actual}` |
-| 2.3 | Required extensions loaded: `pdo`, `pdo_mysql`/`pdo_pgsql`, `mbstring`, `xml`, `curl`, `json`, `Xdebug` | `{pass/fail}` | `{missing extensions list}` |
+| # | Check Item | Expected | Actual | Status |
+|---|-----------|----------|--------|--------|
+| 2.1 | `php_version` is non-empty and matches semver (e.g. `8.1.27`) | non-empty semver string | `{fill-in: detected version}` | `{✅/❌}` |
+| 2.2 | Container PHP version (`docker exec php php -v`) matches `php_version` field | version matches `php_version` field | `{fill-in: container PHP version}` | `{✅/❌}` |
+| 2.3 | Required extensions loaded: `pdo`, `pdo_mysql`/`pdo_pgsql`, `mbstring`, `xml`, `curl`, `json`, `Xdebug` | all required extensions loaded | `{fill-in: missing extensions list}` | `{✅/❌}` |
 
 ### Procedure C: Framework Identification
-| # | Check Item | Result | Details |
-|---|-----------|--------|---------|
-| 3.1 | `framework` is one of: `Laravel`, `ThinkPHP`, `Yii2`, `Symfony`, `CakePHP`, `CodeIgniter`, `Native` | `{pass/fail}` | `{detected framework}` |
-| 3.2 | `framework_version` is non-empty when framework ≠ `Native` | `{pass/fail}` | `{version value}` |
-| 3.3 | Framework consistent with source code markers (e.g. `artisan` → Laravel, `think` → ThinkPHP) | `{pass/fail}` | `{marker found}` |
+| # | Check Item | Expected | Actual | Status |
+|---|-----------|----------|--------|--------|
+| 3.1 | `framework` is one of: `Laravel`, `ThinkPHP`, `Yii2`, `Symfony`, `CakePHP`, `CodeIgniter`, `Native` | one of allowed framework values | `{fill-in: detected framework}` | `{✅/❌}` |
+| 3.2 | `framework_version` is non-empty when framework ≠ `Native` | non-empty version string | `{fill-in: version value}` | `{✅/❌}` |
+| 3.3 | Framework consistent with source code markers (e.g. `artisan` → Laravel, `think` → ThinkPHP) | marker matches declared framework | `{fill-in: marker found}` | `{✅/❌}` |
 
 ### Procedure D: Composer Parsing
-| # | Check Item | Result | Details |
-|---|-----------|--------|---------|
-| 4.1 | `composer.json` exists and was successfully parsed | `{pass/fail}` | `{parse status}` |
-| 4.2 | `db_type` is one of: `mysql`, `pgsql`, `sqlite` | `{pass/fail}` | `{detected db_type}` |
-| 4.3 | Database connection functional — PDO connection succeeds from within container | `{pass/fail}` | `{connection result}` |
+| # | Check Item | Expected | Actual | Status |
+|---|-----------|----------|--------|--------|
+| 4.1 | `composer.json` exists and was successfully parsed | file exists and parses as valid JSON | `{fill-in: parse status}` | `{✅/❌}` |
+| 4.2 | `db_type` is one of: `mysql`, `pgsql`, `sqlite` | one of `mysql`, `pgsql`, `sqlite` | `{fill-in: detected db_type}` | `{✅/❌}` |
+| 4.3 | Database connection functional — PDO connection succeeds from within container | PDO connection succeeds | `{fill-in: connection result}` | `{✅/❌}` |
 
 ### Procedure E: Xdebug & Route Classification
-| # | Check Item | Result | Details |
-|---|-----------|--------|---------|
-| 5.1 | `xdebug_working` is `true` — `xdebug.mode` includes `trace` | `{pass/fail/warn}` | `{xdebug.mode value}` |
-| 5.2 | `routes_accessible + routes_error + routes_inaccessible > 0` — route classification completed | `{pass/fail/warn}` | `{route counts}` |
-| 5.3 | SSRF target reachable: `http://ssrf-target:80/` returns 200 | `{pass/fail/warn}` | `{HTTP status}` |
+| # | Check Item | Expected | Actual | Status |
+|---|-----------|----------|--------|--------|
+| 5.1 | `xdebug_working` is `true` — `xdebug.mode` includes `trace` | `xdebug.mode` includes `trace` | `{fill-in: xdebug.mode value}` | `{✅/❌}` |
+| 5.2 | `routes_accessible + routes_error + routes_inaccessible > 0` — route classification completed | total route count > 0 | `{fill-in: route counts}` | `{✅/❌}` |
+| 5.3 | SSRF target reachable: `http://ssrf-target:80/` returns 200 | HTTP 200 | `{fill-in: HTTP status}` | `{✅/❌}` |
 
 ### Procedure F: Schema Validation
-| # | Check Item | Result | Details |
-|---|-----------|--------|---------|
-| 6.1 | `environment_status.json` passes `schemas/environment_status.schema.json` | `{pass/fail}` | `{validation errors}` |
-| 6.2 | All required fields present: `mode`, `framework`, `framework_version`, `php_version`, `db_type`, `startup_rounds`, `fixes_applied`, `web_accessible`, `routes_accessible`, `routes_error`, `routes_inaccessible`, `xdebug_working`, `db_tables_total`, `db_tables_from_migration`, `db_tables_from_inference`, `disabled_features`, `encrypted_files` | `{pass/fail}` | `{missing fields}` |
-| 6.3 | No placeholder residue: `grep 'TODO\|TBD\|PLACEHOLDER'` returns 0 hits | `{pass/fail}` | `{hit count}` |
+| # | Check Item | Expected | Actual | Status |
+|---|-----------|----------|--------|--------|
+| 6.1 | `environment_status.json` passes `schemas/environment_status.schema.json` | schema validation passes with 0 errors | `{fill-in: validation errors}` | `{✅/❌}` |
+| 6.2 | All required fields present: `mode`, `framework`, `framework_version`, `php_version`, `db_type`, `startup_rounds`, `fixes_applied`, `web_accessible`, `routes_accessible`, `routes_error`, `routes_inaccessible`, `xdebug_working`, `db_tables_total`, `db_tables_from_migration`, `db_tables_from_inference`, `disabled_features`, `encrypted_files` | all 17 required fields present | `{fill-in: missing fields}` | `{✅/❌}` |
+| 6.3 | No placeholder residue: `grep 'TODO\|TBD\|PLACEHOLDER'` returns 0 hits | 0 hits | `{fill-in: hit count}` | `{✅/❌}` |
 
 ### Procedure G: Verdict Determination
 
@@ -88,6 +88,11 @@
 ### ✅ GOOD: All core checks pass, Xdebug working
 ```json
 {
+  "basic_info": {
+    "quality_checker": "S-080",
+    "target": "Phase-1 output",
+    "validated_files": ["environment_status.json", "docker-compose.yml", "docker/"]
+  },
   "qc_id": "qc-phase1-docker_builder-20250101T120000",
   "phase": "1",
   "target_agent": "docker_builder",
@@ -100,6 +105,19 @@
     "composer_parsed": { "status": "pass", "details": "composer.json parsed, db_type=mysql, PDO connected" },
     "xdebug_trace": { "status": "pass", "details": "xdebug.mode=trace, SSRF target reachable" },
     "schema_valid": { "status": "pass", "errors": [] }
+  },
+  "item_results": [
+    {"id": 1, "check_item": "Container Health", "expected": "all services running", "actual": "3/3 running and healthy", "status": "✅"},
+    {"id": 2, "check_item": "PHP Version Detection", "expected": "non-empty semver, matches container", "actual": "8.1.27 matches", "status": "✅"},
+    {"id": 3, "check_item": "Framework Identification", "expected": "valid framework with version", "actual": "Laravel 10.x detected", "status": "✅"},
+    {"id": 4, "check_item": "Composer Parsing", "expected": "parsed, valid db_type, PDO connected", "actual": "composer.json parsed, db_type=mysql, PDO connected", "status": "✅"},
+    {"id": 5, "check_item": "Xdebug & Route Classification", "expected": "xdebug.mode includes trace, routes > 0, SSRF reachable", "actual": "xdebug.mode=trace, 12 routes classified, SSRF 200", "status": "✅"},
+    {"id": 6, "check_item": "Schema Validation", "expected": "schema passes, all fields present, 0 placeholders", "actual": "0 errors, 17/17 fields, 0 placeholder hits", "status": "✅"}
+  ],
+  "final_verdict": {
+    "status": "PASS",
+    "passed": "6/6",
+    "failed_items": []
   },
   "pass_count": 6,
   "total_count": 6,

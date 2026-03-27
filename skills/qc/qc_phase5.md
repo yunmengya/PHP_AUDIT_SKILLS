@@ -35,90 +35,90 @@
 ## Fill-in Procedure
 
 ### Procedure A: Report Structure & Template Compliance
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | `报告/审计报告.md` exists and is non-empty | {pass/fail} | {file size} |
-| 2 | Report contains mandatory sections: executive summary, vulnerability details, remediation recommendations, coverage statistics | {pass/fail} | {missing sections} |
-| 3 | Each vulnerability section has: description, severity rating, affected endpoint, evidence, remediation | {pass/fail} | {incomplete vuln sections count} |
-| 4 | Tables render correctly — no broken Markdown table syntax | {pass/fail/warn} | {broken tables count} |
-| 5 | Code blocks have correct language syntax annotations | {pass/fail/warn} | {unannotated code blocks} |
-| 6 | No broken internal links or references | {pass/fail/warn} | {broken links count} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | `报告/审计报告.md` exists and is non-empty | File exists, size > 0 bytes | {fill-in: file existence and size} | {✅/❌} |
+| 2 | Report contains mandatory sections: executive summary, vulnerability details, remediation recommendations, coverage statistics | All 4 mandatory sections present | {fill-in: missing sections if any} | {✅/❌} |
+| 3 | Each vulnerability section has: description, severity rating, affected endpoint, evidence, remediation | All 5 sub-sections per vulnerability | {fill-in: incomplete vuln sections count} | {✅/❌} |
+| 4 | Tables render correctly — no broken Markdown table syntax | 0 broken tables | {fill-in: broken tables count} | {✅/❌} |
+| 5 | Code blocks have correct language syntax annotations | All code blocks annotated | {fill-in: unannotated code blocks count} | {✅/❌} |
+| 6 | No broken internal links or references | 0 broken links | {fill-in: broken links count} | {✅/❌} |
 
 ### Procedure B: P0/P1 Vulnerability Full Coverage
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Every P0 sink in `priority_queue.json` has a dedicated section in the report | {pass/fail} | {p0_covered / p0_total} |
-| 2 | Every P1 sink in `priority_queue.json` has a dedicated section in the report | {pass/fail} | {p1_covered / p1_total} |
-| 3 | P0/P1 coverage rate = 100% — no P0/P1 sink omitted | {pass/fail} | {coverage_pct}% |
-| 4 | Untested P0 sinks have explicit skip reason (`not_applicable` + reason documented) | {pass/fail} | {undocumented skips} |
-| 5 | Each vulnerability section references the correct `vuln_id` from exploit results | {pass/fail} | {mismatched vuln_ids} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Every P0 sink in `priority_queue.json` has a dedicated section in the report | p0_covered = p0_total | {fill-in: p0_covered / p0_total} | {✅/❌} |
+| 2 | Every P1 sink in `priority_queue.json` has a dedicated section in the report | p1_covered = p1_total | {fill-in: p1_covered / p1_total} | {✅/❌} |
+| 3 | P0/P1 coverage rate = 100% — no P0/P1 sink omitted | coverage = 100% | {fill-in: coverage percentage} | {✅/❌} |
+| 4 | Untested P0 sinks have explicit skip reason (`not_applicable` + reason documented) | 0 undocumented skips | {fill-in: undocumented skips count} | {✅/❌} |
+| 5 | Each vulnerability section references the correct `vuln_id` from exploit results | 0 mismatched vuln_ids | {fill-in: mismatched vuln_ids count} | {✅/❌} |
 
 ### Procedure C: Evidence Completeness for Confirmed Findings
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Each `confirmed` (✅) finding has: complete Burp-format HTTP request + HTTP response + evidence description | {pass/fail} | {confirmed_with_evidence / confirmed_total} |
-| 2 | HTTP requests are complete: `METHOD URL HTTP/1.1` + Host + Cookie headers + Body | {pass/fail} | {incomplete requests count} |
-| 3 | HTTP responses include Status Line + relevant Body excerpt (evidence portion) | {pass/fail} | {incomplete responses count} |
-| 4 | All required EVID_* points for each vulnerability type referenced (per `shared/evidence_contract.md`) | {pass/fail} | {missing_evid count} |
-| 5 | Evidence is not fabricated — response content matches described behavior | {pass/fail} | {suspicious evidence count} |
-| 6 | `suspected` (⚠️) findings have code-level evidence explaining exploitability | {pass/fail} | {suspected without evidence} |
-| 7 | `potential` (⚡) findings have static analysis reference only — correctly noted as unverified | {pass/fail} | {miscategorized potentials} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Each `confirmed` (✅) finding has: complete Burp-format HTTP request + HTTP response + evidence description | confirmed_with_evidence = confirmed_total | {fill-in: confirmed_with_evidence / confirmed_total} | {✅/❌} |
+| 2 | HTTP requests are complete: `METHOD URL HTTP/1.1` + Host + Cookie headers + Body | 0 incomplete requests | {fill-in: incomplete requests count} | {✅/❌} |
+| 3 | HTTP responses include Status Line + relevant Body excerpt (evidence portion) | 0 incomplete responses | {fill-in: incomplete responses count} | {✅/❌} |
+| 4 | All required EVID_* points for each vulnerability type referenced (per `shared/evidence_contract.md`) | 0 missing EVID points | {fill-in: missing_evid count} | {✅/❌} |
+| 5 | Evidence is not fabricated — response content matches described behavior | 0 suspicious evidence | {fill-in: suspicious evidence count} | {✅/❌} |
+| 6 | `suspected` (⚠️) findings have code-level evidence explaining exploitability | All suspected findings have code evidence | {fill-in: suspected without evidence count} | {✅/❌} |
+| 7 | `potential` (⚡) findings have static analysis reference only — correctly noted as unverified | All potentials correctly categorized | {fill-in: miscategorized potentials count} | {✅/❌} |
 
 ### Procedure D: Remediation Quality
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Each vulnerability has specific before/after code comparison (not generic "fix the issue") | {pass/fail} | {generic fixes count} |
-| 2 | Remediation uses framework-appropriate patterns (e.g., Laravel Eloquent for Laravel apps, not raw PDO) | {pass/fail} | {inappropriate patterns count} |
-| 3 | Remediation count matches vulnerability count — no findings without fix guidance | {pass/fail} | {specific_fixes / total_vulns} |
-| 4 | Patches in `修复补丁/` correspond to vulnerabilities in the report | {pass/fail} | {unmatched patches} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Each vulnerability has specific before/after code comparison (not generic "fix the issue") | 0 generic fixes | {fill-in: generic fixes count} | {✅/❌} |
+| 2 | Remediation uses framework-appropriate patterns (e.g., Laravel Eloquent for Laravel apps, not raw PDO) | 0 inappropriate patterns | {fill-in: inappropriate patterns count} | {✅/❌} |
+| 3 | Remediation count matches vulnerability count — no findings without fix guidance | specific_fixes = total_vulns | {fill-in: specific_fixes / total_vulns} | {✅/❌} |
+| 4 | Patches in `修复补丁/` correspond to vulnerabilities in the report | 0 unmatched patches | {fill-in: unmatched patches count} | {✅/❌} |
 
 ### Procedure E: Chinese Output Verification
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Report is written in Chinese (section headers, descriptions, analysis) | {pass/fail} | {english_only_sections count} |
-| 2 | Technical terms may remain in English where appropriate (CVE IDs, function names, HTTP headers) | {pass/fail} | {assessment} |
-| 3 | No English-only sections (except code blocks and HTTP evidence) | {pass/fail} | {english-only sections list} |
-| 4 | File encoding is UTF-8 | {pass/fail} | {detected encoding} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Report is written in Chinese (section headers, descriptions, analysis) | 0 English-only sections | {fill-in: english_only_sections count} | {✅/❌} |
+| 2 | Technical terms may remain in English where appropriate (CVE IDs, function names, HTTP headers) | Appropriate English terms only | {fill-in: assessment} | {✅/❌} |
+| 3 | No English-only sections (except code blocks and HTTP evidence) | 0 English-only sections | {fill-in: english-only sections list} | {✅/❌} |
+| 4 | File encoding is UTF-8 | Encoding = UTF-8 | {fill-in: detected encoding} | {✅/❌} |
 
 ### Procedure F: SARIF Export Validation
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | `报告/audit_report.sarif.json` is valid JSON | {pass/fail} | {validation result} |
-| 2 | SARIF version is `2.1.0` | {pass/fail} | {detected version} |
-| 3 | `results` count matches report vulnerability count | {pass/fail} | {sarif_results_count / report_count} |
-| 4 | Severity mapping correct: `confirmed` → `error`, `suspected` → `warning`, `potential` → `note` | {pass/fail} | {severity_errors count} |
-| 5 | Each result has `ruleId`, `message`, `locations` with file path and line number | {pass/fail} | {incomplete results count} |
-| 6 | No duplicate results in SARIF output | {pass/fail} | {duplicate count} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | `报告/audit_report.sarif.json` is valid JSON | Valid JSON parse | {fill-in: validation result} | {✅/❌} |
+| 2 | SARIF version is `2.1.0` | version: "2.1.0" | {fill-in: detected version} | {✅/❌} |
+| 3 | `results` count matches report vulnerability count | sarif_results_count = report_count | {fill-in: sarif_results_count / report_count} | {✅/❌} |
+| 4 | Severity mapping correct: `confirmed` → `error`, `suspected` → `warning`, `potential` → `note` | 0 severity mapping errors | {fill-in: severity_errors count} | {✅/❌} |
+| 5 | Each result has `ruleId`, `message`, `locations` with file path and line number | All results have required fields | {fill-in: incomplete results count} | {✅/❌} |
+| 6 | No duplicate results in SARIF output | 0 duplicates | {fill-in: duplicate count} | {✅/❌} |
 
 ### Procedure G: PoC & Deliverable Validation
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | All `.py` PoC scripts pass Python syntax check: `python3 -c "compile(...)"` | {pass/fail} | {syntax_pass_count / script_count} |
-| 2 | `PoC脚本/一键运行.sh` exists and contains execution commands for all PoC scripts | {pass/fail} | {runner_exists, scripts covered} |
-| 3 | Target URLs in PoC scripts are consistent with report URLs | {pass/fail/warn} | {inconsistent URLs} |
-| 4 | PoC script count ≥ confirmed vulnerability count | {pass/fail} | {script_count vs confirmed_count} |
-| 5 | PoC pass rate = 100% (all must pass syntax check) | {pass/fail} | {syntax_pass_pct}% |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | All `.py` PoC scripts pass Python syntax check: `python3 -c "compile(...)"` | syntax_pass_count = script_count | {fill-in: syntax_pass_count / script_count} | {✅/❌} |
+| 2 | `PoC脚本/一键运行.sh` exists and contains execution commands for all PoC scripts | Runner exists, covers all scripts | {fill-in: runner_exists, scripts covered} | {✅/❌} |
+| 3 | Target URLs in PoC scripts are consistent with report URLs | 0 inconsistent URLs | {fill-in: inconsistent URLs count} | {✅/❌} |
+| 4 | PoC script count ≥ confirmed vulnerability count | script_count ≥ confirmed_count | {fill-in: script_count vs confirmed_count} | {✅/❌} |
+| 5 | PoC pass rate = 100% (all must pass syntax check) | syntax_pass_pct = 100% | {fill-in: syntax pass percentage} | {✅/❌} |
 
 ### Procedure H: File Organization
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | `报告/` — audit report + SARIF | {pass/fail/warn} | {files present} |
-| 2 | `PoC脚本/` — PoC scripts + runner + summary | {pass/fail/warn} | {files present} |
-| 3 | `修复补丁/` — patch files + summary | {pass/fail/warn} | {files present} |
-| 4 | `经验沉淀/` — lessons learned (optional) | {pass/warn} | {exists or not} |
-| 5 | `质量报告/` — QC reports | {pass/fail/warn} | {files present} |
-| 6 | `原始数据/` — archived intermediate artifacts | {pass/fail/warn} | {files present} |
-| 7 | No intermediate JSON files left in `$WORK_DIR` root (should be moved to `原始数据/`) | {pass/fail/warn} | {stray files list} |
-| 8 | `audit_session.db` has been securely deleted (contains plaintext credentials) | {pass/fail} | {db_deleted} |
-| 9 | Agent coverage matrix: all 21 Phase-4 auditors have a status entry | {pass/fail/warn} | {auditors with status / 21} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | `报告/` — audit report + SARIF | Directory exists with required files | {fill-in: files present} | {✅/❌} |
+| 2 | `PoC脚本/` — PoC scripts + runner + summary | Directory exists with required files | {fill-in: files present} | {✅/❌} |
+| 3 | `修复补丁/` — patch files + summary | Directory exists with required files | {fill-in: files present} | {✅/❌} |
+| 4 | `经验沉淀/` — lessons learned (optional) | Directory exists (optional) | {fill-in: exists or not} | {✅/❌} |
+| 5 | `质量报告/` — QC reports | Directory exists with QC reports | {fill-in: files present} | {✅/❌} |
+| 6 | `原始数据/` — archived intermediate artifacts | Directory exists with archived data | {fill-in: files present} | {✅/❌} |
+| 7 | No intermediate JSON files left in `$WORK_DIR` root (should be moved to `原始数据/`) | 0 stray JSON files in root | {fill-in: stray files list} | {✅/❌} |
+| 8 | `audit_session.db` has been securely deleted (contains plaintext credentials) | File does not exist | {fill-in: db_deleted status} | {✅/❌} |
+| 9 | Agent coverage matrix: all 21 Phase-4 auditors have a status entry | 21/21 auditors with status | {fill-in: auditors with status / 21} | {✅/❌} |
 
 ### Procedure I: Cross-Phase Consistency
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Vulnerability deduplication: same `file:line:sink` appears only once in report | {pass/fail} | {duplicates count} |
-| 2 | Coverage statistics: `audited routes + skipped routes = total routes` (math checks out) | {pass/fail/warn} | {coverage_math_ok} |
-| 3 | Confidence labels consistent: ✅ = has evidence, ⚠️ = code exploitable no evidence, ⚡ = static only | {pass/fail} | {inconsistent labels count} |
-| 4 | `auth_requirement` in exploits matches `auth_level` in `auth_matrix.json` for each route | {pass/fail/warn} | {auth_mismatches count} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Vulnerability deduplication: same `file:line:sink` appears only once in report | 0 duplicates | {fill-in: duplicates count} | {✅/❌} |
+| 2 | Coverage statistics: `audited routes + skipped routes = total routes` (math checks out) | Equation holds true | {fill-in: coverage math result} | {✅/❌} |
+| 3 | Confidence labels consistent: ✅ = has evidence, ⚠️ = code exploitable no evidence, ⚡ = static only | 0 inconsistent labels | {fill-in: inconsistent labels count} | {✅/❌} |
+| 4 | `auth_requirement` in exploits matches `auth_level` in `auth_matrix.json` for each route | 0 auth mismatches | {fill-in: auth_mismatches count} | {✅/❌} |
 
 ### Procedure J: Final Verdict Determination
 | Field | Fill-in Value |
@@ -151,6 +151,11 @@
   "target_agent": "team5",
   "timestamp": "2025-01-01T12:00:00Z",
   "verdict": "pass",
+  "basic_info": {
+    "quality_checker": "S-085",
+    "target": "Phase-5 output",
+    "validated_files": ["{fill-in: actual file paths read}"]
+  },
   "checks": {
     "report_structure": { "status": "pass", "section_count": 12, "broken_links": 0 },
     "p0_p1_coverage": { "status": "pass", "p0_covered": 5, "p0_total": 5, "p1_covered": 8, "p1_total": 8 },
@@ -161,6 +166,22 @@
     "poc_deliverables": { "status": "pass", "script_count": 6, "syntax_pass_pct": 100, "runner_exists": true },
     "file_organization": { "status": "pass", "stray_files": [], "db_deleted": true },
     "cross_phase_consistency": { "status": "pass", "duplicates": 0, "coverage_math_ok": true, "auth_mismatches": 0 }
+  },
+  "item_results": [
+    {"id": 1, "check_item": "report structure valid", "expected": "All mandatory sections present", "actual": "{fill-in}", "status": "✅"},
+    {"id": 2, "check_item": "P0/P1 coverage 100%", "expected": "coverage = 100%", "actual": "{fill-in}", "status": "✅"},
+    {"id": 3, "check_item": "evidence complete", "expected": "confirmed_with_evidence = confirmed_total", "actual": "{fill-in}", "status": "✅"},
+    {"id": 4, "check_item": "remediation quality", "expected": "specific_fixes = total_vulns", "actual": "{fill-in}", "status": "✅"},
+    {"id": 5, "check_item": "Chinese output", "expected": "0 English-only sections", "actual": "{fill-in}", "status": "✅"},
+    {"id": 6, "check_item": "SARIF valid v2.1.0", "expected": "version: \"2.1.0\", counts match", "actual": "{fill-in}", "status": "✅"},
+    {"id": 7, "check_item": "PoC deliverables", "expected": "syntax_pass_pct = 100%", "actual": "{fill-in}", "status": "✅"},
+    {"id": 8, "check_item": "file organization", "expected": "0 stray files, db deleted", "actual": "{fill-in}", "status": "✅"},
+    {"id": 9, "check_item": "cross-phase consistency", "expected": "0 duplicates, math checks out", "actual": "{fill-in}", "status": "✅"}
+  ],
+  "final_verdict": {
+    "status": "PASS",
+    "passed": "9/9",
+    "failed_items": []
   },
   "metrics": {
     "p0_p1_coverage": "100%",

@@ -33,67 +33,67 @@
 ## Fill-in Procedure
 
 ### Procedure A: Exploit File Integrity
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | `exploits/` directory exists with ≥1 JSON file | {pass/fail} | {file count} |
-| 2 | Each exploit file is valid JSON and passes `schemas/exploit_result.schema.json` | {pass/fail} | {schema errors if any} |
-| 3 | Required fields present in each file: `sink_id`, `route_url`, `sink_function`, `specialist`, `route_type`, `rounds_executed`, `rounds_skipped`, `results`, `final_verdict`, `confidence`, `severity`, `prerequisite_conditions` | {pass/fail} | {missing fields list} |
-| 4 | `sink_id` follows pattern `^sink_\d+$` | {pass/fail} | {invalid sink_ids} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | `exploits/` directory exists with ≥1 JSON file | ≥ 1 JSON file in exploits/ | {fill-in: file count found} | {✅/❌} |
+| 2 | Each exploit file is valid JSON and passes `schemas/exploit_result.schema.json` | all files pass exploit_result.schema.json | {fill-in: schema errors if any} | {✅/❌} |
+| 3 | Required fields present in each file: `sink_id`, `route_url`, `sink_function`, `specialist`, `route_type`, `rounds_executed`, `rounds_skipped`, `results`, `final_verdict`, `confidence`, `severity`, `prerequisite_conditions` | all 12 required fields present per file | {fill-in: missing fields list} | {✅/❌} |
+| 4 | `sink_id` follows pattern `^sink_\d+$` | matches `^sink_\d+$` pattern | {fill-in: invalid sink_ids if any} | {✅/❌} |
 
 ### Procedure B: Final Verdict Validity
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | `final_verdict` is one of: `confirmed`, `suspected`, `potential`, `not_vulnerable` | {pass/fail} | {invalid values} |
-| 2 | `confirmed` verdicts have physical evidence: HTTP request/response with actual payload + observable outcome | {pass/fail} | {count of confirmed without evidence} |
-| 3 | `confirmed` verdicts have `confidence: "high"` — no `confirmed` with low confidence | {pass/fail} | {mismatched entries} |
-| 4 | `suspected` verdicts have at least code-level evidence or partial response anomaly | {pass/fail} | {count missing evidence} |
-| 5 | All-8-rounds-failed sinks annotated as `potential` with failure reason documented | {pass/fail} | {undocumented failures} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | `final_verdict` is one of: `confirmed`, `suspected`, `potential`, `not_vulnerable` | value ∈ {confirmed, suspected, potential, not_vulnerable} | {fill-in: invalid values if any} | {✅/❌} |
+| 2 | `confirmed` verdicts have physical evidence: HTTP request/response with actual payload + observable outcome | every confirmed has HTTP evidence | {fill-in: count of confirmed without evidence} | {✅/❌} |
+| 3 | `confirmed` verdicts have `confidence: "high"` — no `confirmed` with low confidence | all confirmed → confidence: "high" | {fill-in: mismatched entries} | {✅/❌} |
+| 4 | `suspected` verdicts have at least code-level evidence or partial response anomaly | every suspected has partial evidence | {fill-in: count missing evidence} | {✅/❌} |
+| 5 | All-8-rounds-failed sinks annotated as `potential` with failure reason documented | failed sinks → potential + documented reason | {fill-in: undocumented failure count} | {✅/❌} |
 
 ### Procedure C: Evidence Completeness (EVID Chain)
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Each `confirmed` finding references all required EVID_* points per `shared/evidence_contract.md` | {pass/fail} | {missing EVID references} |
-| 2 | EVID references contain actual data — not empty strings or placeholders | {pass/fail} | {empty EVID count} |
-| 3 | Missing EVID points annotated `EVID_XXX: [Not obtained: reason]` and verdict auto-downgraded | {pass/fail} | {unannotated missing EVIDs} |
-| 4 | HTTP requests in Burp format: `METHOD URL HTTP/1.1` + Headers + Body — directly replayable | {pass/fail/warn} | {non-compliant requests} |
-| 5 | HTTP responses include status code + key response body (evidence portion, not truncated) | {pass/fail/warn} | {incomplete responses} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Each `confirmed` finding references all required EVID_* points per `shared/evidence_contract.md` | ≥ 1 EVID_* reference per confirmed finding | {fill-in: missing EVID references} | {✅/❌} |
+| 2 | EVID references contain actual data — not empty strings or placeholders | 0 empty/placeholder EVID values | {fill-in: empty EVID count} | {✅/❌} |
+| 3 | Missing EVID points annotated `EVID_XXX: [Not obtained: reason]` and verdict auto-downgraded | all missing EVIDs annotated + verdict downgraded | {fill-in: unannotated missing EVID count} | {✅/❌} |
+| 4 | HTTP requests in Burp format: `METHOD URL HTTP/1.1` + Headers + Body — directly replayable | Burp-compatible request format | {fill-in: non-compliant request count} | {✅/❌} |
+| 5 | HTTP responses include status code + key response body (evidence portion, not truncated) | status code + evidence body present | {fill-in: incomplete response count} | {✅/❌} |
 
 ### Procedure D: Severity Scoring Consistency
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | `severity` object contains all 10 required fields: `reachability`, `reachability_reason`, `impact`, `impact_reason`, `complexity`, `complexity_reason`, `score`, `cvss`, `level`, `vuln_id` | {pass/fail} | {missing fields} |
-| 2 | R/I/C values are integers 0–3 with non-empty reason strings | {pass/fail} | {invalid values} |
-| 3 | Weighted score formula correct: `score = R×0.40 + I×0.35 + C×0.25` | {pass/fail} | {formula errors count} |
-| 4 | CVSS estimate correct: `cvss = (score / 3.0) × 10.0` | {pass/fail} | {CVSS errors} |
-| 5 | Level mapping correct: C=2.70–3.00, H=2.10–2.69, M=1.20–2.09, L=0.10–1.19 | {pass/fail} | {mismatched levels} |
-| 6 | `vuln_id` follows pattern `^[CHML]-[A-Z_]+-\d{3}$` | {pass/fail} | {invalid vuln_ids} |
-| 7 | Score ↔ evidence consistency: score ≥ 2.10 → evidence_score ≥ 7; 1.20–2.09 → 4–6; < 1.20 → 1–3 | {pass/fail/warn} | {inconsistencies count} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | `severity` object contains all 10 required fields: `reachability`, `reachability_reason`, `impact`, `impact_reason`, `complexity`, `complexity_reason`, `score`, `cvss`, `level`, `vuln_id` | all 10 fields present | {fill-in: missing fields} | {✅/❌} |
+| 2 | R/I/C values are integers 0–3 with non-empty reason strings | R, I, C ∈ {0,1,2,3} + non-empty reasons | {fill-in: invalid values} | {✅/❌} |
+| 3 | Weighted score formula correct: `score = R×0.40 + I×0.35 + C×0.25` | score = R×0.40 + I×0.35 + C×0.25 | {fill-in: formula error count} | {✅/❌} |
+| 4 | CVSS estimate correct: `cvss = (score / 3.0) × 10.0` | cvss = (score / 3.0) × 10.0 | {fill-in: CVSS error count} | {✅/❌} |
+| 5 | Level mapping correct: C=2.70–3.00, H=2.10–2.69, M=1.20–2.09, L=0.10–1.19 | level matches score range | {fill-in: mismatched level count} | {✅/❌} |
+| 6 | `vuln_id` follows pattern `^[CHML]-[A-Z_]+-\d{3}$` | matches `^[CHML]-[A-Z_]+-\d{3}$` | {fill-in: invalid vuln_id count} | {✅/❌} |
+| 7 | Score ↔ evidence consistency: score ≥ 2.10 → evidence_score ≥ 7; 1.20–2.09 → 4–6; < 1.20 → 1–3 | score-evidence alignment per ranges | {fill-in: inconsistency count} | {✅/❌} |
 
 ### Procedure E: Prerequisite Conditions
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Each exploit has `prerequisite_conditions` with 4 sub-items: `auth_requirement`, `bypass_method`, `other_preconditions`, `exploitability_judgment` | {pass/fail} | {missing sub-items} |
-| 2 | `auth_requirement` is one of: `anonymous`, `authenticated`, `admin`, `internal_network` | {pass/fail} | {invalid values} |
-| 3 | `auth_requirement` matches the route's `auth_level` in `auth_matrix.json` | {pass/fail} | {mismatch count} |
-| 4 | `exploitability_judgment = "not_exploitable"` → `final_verdict` capped at `potential`, `confidence` capped at `low` | {pass/fail} | {violations} |
-| 5 | `exploitability_judgment = "conditionally_exploitable"` → `severity.complexity` drops 1 level | {pass/fail} | {uncapped entries} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Each exploit has `prerequisite_conditions` with 4 sub-items: `auth_requirement`, `bypass_method`, `other_preconditions`, `exploitability_judgment` | all 4 sub-items present per exploit | {fill-in: missing sub-item count} | {✅/❌} |
+| 2 | `auth_requirement` is one of: `anonymous`, `authenticated`, `admin`, `internal_network` | value ∈ {anonymous, authenticated, admin, internal_network} | {fill-in: invalid values} | {✅/❌} |
+| 3 | `auth_requirement` matches the route's `auth_level` in `auth_matrix.json` | auth_requirement = auth_matrix.auth_level | {fill-in: mismatch count} | {✅/❌} |
+| 4 | `exploitability_judgment = "not_exploitable"` → `final_verdict` capped at `potential`, `confidence` capped at `low` | not_exploitable → potential + low confidence | {fill-in: violation count} | {✅/❌} |
+| 5 | `exploitability_judgment = "conditionally_exploitable"` → `severity.complexity` drops 1 level | conditionally_exploitable → complexity -1 | {fill-in: uncapped entry count} | {✅/❌} |
 
 ### Procedure F: Sink Coverage & Auditor Matrix
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | Sink coverage: `audited sinks / priority_queue total sinks` ≥ 90% | {pass/fail/warn} | {coverage_pct}% |
-| 2 | `team4_progress.json` contains `total_findings` + per-level counts + findings array | {pass/fail} | {missing fields} |
-| 3 | All 21 auditor types have a status (`executed`, `not_applicable`, `deferred`, `failed`) | {pass/fail/warn} | {missing auditor statuses} |
-| 4 | P0 sinks have 100% coverage — every P0 sink has an exploit result | {pass/fail} | {p0_coverage_pct}% |
-| 5 | `not_applicable` auditors have documented reason | {pass/fail/warn} | {undocumented count} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | Sink coverage: `audited sinks / priority_queue total sinks` ≥ 90% | ≥ 90% | {fill-in: coverage percentage} | {✅/❌} |
+| 2 | `team4_progress.json` contains `total_findings` + per-level counts + findings array | all required fields present | {fill-in: missing fields} | {✅/❌} |
+| 3 | All 21 auditor types have a status (`executed`, `not_applicable`, `deferred`, `failed`) | 21/21 auditors have status | {fill-in: missing auditor status count} | {✅/❌} |
+| 4 | P0 sinks have 100% coverage — every P0 sink has an exploit result | 100% P0 coverage | {fill-in: P0 coverage percentage} | {✅/❌} |
+| 5 | `not_applicable` auditors have documented reason | all not_applicable have reason | {fill-in: undocumented count} | {✅/❌} |
 
 ### Procedure G: Filter Bypass & False Positive Check
-| # | Check Item | Result | Details |
-|---|------------|--------|---------|
-| 1 | For sinks with `effective=true` filters in context_pack, exploit records bypass method or `not_bypassable` annotation | {pass/fail/warn} | {unhandled filters count} |
-| 2 | All `confirmed`/`suspected` findings compared against `shared/false_positive_patterns.md` | {pass/fail/warn} | {false positive matches} |
-| 3 | Bypass strategies are reasonable (e.g., `htmlspecialchars` bypass not claimed via SQL comment technique) | {pass/fail/warn} | {unreasonable strategies} |
-| 4 | Cross-validated with variant payloads for confirmed findings | {pass/fail/warn} | {unvalidated findings} |
+| # | Check Item | Expected | Actual | Status |
+|---|------------|----------|--------|--------|
+| 1 | For sinks with `effective=true` filters in context_pack, exploit records bypass method or `not_bypassable` annotation | bypass method or not_bypassable for all filtered sinks | {fill-in: unhandled filter count} | {✅/❌} |
+| 2 | All `confirmed`/`suspected` findings compared against `shared/false_positive_patterns.md` | comparison completed for all findings | {fill-in: false positive match count} | {✅/❌} |
+| 3 | Bypass strategies are reasonable (e.g., `htmlspecialchars` bypass not claimed via SQL comment technique) | strategies consistent with filter type | {fill-in: unreasonable strategy count} | {✅/❌} |
+| 4 | Cross-validated with variant payloads for confirmed findings | variant payload validation done | {fill-in: unvalidated finding count} | {✅/❌} |
 
 ### Procedure H: Final Verdict Determination
 | Field | Fill-in Value |
@@ -123,6 +123,11 @@
   "phase": "4",
   "target_agent": "team4",
   "timestamp": "2025-01-01T12:00:00Z",
+  "basic_info": {
+    "quality_checker": "S-083",
+    "target": "Phase-4 output",
+    "validated_files": ["{fill-in: actual file paths read}"]
+  },
   "verdict": "pass",
   "checks": {
     "exploit_integrity": { "status": "pass", "file_count": 15, "schema_errors": [] },
@@ -133,6 +138,15 @@
     "sink_coverage": { "status": "pass", "coverage_pct": 95, "p0_coverage_pct": 100 },
     "filter_bypass": { "status": "pass", "unhandled_filters": 0, "false_positive_matches": 0 }
   },
+  "item_results": [
+    {"id": 1, "check_item": "exploits/ directory exists with ≥1 JSON file", "expected": "≥ 1 JSON file", "actual": "{fill-in}", "status": "✅"},
+    {"id": 2, "check_item": "confirmed verdicts have physical evidence", "expected": "every confirmed has HTTP evidence", "actual": "{fill-in}", "status": "✅"},
+    {"id": 3, "check_item": "EVID references present per confirmed finding", "expected": "≥ 1 EVID_* reference per confirmed finding", "actual": "{fill-in}", "status": "✅"},
+    {"id": 4, "check_item": "Severity scoring formula correct", "expected": "score = R×0.40 + I×0.35 + C×0.25", "actual": "{fill-in}", "status": "✅"},
+    {"id": 5, "check_item": "Prerequisites complete", "expected": "all 4 sub-items present", "actual": "{fill-in}", "status": "✅"},
+    {"id": 6, "check_item": "Sink coverage ≥ 90%", "expected": "≥ 90%", "actual": "{fill-in}", "status": "✅"},
+    {"id": 7, "check_item": "Filter bypass validation", "expected": "bypass method or not_bypassable", "actual": "{fill-in}", "status": "✅"}
+  ],
   "metrics": {
     "sink_coverage": "95%",
     "p0_coverage": "100%",
@@ -140,6 +154,11 @@
     "suspected_count": 3,
     "potential_count": 2,
     "not_vulnerable_count": 5
+  },
+  "final_verdict": {
+    "status": "PASS",
+    "passed": "7/7",
+    "failed_items": []
   },
   "pass_count": 7,
   "total_count": 7,
