@@ -156,11 +156,17 @@ Phase-4 攻击循环（每个 Sink，最多 8 轮）：
 | `schema_reconstructor` | 从 ORM 模型重建数据库表结构 |
 | `docker_builder` | Docker 环境构建 + `env_selfheal` 自愈循环 |
 
-### Team 2 — 静态侦察（6 Agents）
+### Team 2 — 静态侦察（12 Agents）
 
 | Agent | 职责 |
 |-------|------|
-| `tool_runner` | Psalm + Progpilot + sink_finder 编排 |
+| `psalm_scanner` | Psalm taint analysis |
+| `progpilot_scanner` | Progpilot vulnerability scan |
+| `ast_scanner` | AST sink detection via `sink_finder.php` |
+| `phpstan_scanner` | PHPStan static analysis |
+| `semgrep_scanner` | Semgrep pattern matching |
+| `composer_audit_scanner` | Composer dependency audit |
+| `codeql_scanner` | CodeQL analysis (optional) |
 | `route_mapper` | 路由表解析与映射 |
 | `auth_auditor` | 鉴权机制分析 |
 | `dep_scanner` | 第三方组件 CVE 检测 + `known_cves` |
@@ -297,8 +303,7 @@ PHP_AUDIT_SKILLS/
 │   │   ├── docker_builder.md
 │   │   ├── env_detective.md
 │   │   └── schema_reconstructor.md
-│   ├── team2/                        #   静态侦察（6）
-│   │   ├── tool_runner.md
+│   ├── team2/                        #   静态侦察（5 dispatchers; scanners in skills/scanners/）
 │   │   ├── route_mapper.md
 │   │   ├── auth_auditor.md
 │   │   ├── dep_scanner.md

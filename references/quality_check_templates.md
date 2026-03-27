@@ -95,7 +95,7 @@ Every verification report MUST contain the following three parts — none MAY be
 
 ## Phase 2: Static Reconnaissance Verification (Team-2 Output)
 
-**Agent Under Verification:** route_mapper, auth_auditor, tool_runner, dep_scanner, context_extractor, risk_classifier (all of Team-2)
+**Agent Under Verification:** psalm_scanner, progpilot_scanner, ast_scanner, phpstan_scanner, semgrep_scanner, composer_audit_scanner, codeql_scanner (7 scanners), route_mapper, auth_auditor, dep_scanner, context_extractor, risk_classifier (all of Phase-2)
 **Verification Source Files:** route_map.json, auth_matrix.json, ast_sinks.json, context_packs/, priority_queue.json, dep_risk.json
 **Associated Schema:** corresponding schema files under schemas/
 

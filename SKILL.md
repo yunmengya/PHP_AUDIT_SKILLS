@@ -150,7 +150,7 @@ Phase-1 (Environment):
   task-4: "QC: environment build"                  activeForm="QC verifying environment" (blockedBy: [3])
 
 Phase-2 (Recon):
-  task-5: "tool_runner Psalm/Progpilot"            activeForm="Running static analysis"  (blockedBy: [4])
+  task-5: "scanners ×7 (Psalm/Progpilot/AST/PHPStan/Semgrep/Composer/CodeQL)" activeForm="Running static analysis" (blockedBy: [4])
   task-6: "route_mapper"                           activeForm="Parsing route table"      (blockedBy: [4])
   task-7: "auth_auditor"                           activeForm="Analyzing auth mechanism" (blockedBy: [4])
   task-8: "dep_scanner"                            activeForm="Scanning dependencies"    (blockedBy: [4])

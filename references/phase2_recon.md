@@ -6,11 +6,15 @@
 
 ── Parallel Step ──
 
-Spawn four Agents simultaneously (background mode):
+Spawn ten Agents simultaneously (background mode):
 
-  Agent(name="tool-runner", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
-    → prompt: Task #5 instructions + teams/team2/tool_runner.md + shared resources
-            + tools/sink_finder.php (provide path and usage) + TARGET_PATH + WORK_DIR
+  Agent(name="psalm-scanner", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+    → prompt: Task #5a instructions + skills/scanners/psalm_scanner.md + shared resources + TARGET_PATH + WORK_DIR
+
+  Agent(name="progpilot-scanner", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+    → prompt: Task #5b instructions + skills/scanners/progpilot_scanner.md + shared resources + TARGET_PATH + WORK_DIR
+
+  (... 5 more scanners: ast, phpstan, semgrep, composer-audit, codeql ...)
 
   Agent(name="route-mapper", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #6 instructions + teams/team2/route_mapper.md + shared resources + TARGET_PATH + WORK_DIR

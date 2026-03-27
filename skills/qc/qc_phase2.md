@@ -12,14 +12,14 @@
 |------|--------|----------|-------------|
 | `route_map.json` | route_mapper | YES | `routes[]` with `id`, `url`, `method`, `controller`, `file`, `line`, `params`, `param_sources`, `middleware`, `auth_level`, `route_type` |
 | `auth_matrix.json` | auth_auditor | YES | `matrix[]` with `route_id`, `auth_level` |
-| `ast_sinks.json` | tool_runner | YES | Sink entries with `file`, `line` |
+| `ast_sinks.json` | ast_scanner | YES | Sink entries with `file`, `line` |
 | `priority_queue.json` | risk_classifier | YES | Entries with `id`, `priority`, `route_id`, `route_url`, `sink_function`, `sink_file`, `sink_line`, `auth_level`, `reason`, `source_count`, `sources` |
 | `context_packs/` | context_extractor | YES | JSON files with `sink_id`, `sink_function`, `priority`, `trace_depth`, `layers`, `data_flow_summary`, `filters_in_path`, `global_filters` |
 | `dep_risk.json` | dep_scanner | YES | Dependency risk assessment, CVE matches |
-| `psalm_taint.json` | tool_runner | NO | Scanner output (existence check) |
-| `progpilot.json` | tool_runner | NO | Scanner output (existence check) |
-| `semgrep.json` | tool_runner | NO | Scanner output (existence check) |
-| `phpstan.json` | tool_runner | NO | Scanner output (existence check) |
+| `psalm_taint.json` | psalm_scanner | NO | Scanner output (existence check) |
+| `progpilot.json` | progpilot_scanner | NO | Scanner output (existence check) |
+| `semgrep.json` | semgrep_scanner | NO | Scanner output (existence check) |
+| `phpstan.json` | phpstan_scanner | NO | Scanner output (existence check) |
 
 ## 🚨 CRITICAL Rules
 | # | Rule | Consequence |
@@ -202,14 +202,14 @@ What's wrong: `priority_queue` total is 0 (empty) but verdict is "pass". Violate
 |-------|--------|
 | Missing `route_map.json` | FAIL — route_mapper did not produce output |
 | Missing `priority_queue.json` | FAIL — risk_classifier did not produce output |
-| Missing `ast_sinks.json` | FAIL — tool_runner (AST scan) did not produce output |
+| Missing `ast_sinks.json` | FAIL — ast_scanner did not produce output |
 | Malformed JSON in any output | FAIL — data integrity issue; identify responsible agent for redo |
 | Auth matrix coverage < 60% | FAIL — auth_auditor requires redo |
-| All scanner outputs missing | FAIL — tool_runner pipeline broken |
+| All scanner outputs missing | FAIL — scanner pipeline broken (check all 7 scanner agents) |
 | Context pack `code` fields empty | WARN — context_extractor may need re-run |
 | route_map redo needed | Responsible agent: route_mapper |
 | auth_matrix redo needed | Responsible agent: auth_auditor |
-| ast_sinks redo needed | Responsible agent: tool_runner (AST scan) |
+| ast_sinks redo needed | Responsible agent: ast_scanner |
 | context_packs redo needed | Responsible agent: context_extractor |
 | priority_queue redo needed | Responsible agent: risk_classifier |
 | dep_risk redo needed | Responsible agent: dep_scanner |

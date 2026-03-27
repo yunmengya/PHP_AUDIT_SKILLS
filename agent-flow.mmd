@@ -19,11 +19,11 @@ graph TD
     end
 
     %% ============================================================
-    %% Phase 2: 静态资产侦察 (team2, 7 agents)
+    %% Phase 2: 静态资产侦察 (team2, 12 agents)
     %% ============================================================
     subgraph P2["Phase 2: 静态资产侦察 — team2/"]
         direction TB
-        TR["tool-runner<br/>📄 tool_runner.md<br/>→ psalm_taint.json<br/>→ progpilot.json<br/>→ ast_sinks.json"]
+        TR["scanners ×7<br/>📄 skills/scanners/*.md<br/>→ psalm_taint.json<br/>→ progpilot.json<br/>→ ast_sinks.json<br/>→ phpstan.json<br/>→ semgrep.json"]
         RM["route-mapper<br/>📄 route_mapper.md<br/>→ route_map.json"]
         AA["auth-auditor<br/>📄 auth_auditor.md<br/>→ auth_matrix.json"]
         DSC["dep-scanner<br/>📄 dep_scanner.md<br/>→ dep_risk.json"]
