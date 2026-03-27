@@ -1,5 +1,9 @@
 # Phase 3: Authentication Simulation & Dynamic Tracing
 
+> 📄 **Trace sub-skills**: `skills/trace/` (S-036a~S-036f, S-037a~S-037h)
+
+> 📄 **Auth sub-skills**: `skills/auth/` (S-038a~S-038i)
+
 The main dispatcher has set variables: TARGET_PATH, WORK_DIR, SKILL_DIR, SHARED_RESOURCES, MODE
 Refer to the prompt template in phase1-env.md.
 
