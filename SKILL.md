@@ -234,7 +234,7 @@ ALL checkpoint.json writes MUST use atomic write pattern. See `skills/infrastruc
 
 #### 3-Level Gate Failure Recovery
 
-> 📄 **Full specification**: `skills/infrastructure/failure_recovery.md` (S-007)
+> 📄 **Full specification**: `skills/infrastructure/failure_recovery.md` (S-005)
 
 On gate FAIL: Level 1 (auto retry, max 2) → Level 2 (degraded, continue) → Level 3 (user halt, critical only).
 
@@ -342,7 +342,7 @@ Phase-5 includes file reorganization: all intermediate artifacts are moved to th
 
 ### QC Failure Recovery Strategy
 
-> 📄 **Full specification**: `skills/infrastructure/failure_recovery.md` (S-007)
+> 📄 **Full specification**: `skills/infrastructure/failure_recovery.md` (S-005)
 
 **CRITICAL: On QC failure, MUST continue to all subsequent phases. Each QC has independent recovery.**
 Phase-1: 3 retries, no degradation | Phase-2/3/4: 2 retries, then degrade | Phase-4.5: 1 retry | Phase-5: 2 retries, then force output.
@@ -353,7 +353,7 @@ Phase-1: 3 retries, no degradation | Phase-2/3/4: 2 retries, then degrade | Phas
 
 ### Timeout Control
 
-> 📄 **Full specification**: `skills/infrastructure/timeout_handler.md` (S-006)
+> 📄 **Full specification**: `skills/infrastructure/timeout_handler.md` (S-007)
 
 Tiered limits: Single Agent 15min | Phase-1 20min | Phase-2 25min | Phase-3 20min | Phase-4 60min (per-expert 20min) | Phase-4.5 15min | Phase-5 15min | Global 2.5h.
 
