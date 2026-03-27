@@ -129,3 +129,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No information disclosure patterns found in assigned routes | Record `"status": "no_infoleak_patterns"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Cannot determine if debug mode is enabled in production | Assume enabled, flag as `needs_environment_check` |
+| Error handling configuration not found | Document as `config_missing`, check php.ini and framework config |
+| Sensitive data exposure via logs cannot be fully traced | Mark confidence as `low`, flag log outputs for manual review |
+| Timeout during information leak static analysis | Save partial results, set `"status": "timeout_partial"` |

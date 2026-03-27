@@ -1,51 +1,58 @@
-> **Skill ID**: S-030d | **Phase**: 2 | **Parent**: S-030 (route_mapper)
-> **Input**: frontend assets + config files + target source code
-> **Output**: `hidden_routes.json` — list of hidden/undocumented endpoints
-
 # Hidden Endpoint Discoverer
 
-## Purpose
+## Identity
+| Field | Value |
+|-------|-------|
+| Skill ID | S-030d |
+| Phase | Phase-2 |
+| Parent | S-030 (route_mapper) |
+| Responsibility | Discover hidden, undocumented, or debug endpoints not in the registered route table |
 
-Discover hidden, undocumented, or debug endpoints that are not part of the framework's registered route table. These endpoints often represent significant security risks (exposed debug panels, leaked API documentation, forgotten test routes). Every hidden endpoint MUST annotate its discovery method (CR-6).
+## Input Contract
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Target source code | `$TARGET_PATH/` | ✅ | All source files, public directory |
+| Frontend assets | `$TARGET_PATH/public/`, `$TARGET_PATH/dist/`, `$TARGET_PATH/resources/js/` | ⚠️ Optional | JS bundles, Vue/React files |
+| validated_routes.json | `$WORK_DIR/validated_routes.json` | ✅ | For cross-reference deduplication |
 
-## Procedure
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-6 | Every hidden endpoint MUST have a `discovery_source` field explaining how it was found | Entry deleted — no provenance of discovery method |
+| CR-1 | Where possible, hidden endpoints MUST include `file` + `line` provenance | Entry quality degraded without source traceability |
 
-### Step 1: Frontend Bundle Reverse Search
+## Fill-in Procedure
 
-Search compiled JavaScript and frontend source files for API path references:
+### Procedure A: Frontend Bundle Reverse Search
 
-```bash
-# Compiled JS bundles
-grep -oE '"/api/[^"]+"' dist/js/*.js public/js/*.js 2>/dev/null
-grep -oE "'/api/[^']+'" dist/js/*.js public/js/*.js 2>/dev/null
+| Field | Fill-in Value |
+|-------|--------------|
+| compiled_js | {`grep -oE '"/api/[^"]+"' dist/js/*.js public/js/*.js`} |
+| vue_react_src | {`grep -rn -oE '"/api/[^"]+"' resources/js/ src/`} |
+| ajax_patterns | {search for `axios.get/post/put/delete/patch(`, `fetch(`, `$.ajax` in frontend source} |
+| discovery_source | {`frontend_js`} |
 
-# Vue/React source files
-grep -rn -oE '"/api/[^"]+"' resources/js/ src/ 2>/dev/null
-grep -rn -oE "'/api/[^']+'" resources/js/ src/ 2>/dev/null
+### Procedure B: WIP/Debug Endpoints in Code Comments
 
-# Axios / fetch / $.ajax URL patterns
-grep -rn 'axios\.\(get\|post\|put\|delete\|patch\)(' resources/js/ src/ 2>/dev/null
-grep -rn 'fetch(' resources/js/ src/ 2>/dev/null
-grep -rn '\$\.ajax' resources/js/ src/ 2>/dev/null
-```
+| Field | Fill-in Value |
+|-------|--------------|
+| todo_routes | {`grep -rn 'TODO.*route\|WIP.*endpoint\|FIXME.*api' --include="*.php" $TARGET_PATH/`} |
+| commented_routes | {`grep -rn '//.*Route::' --include="*.php" $TARGET_PATH/routes/`} |
+| block_comments | {`grep -rn '/\*.*Route::' --include="*.php" $TARGET_PATH/routes/`} |
+| discovery_source | {`code_comment`} |
 
-For each discovered URL, set `discovery_source: "frontend_js"`.
+### Procedure C: Sensitive File Leak Detection
 
-### Step 2: WIP/Debug Endpoints in Code Comments
+For each sensitive file pattern, fill in:
 
-Search for commented-out or TODO-marked routes in PHP source:
+| Field | Fill-in Value |
+|-------|--------------|
+| file_checked | {file path or pattern checked} |
+| found | {`true` / `false`} |
+| risk | {risk description} |
+| discovery_source | {`sensitive_file`} |
 
-```bash
-grep -rn 'TODO.*route\|WIP.*endpoint\|FIXME.*api' --include="*.php" $TARGET_PATH/
-grep -rn '//.*Route::' --include="*.php" $TARGET_PATH/routes/
-grep -rn '/\*.*Route::' --include="*.php" $TARGET_PATH/routes/
-```
-
-For each match, set `discovery_source: "code_comment"`.
-
-### Step 3: Sensitive File Leak Detection
-
-Check for exposed configuration and backup files:
+**Sensitive file reference:**
 
 | File/Path | Risk | Check Method |
 |-----------|------|-------------|
@@ -56,26 +63,29 @@ Check for exposed configuration and backup files:
 | `phpinfo.php` | Full PHP config exposure | `find $TARGET_PATH/public -name 'phpinfo.php'` |
 | `info.php` / `test.php` | Debug/test file exposure | `find $TARGET_PATH/public -name 'info.php' -o -name 'test.php'` |
 
-For each found, set `discovery_source: "sensitive_file"`.
+### Procedure D: Public Index File Probing
 
-### Step 4: Public Index File Probing
+| Field | Fill-in Value |
+|-------|--------------|
+| robots_txt | {parse `robots.txt` — `Disallow:` entries reveal hidden admin paths} |
+| sitemap_xml | {parse `sitemap.xml` for undisclosed URLs} |
+| security_txt | {check `.well-known/security.txt`} |
+| openid_config | {check `.well-known/openid-configuration`} |
+| discovery_source | {`public_index_file`} |
 
-Check for information-leaking public files:
+### Procedure E: Common Debug/Admin Path Probing
 
-| File | What It Reveals |
-|------|----------------|
-| `robots.txt` | May disallow admin paths (reveals their existence) |
-| `sitemap.xml` | May list undisclosed URLs |
-| `.well-known/security.txt` | Security contact info |
-| `.well-known/openid-configuration` | Auth configuration |
+For each known debug/admin path, fill in:
 
-Parse `robots.txt` `Disallow:` entries as potential hidden admin routes.
+| Field | Fill-in Value |
+|-------|--------------|
+| path | {debug/admin path to check} |
+| exists_in_public | {`find $TARGET_PATH/public -name '{filename}'` result} |
+| exists_in_routes | {`grep -rn '{path}' --include="*.php" $TARGET_PATH/` result} |
+| risk_level | {`HIGH` / `CRITICAL`} |
+| discovery_source | {`debug_path_probe`} |
 
-For each found, set `discovery_source: "public_index_file"`.
-
-### Step 5: Common Debug/Admin Path Probing
-
-Check whether the following common debug/admin paths exist in the source code or web root:
+**Debug/admin path reference:**
 
 | Path | Tool/Risk |
 |------|-----------|
@@ -90,47 +100,27 @@ Check whether the following common debug/admin paths exist in the source code or
 | `/_profiler` | Symfony Profiler |
 | `/app_dev.php` | Symfony dev front controller |
 
-Check both:
-1. File existence in public directory: `find $TARGET_PATH/public -name '{filename}'`
-2. Route registration in source: `grep -rn '{path}' --include="*.php" $TARGET_PATH/`
+### Procedure F: Swagger/OpenAPI Documentation Leak
 
-For each found, set `discovery_source: "debug_path_probe"`.
+| Field | Fill-in Value |
+|-------|--------------|
+| spec_paths_checked | {`/api/documentation`, `/swagger.json`, `/swagger.yaml`, `/openapi.json`, `/openapi.yaml`, `/api-docs`, `/docs/api`} |
+| spec_found | {`true` / `false` for each path} |
+| parsed_endpoints | {if spec file found, parse ALL documented endpoints from it} |
+| discovery_source | {`swagger_spec`} |
 
-### Step 6: Swagger/OpenAPI Documentation Leak
+### Procedure G: Cross-Reference with Validated Routes
 
-Check for exposed API documentation:
-
-| Path | Format |
-|------|--------|
-| `/api/documentation` | Swagger UI |
-| `/swagger.json` | Swagger 2.0 spec |
-| `/swagger.yaml` | Swagger 2.0 spec |
-| `/openapi.json` | OpenAPI 3.0 spec |
-| `/openapi.yaml` | OpenAPI 3.0 spec |
-| `/api-docs` | Generic API docs |
-| `/docs/api` | Generic API docs |
-
-If a Swagger/OpenAPI spec file is found, parse it to extract ALL documented endpoints and add them to the hidden routes list with `discovery_source: "swagger_spec"`.
-
-### Step 7: Cross-Reference with Validated Routes
-
-Compare all discovered hidden endpoints against `validated_routes.json`:
-- If a hidden endpoint already exists in the validated routes → skip (not hidden).
-- If it does NOT exist → add to `hidden_routes.json` with `hidden: true`.
-
-## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Target source code | `$TARGET_PATH/` | ✅ | All source files, public directory |
-| Frontend assets | `$TARGET_PATH/public/`, `$TARGET_PATH/dist/`, `$TARGET_PATH/resources/js/` | ⚠️ Optional | JS bundles, Vue/React files |
-| validated_routes.json | `$WORK_DIR/validated_routes.json` | ✅ | For cross-reference deduplication |
+| Field | Fill-in Value |
+|-------|--------------|
+| validated_routes | {load `$WORK_DIR/validated_routes.json`} |
+| dedup_check | {for each discovered endpoint: if `(method, path)` exists in validated routes → skip} |
+| hidden_flag | {if NOT in validated routes → set `hidden: true`} |
 
 ## Output Contract
-
-| Output | Path | Description |
-|--------|------|-------------|
-| hidden_routes.json | `$WORK_DIR/hidden_routes.json` | List of hidden/undocumented endpoints |
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| hidden_routes.json | `$WORK_DIR/原始数据/hidden_routes.json` | See schema below | List of hidden/undocumented endpoints |
 
 ### Output Schema (per entry)
 
@@ -148,19 +138,41 @@ Compare all discovered hidden endpoints against `validated_routes.json`:
 }
 ```
 
-## Validation Rules
+## Examples
 
-| Rule | Description |
-|------|-------------|
-| CR-6 | Every hidden endpoint MUST have a `discovery_source` field explaining how it was found. Entries without this field are deleted. |
-| CR-1 | Where possible, hidden endpoints should also include file + line provenance. |
+### ✅ GOOD: Debug Panel Discovery with Full Provenance
+```json
+{
+  "id": "hidden_001",
+  "path": "/_debugbar",
+  "method": "GET",
+  "hidden": true,
+  "discovery_source": "debug_path_probe",
+  "discovery_detail": "Found /_debugbar route registered in barryvdh/laravel-debugbar ServiceProvider",
+  "risk_level": "HIGH",
+  "file": "vendor/barryvdh/laravel-debugbar/src/ServiceProvider.php",
+  "line": 142
+}
+```
+`discovery_source` present (CR-6). `file` + `line` provenance included (CR-1). Risk level classified. ✅
+
+### ❌ BAD: Missing Discovery Source
+```json
+{
+  "id": "hidden_001",
+  "path": "/_debugbar",
+  "method": "GET",
+  "hidden": true,
+  "risk_level": "HIGH"
+}
+```
+No `discovery_source` field — violates **CR-6**. Entry will be deleted by assembler. No `file`/`line` — also violates CR-1. ❌
 
 ## Error Handling
-
 | Error | Action |
 |-------|--------|
-| No frontend assets directory found | Skip Step 1, log info "No frontend assets found" |
+| No frontend assets directory found | Skip Procedure A, log info "No frontend assets found" |
 | `robots.txt` not found | Skip robots.txt parsing, continue with other checks |
 | Swagger spec file is malformed JSON/YAML | Log warning, skip Swagger parsing |
 | Public directory not identifiable | Try common paths: `public/`, `web/`, `htdocs/`, `www/` |
-| No hidden endpoints found | Output empty `hidden_routes.json` with `"routes": []` — this is a valid result |
+| No hidden endpoints found | Output empty `hidden_routes.json` with `"routes": []` — valid result |

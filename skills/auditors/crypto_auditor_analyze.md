@@ -134,3 +134,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No cryptographic operations found in assigned routes | Record `"status": "no_crypto_ops"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Algorithm or cipher suite not identifiable from constants | Flag as `unknown_algorithm`, require manual identification |
+| Cannot determine if encryption key is hardcoded or from env | Assume hardcoded, flag as `potential_hardcoded_key` |
+| Custom cryptographic implementation detected | Mark as `custom_crypto`, flag as high risk for manual review |
+| Timeout during cryptographic static analysis | Save partial results, set `"status": "timeout_partial"` |

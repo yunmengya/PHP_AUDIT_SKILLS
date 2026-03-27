@@ -108,3 +108,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No file write operations found in assigned routes | Record `"status": "no_file_writes"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Taint trace incomplete between user input and file write target | Mark confidence as `low`, document gap in `trace_gaps` |
+| Cannot determine if filename/content is sanitized before write | Assume unsanitized, flag as `needs_manual_review` |
+| Upload directory permissions unknown | Document as `unknown_permissions`, flag for manual verification |
+| Timeout during file write static analysis | Save partial results, set `"status": "timeout_partial"` |

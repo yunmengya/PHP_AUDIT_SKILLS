@@ -1,26 +1,37 @@
-> **Skill ID**: S-030c | **Phase**: 2 | **Parent**: S-030 (route_mapper)
-> **Input**: validated route list (`validated_routes.json`) + controller method source code
-> **Output**: `route_params.json` — input sources array per route
-
 # Parameter Source Extractor
 
-## Purpose
+## Identity
+| Field | Value |
+|-------|-------|
+| Skill ID | S-030e |
+| Phase | Phase-2 |
+| Parent | S-030 (route_mapper) |
+| Responsibility | Analyze controller method source code to identify all parameter input sources per route |
 
-For each route, analyze the controller method source code to identify all parameter input sources. This determines where user-controlled data enters the application, which is critical for downstream taint analysis. Input sources MUST be based on actual code analysis (CR-4), not guessed from route signatures.
+## Input Contract
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| validated_routes.json | `$WORK_DIR/validated_routes.json` | ✅ | Route entries with `controller`, `action`, `file`, `line` |
+| Target source code | `$TARGET_PATH/` | ✅ | Controller method bodies |
 
-## Procedure
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-4 | `input_sources` MUST come from actual code patterns. MUST NOT guess based on route path signatures alone. | False taint analysis — missed or phantom vulnerabilities |
+| CR-3 | Controller method MUST exist. If method not found, set `input_sources: []` and flag `method_missing: true`. | Incomplete parameter extraction |
 
-### Step 1: Load Validated Routes
+## Fill-in Procedure
 
-Read `$WORK_DIR/validated_routes.json` from S-030b. For each route entry, obtain:
-- `controller` — fully qualified class name
-- `action` — method name
-- `file` — source file path
-- `line` — line number
+### Procedure A: Load Validated Routes
 
-### Step 2: Parse Controller Method Body
+| Field | Fill-in Value |
+|-------|--------------|
+| route_list | {read `$WORK_DIR/validated_routes.json` from previous sub-skill} |
+| per_route_fields | {extract `controller`, `action`, `file`, `line` for each route entry} |
 
-For each route, locate and read the controller method body. Extract all parameter source patterns:
+### Procedure B: Parse Controller Method Body
+
+For each route, locate the controller method and scan for these source patterns:
 
 | Source Pattern | Label | Grep Pattern |
 |---------------|-------|--------------|
@@ -48,36 +59,56 @@ For each route, locate and read the controller method body. Extract all paramete
 | `Input::get()` | `$_GET` | `Input::get\(` |
 | `json_decode(file_get_contents('php://input'))` | `raw_body` | `php://input` |
 
-### Step 3: Trace Through Called Methods
+For each matched pattern, fill in:
 
-If the controller method calls other methods (e.g., service classes, form requests), trace one level deep:
-1. Identify method calls within the controller action.
-2. If the called method is in the same file or an injected service, check it for parameter sources.
-3. Record these as `indirect_sources` with the call chain.
+| Field | Fill-in Value |
+|-------|--------------|
+| source | {label from table above} |
+| key | {extracted parameter key name, or `*` for `all()`} |
+| line | {line number where pattern found} |
+| pattern | {actual code pattern matched} |
 
-### Step 4: Record Parameter Keys
+### Procedure C: Trace Through Called Methods
 
-For each input source found, extract the specific key name if possible:
-- `$request->input('username')` → `{ "source": "$_POST", "key": "username" }`
-- `$_GET['page']` → `{ "source": "$_GET", "key": "page" }`
-- `$request->all()` → `{ "source": "Request", "key": "*" }` (all inputs)
+| Field | Fill-in Value |
+|-------|--------------|
+| called_methods | {identify method calls within the controller action} |
+| trace_depth | {one level deep — check called methods in same file or injected services} |
+| indirect_sources | {parameter sources found in called methods, with call chain recorded} |
 
-### Step 5: Assemble Output
+For each indirect source, fill in:
 
-Produce `route_params.json` mapping each route ID to its input sources array.
+| Field | Fill-in Value |
+|-------|--------------|
+| source | {input source label} |
+| key | {parameter key} |
+| via | {call chain, e.g. `UserService::uploadAvatar`} |
+| line | {line number in the called method} |
 
-## Input Contract
+### Procedure D: Record Parameter Keys
 
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| validated_routes.json | `$WORK_DIR/validated_routes.json` | ✅ | Route entries with controller/action/file |
-| Target source code | `$TARGET_PATH/` | ✅ | Controller method bodies |
+| Field | Fill-in Value |
+|-------|--------------|
+| explicit_key | {`$request->input('username')` → `{"source": "$_POST", "key": "username"}`} |
+| wildcard_key | {`$request->all()` → `{"source": "Request", "key": "*"}`} |
+| global_key | {`$_GET['page']` → `{"source": "$_GET", "key": "page"}`} |
+
+### Procedure E: Assemble Output
+
+For each route, fill in:
+
+| Field | Fill-in Value |
+|-------|--------------|
+| route_id | {route ID from validated_routes.json} |
+| input_sources | {array of all direct input sources found in Procedure B} |
+| indirect_sources | {array of all indirect sources found in Procedure C} |
+| method_missing | {`true` if controller method not found, omit otherwise} |
+| file_missing | {`true` if controller file not found, omit otherwise} |
 
 ## Output Contract
-
-| Output | Path | Description |
-|--------|------|-------------|
-| route_params.json | `$WORK_DIR/route_params.json` | Input sources array per route ID |
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| route_params.json | `$WORK_DIR/原始数据/route_params.json` | See schema below | Input sources array per route ID |
 
 ### Output Schema (per route)
 
@@ -95,18 +126,42 @@ Produce `route_params.json` mapping each route ID to its input sources array.
 }
 ```
 
-## Validation Rules
+## Examples
 
-| Rule | Description |
-|------|-------------|
-| CR-4 | `input_sources` MUST come from actual code patterns. MUST NOT guess based on route path signatures alone. |
-| CR-3 | Controller method MUST exist. If method not found, set `input_sources: []` and flag `"method_missing": true`. |
+### ✅ GOOD: Complete Parameter Extraction
+```json
+{
+  "route_id": "route_012",
+  "input_sources": [
+    { "source": "route_param", "key": "id", "line": 46 },
+    { "source": "$_POST", "key": "username", "line": 48, "pattern": "$request->input('username')" },
+    { "source": "$_POST", "key": "email", "line": 49, "pattern": "$request->input('email')" },
+    { "source": "$_FILES", "key": "avatar", "line": 51, "pattern": "$request->file('avatar')" }
+  ],
+  "indirect_sources": [
+    { "source": "$_FILES", "key": "avatar", "via": "UserService::uploadAvatar", "line": 22 }
+  ]
+}
+```
+All sources extracted from actual `$request->input()` / `$request->file()` code (CR-4). Controller method verified to exist (CR-3). Line numbers included. ✅
+
+### ❌ BAD: Guessed from Route Path
+```json
+{
+  "route_id": "route_012",
+  "input_sources": [
+    { "source": "route_param", "key": "id" },
+    { "source": "$_POST", "key": "name" },
+    { "source": "$_POST", "key": "email" }
+  ]
+}
+```
+Sources guessed from route path `/api/users/{id}` — violates **CR-4**. Actual code uses `username` not `name`. Missing `line` and `pattern` fields. No `indirect_sources` analysis performed. ❌
 
 ## Error Handling
-
 | Error | Action |
 |-------|--------|
-| Controller file not found | Set `input_sources: []`, flag `"file_missing": true"` |
-| Method not found in controller | Set `input_sources: []`, flag `"method_missing": true"` |
+| Controller file not found | Set `input_sources: []`, flag `"file_missing": true` |
+| Method not found in controller | Set `input_sources: []`, flag `"method_missing": true` |
 | File not readable / permission denied | Log warning, skip route, set `input_sources: []` |
-| No input sources found in method | Set `input_sources: []` — this is valid (the method may use no external input) |
+| No input sources found in method | Set `input_sources: []` — valid (method may use no external input) |

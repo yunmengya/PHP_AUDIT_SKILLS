@@ -164,3 +164,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No authorization checks found in assigned routes | Record `"status": "no_authz_checks"`, flag as potential IDOR |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Role/permission model not identifiable from code | Document as `unknown_rbac_model`, flag for manual review |
+| Cannot determine if resource ownership is validated | Assume no ownership check, flag as `potential_idor` |
+| Middleware authorization chain too complex to trace | Mark confidence as `low`, document middleware stack in `trace_gaps` |
+| Timeout during authorization static analysis | Save partial results, set `"status": "timeout_partial"` |

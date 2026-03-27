@@ -128,3 +128,14 @@ Before starting the attack, query the attack memory store (`~/.php_audit/attack_
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No security-relevant configuration found in assigned scope | Record `"status": "no_security_config"`, skip to next scope |
+| Configuration file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Cannot determine if configuration values come from environment | Flag as `needs_env_check`, verify .env handling |
+| Multiple conflicting configuration sources detected | Document all sources, flag as `config_conflict` for manual review |
+| Framework-specific configuration pattern not recognized | Fall back to generic PHP ini/array config pattern matching |
+| Timeout during configuration security analysis | Save partial results, set `"status": "timeout_partial"` |

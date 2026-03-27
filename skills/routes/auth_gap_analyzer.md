@@ -1,74 +1,136 @@
-> **Skill ID**: S-030g | **Phase**: 2 | **Parent**: S-030 (route_mapper)
-> **Input**: route list + middleware declarations from all prior sub-skills
-> **Output**: `auth_gap_report.json` — authentication gap analysis report
-
 # Auth Gap Analyzer
 
-## Purpose
+## Identity
+| Field | Value |
+|-------|-------|
+| Skill ID | S-030f |
+| Phase | Phase-2 |
+| Parent | S-030 (route_mapper) |
+| Responsibility | Perform authentication gap analysis on every route — detect missing auth and inconsistent controller protection |
 
-Perform authentication gap analysis on every route. Compare middleware per route, classify endpoints by auth level, and flag inconsistent controller methods where some actions require authentication while others in the same controller do not. This pattern — inconsistent auth within a single controller — is the most common source of privilege escalation vulnerabilities.
+## Input Contract
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| validated_routes.json | `$WORK_DIR/validated_routes.json` | ✅ | Routes with middleware arrays |
+| hidden_routes.json | `$WORK_DIR/hidden_routes.json` | ✅ | Hidden endpoints |
+| cli_entries.json | `$WORK_DIR/cli_entries.json` | ✅ | CLI synthetic routes |
+| background_entries.json | `$WORK_DIR/background_entries.json` | ✅ | CRON/Queue/Hook synthetic routes |
+| Target source code | `$TARGET_PATH/` | ✅ | Controller files for middleware inspection |
+| environment_status.json | `$WORK_DIR/environment_status.json` | ✅ | `framework` (to determine auth patterns) |
 
-## Procedure
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | Gap entries MUST reference a valid `route_id` traceable to a source file | Untraceable gap report — cannot verify or fix |
+| CR-4 | Auth classification MUST be based on actual middleware/decorator analysis, not assumptions | False auth gap reports — wasted audit effort |
 
-### Step 1: Load All Route Data
+## Fill-in Procedure
 
-Merge route data from:
-- `$WORK_DIR/validated_routes.json` (S-030b) — HTTP routes with middleware
-- `$WORK_DIR/cli_entries.json` (S-030e) — CLI synthetic routes
-- `$WORK_DIR/background_entries.json` (S-030f) — CRON/Queue/Hook synthetic routes
-- `$WORK_DIR/hidden_routes.json` (S-030d) — Hidden endpoints
+### Procedure A: Load All Route Data
 
-### Step 2: Middleware / Decorator Comparison
+| Field | Fill-in Value |
+|-------|--------------|
+| http_routes | {load `$WORK_DIR/validated_routes.json`} |
+| cli_routes | {load `$WORK_DIR/cli_entries.json`} |
+| background_routes | {load `$WORK_DIR/background_entries.json`} |
+| hidden_routes | {load `$WORK_DIR/hidden_routes.json`} |
+| all_routes | {merge all four sources into unified list} |
 
-For each route, check its bound middleware or decorators based on framework:
+### Procedure B: Middleware / Decorator Comparison
+
+For each route, check its bound middleware based on framework:
 
 | Framework | Auth Middleware Patterns |
 |-----------|------------------------|
 | Laravel | `auth`, `auth:sanctum`, `auth:api`, `verified`, `can:`, `role:`, `permission:` |
 | Symfony | `#[IsGranted('ROLE_USER')]`, `access_control` in `security.yaml`, `#[Security]` |
 | ThinkPHP | `middleware` configuration, `before_action` |
-| CakePHP | `$this->Auth->allow()` / `$this->Auth->deny()` in controller `beforeFilter()` |
+| CakePHP | `$this->Auth->allow()` / `$this->Auth->deny()` in `beforeFilter()` |
 | CodeIgniter | Filter configuration in `app/Config/Filters.php` |
 | WordPress | `current_user_can()` checks, `wp_ajax_` vs `wp_ajax_nopriv_` distinction |
 | Drupal | `_permission` requirement in `*.routing.yml` |
 | Yii2 | `behaviors()` method with `AccessControl` rules |
 | Native PHP | Manual `session_start()` + `$_SESSION` checks |
 
-**Flag as `AUTH_MISSING`**: Any endpoint that handles sensitive data or performs write operations but has NO auth middleware.
+For each route, fill in:
 
-### Step 3: Inconsistent Auth Within Same Controller (HIGH PRIORITY)
+| Field | Fill-in Value |
+|-------|--------------|
+| route_id | {route ID} |
+| middleware_list | {array of auth-related middleware/decorators found} |
+| has_auth | {`true` if any auth middleware present, `false` otherwise} |
+| auth_missing_flag | {`AUTH_MISSING` if handles sensitive data or write ops but NO auth middleware} |
 
-This is the highest-value detection in this sub-skill.
+### Procedure C: Inconsistent Auth Within Same Controller (HIGH PRIORITY)
 
-1. Group all routes by their `controller` class.
-2. For each controller with more than one route:
-   - List which methods have auth middleware and which do not.
-   - If **some methods have auth and others do not**, flag the unprotected methods as `HIGH_RISK`.
-3. Example detection:
+This is the highest-value detection — inconsistent auth within a single controller is the most common privilege escalation vector.
 
-   | Controller | Method | Auth Middleware | Flag |
-   |-----------|--------|----------------|------|
-   | UserController | profile() | `auth:sanctum` | ✅ Protected |
-   | UserController | export() | _(none)_ | ⚠️ `AUTH_MISSING` — HIGH_RISK |
-   | UserController | index() | `auth:sanctum` | ✅ Protected |
+| Field | Fill-in Value |
+|-------|--------------|
+| controller_group | {group all routes by `controller` class} |
+| protected_methods | {list methods WITH auth middleware} |
+| unprotected_methods | {list methods WITHOUT auth middleware} |
+| consistency | {`CONSISTENT` if all-or-none have auth; `INCONSISTENT` if mixed} |
+| high_risk_methods | {unprotected methods in INCONSISTENT controllers → flag as `HIGH_RISK`} |
 
-   `UserController::export()` is flagged because peer methods in the same controller require authentication.
+**Example detection pattern:**
 
-### Step 4: Classify Each Endpoint
+| Controller | Method | Auth Middleware | Flag |
+|-----------|--------|----------------|------|
+| UserController | profile() | `auth:sanctum` | ✅ Protected |
+| UserController | export() | _(none)_ | ⚠️ `AUTH_MISSING` — HIGH_RISK |
+| UserController | index() | `auth:sanctum` | ✅ Protected |
 
-Assign an auth classification to every route:
+### Procedure D: Classify Each Endpoint
+
+For each route, assign classification:
+
+| Field | Fill-in Value |
+|-------|--------------|
+| route_id | {route ID} |
+| classification | {select from table below} |
 
 | Classification | Criteria |
 |---------------|----------|
 | `public` | No auth middleware, AND endpoint serves public content (login, register, public API) |
 | `authenticated` | Has auth middleware requiring login |
 | `authorized` | Has role/permission middleware (e.g., `can:admin`, `role:editor`) |
-| `suspicious` | Should require auth but has no middleware — flagged by Step 2 or Step 3 |
+| `suspicious` | Should require auth but has no middleware — flagged by Procedure B or C |
 | `system` | Synthetic routes (CLI/CRON/Queue) with `auth_level: "system"` |
 
-### Step 5: Generate Auth Gap Report
+### Procedure E: Generate Auth Gap Report
 
-Produce `$WORK_DIR/auth_gap_report.json`:
+Fill in the summary report:
+
+| Field | Fill-in Value |
+|-------|--------------|
+| total_routes | {count of all routes} |
+| public_routes | {count classified as `public`} |
+| authenticated_routes | {count classified as `authenticated`} |
+| authorized_routes | {count classified as `authorized`} |
+| suspicious_routes | {count classified as `suspicious`} |
+| system_routes | {count classified as `system`} |
+
+For each gap found, fill in:
+
+| Field | Fill-in Value |
+|-------|--------------|
+| route_id | {route ID} |
+| path | {URL path} |
+| method | {HTTP method} |
+| controller | {controller@action} |
+| issue | {`AUTH_MISSING` / `DEBUG_ENDPOINT_EXPOSED` / `INCONSISTENT_AUTH`} |
+| risk | {`HIGH` / `CRITICAL` / `MEDIUM`} |
+| reason | {explanation of why this is a gap} |
+| peer_methods_with_auth | {list of sibling methods that DO have auth (for INCONSISTENT)} |
+| peer_methods_without_auth | {list of sibling methods that DON'T have auth} |
+
+## Output Contract
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| auth_gap_report.json | `$WORK_DIR/原始数据/auth_gap_report.json` | See schema below | Complete auth gap analysis with risk classifications |
+
+### Output Schema
 
 ```json
 {
@@ -89,15 +151,6 @@ Produce `$WORK_DIR/auth_gap_report.json`:
       "reason": "Same controller has auth on other methods (profile, index, update)",
       "peer_methods_with_auth": ["profile", "index", "update"],
       "peer_methods_without_auth": ["export"]
-    },
-    {
-      "route_id": "hidden_003",
-      "path": "/_debugbar",
-      "method": "GET",
-      "controller": null,
-      "issue": "DEBUG_ENDPOINT_EXPOSED",
-      "risk": "CRITICAL",
-      "reason": "Debug panel accessible without authentication"
     }
   ],
   "controller_auth_summary": [
@@ -112,32 +165,39 @@ Produce `$WORK_DIR/auth_gap_report.json`:
 }
 ```
 
-## Input Contract
+## Examples
 
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| validated_routes.json | `$WORK_DIR/validated_routes.json` | ✅ | Routes with middleware arrays |
-| hidden_routes.json | `$WORK_DIR/hidden_routes.json` | ✅ | Hidden endpoints |
-| cli_entries.json | `$WORK_DIR/cli_entries.json` | ✅ | CLI synthetic routes |
-| background_entries.json | `$WORK_DIR/background_entries.json` | ✅ | CRON/Queue/Hook synthetic routes |
-| Target source code | `$TARGET_PATH/` | ✅ | Controller files for middleware inspection |
-| environment_status.json | `$WORK_DIR/environment_status.json` | ✅ | `framework` (to determine auth patterns) |
+### ✅ GOOD: Inconsistent Controller Auth Gap
+```json
+{
+  "route_id": "route_042",
+  "path": "/api/users/export",
+  "method": "GET",
+  "controller": "UserController@export",
+  "issue": "AUTH_MISSING",
+  "risk": "HIGH",
+  "reason": "Same controller has auth on other methods (profile, index, update)",
+  "peer_methods_with_auth": ["profile", "index", "update"],
+  "peer_methods_without_auth": ["export"]
+}
+```
+References valid `route_id` (CR-1). Classification based on actual middleware analysis — peer methods verified to have `auth:sanctum` while `export()` does not (CR-4). ✅
 
-## Output Contract
-
-| Output | Path | Description |
-|--------|------|-------------|
-| auth_gap_report.json | `$WORK_DIR/auth_gap_report.json` | Complete auth gap analysis with risk classifications |
-
-## Validation Rules
-
-| Rule | Description |
-|------|-------------|
-| CR-1 | Gap entries MUST reference a valid `route_id` traceable to a source file. |
-| CR-4 | Auth classification MUST be based on actual middleware/decorator analysis, not assumptions. |
+### ❌ BAD: Assumed Auth Gap Without Verification
+```json
+{
+  "route_id": "route_042",
+  "path": "/api/users/export",
+  "method": "GET",
+  "controller": "UserController@export",
+  "issue": "AUTH_MISSING",
+  "risk": "HIGH",
+  "reason": "Export endpoints typically require authentication"
+}
+```
+Reason says "typically require" — this is an assumption, not based on actual middleware analysis — violates **CR-4**. No peer method comparison performed. Missing `peer_methods_with_auth` evidence. ❌
 
 ## Error Handling
-
 | Error | Action |
 |-------|--------|
 | Middleware info missing from route entries | Attempt to resolve middleware from controller source; if impossible, classify as `"unknown"` |

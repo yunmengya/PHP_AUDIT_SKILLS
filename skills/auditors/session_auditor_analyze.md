@@ -155,3 +155,14 @@ Before starting attacks, query the attack memory database (`~/.php_audit/attack_
 ## Shared Protocols
 > �� `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No session management operations found in assigned routes | Record `"status": "no_session_ops"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Session configuration file not found or unreadable | Document as `config_missing`, use default PHP session settings for analysis |
+| Cannot determine if session fixation protection is enabled | Assume missing, flag as `needs_manual_review` |
+| Session storage backend not identifiable | Document as `unknown_storage`, check for custom session handlers |
+| Timeout during session security static analysis | Save partial results, set `"status": "timeout_partial"` |

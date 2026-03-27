@@ -165,3 +165,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > �� `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No logging operations found in assigned routes | Record `"status": "no_logging_ops"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Cannot determine if sensitive data is masked before logging | Assume unmasked, flag as `potential_sensitive_logging` |
+| Log destination configuration not found | Document as `config_missing`, check framework logging config |
+| Log injection patterns inconclusive due to custom log wrapper | Mark confidence as `low`, trace through custom wrapper manually |
+| Timeout during logging security static analysis | Save partial results, set `"status": "timeout_partial"` |

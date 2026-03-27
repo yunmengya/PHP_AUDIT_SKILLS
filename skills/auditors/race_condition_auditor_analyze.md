@@ -135,3 +135,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No shared resource access found in assigned routes | Record `"status": "no_shared_resources"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Cannot determine if locking mechanism is used for critical section | Assume no lock, flag as `needs_concurrency_review` |
+| Database transaction isolation level not identifiable | Document as `unknown_isolation`, assume default level |
+| TOCTOU window analysis inconclusive due to async complexity | Mark confidence as `low`, document timing gaps in `trace_gaps` |
+| Timeout during race condition static analysis | Save partial results, set `"status": "timeout_partial"` |

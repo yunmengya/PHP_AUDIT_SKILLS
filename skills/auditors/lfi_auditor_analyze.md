@@ -107,3 +107,14 @@ Before starting attacks, query the attack memory database (`~/.php_audit/attack_
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No file inclusion functions found in assigned routes | Record `"status": "no_file_includes"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Taint trace incomplete between user input and file path | Mark confidence as `low`, document gap in `trace_gaps` |
+| Cannot determine if path traversal filters are applied | Assume no filter, flag as `needs_manual_review` |
+| Dynamic include path constructed via complex logic | Mark as `complex_path_construction`, trace manually |
+| Timeout during LFI static analysis | Save partial results, set `"status": "timeout_partial"` |

@@ -113,3 +113,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No command execution functions found in assigned routes | Record `"status": "no_exec_functions"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Taint trace incomplete between user input and exec sink | Mark confidence as `low`, document gap in `trace_gaps` |
+| Cannot determine if input is shell-escaped before execution | Assume unescaped, flag as `critical_needs_review` |
+| Indirect command execution via callback or reflection | Mark as `indirect_exec`, trace callback chain manually |
+| Timeout during RCE static analysis | Save partial results, set `"status": "timeout_partial"` |

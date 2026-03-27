@@ -110,3 +110,14 @@ Before starting the attack, query the attack memory store (`~/.php_audit/attack_
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No WordPress-specific sink functions found in assigned scope | Record `"status": "no_wp_sinks"`, skip to next scope |
+| Plugin/theme file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| WordPress hook/filter chain too complex to trace | Mark confidence as `low`, document hook chain in `trace_gaps` |
+| Cannot determine if nonce verification is present | Assume missing, flag as `needs_manual_review` |
+| WordPress version or API function not recognized | Fall back to generic PHP vulnerability pattern matching |
+| Timeout during WordPress security static analysis | Save partial results, set `"status": "timeout_partial"` |

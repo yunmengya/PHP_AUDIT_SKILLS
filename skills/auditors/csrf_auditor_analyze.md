@@ -129,3 +129,14 @@ Before starting the attack, query the attack memory database (`~/.php_audit/atta
 ## Shared Protocols
 > �� `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No state-changing operations found in assigned routes | Record `"status": "no_state_changes"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Cannot determine if CSRF token validation is present | Assume missing, flag as `needs_manual_review` |
+| Framework CSRF middleware detection inconclusive | Fall back to checking for manual token verification in handlers |
+| SameSite cookie attribute configuration not found | Document as `unknown_samesite`, check session configuration |
+| Timeout during CSRF static analysis | Save partial results, set `"status": "timeout_partial"` |

@@ -109,3 +109,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No XML parsing functions found in assigned routes | Record `"status": "no_xml_parsing"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Cannot determine if external entity loading is disabled | Assume enabled, flag as `needs_manual_review` |
+| XML parser library version not identifiable | Fall back to checking for `libxml_disable_entity_loader` calls |
+| Taint trace incomplete between user input and XML parser | Mark confidence as `low`, document gap in `trace_gaps` |
+| Timeout during XXE static analysis | Save partial results, set `"status": "timeout_partial"` |

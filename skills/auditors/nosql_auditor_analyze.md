@@ -112,3 +112,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No NoSQL query operations found in assigned routes | Record `"status": "no_nosql_queries"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Taint trace incomplete between user input and NoSQL query | Mark confidence as `low`, document gap in `trace_gaps` |
+| Cannot determine if query operators ($gt, $ne, etc.) are filtered | Assume unfiltered, flag as `needs_manual_review` |
+| NoSQL database driver or ODM version not identifiable | Fall back to generic MongoDB/Redis pattern matching |
+| Timeout during NoSQL injection static analysis | Save partial results, set `"status": "timeout_partial"` |

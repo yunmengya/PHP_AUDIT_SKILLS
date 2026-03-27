@@ -119,3 +119,14 @@ Before starting attacks, query the attack memory database (`~/.php_audit/attack_
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No output/echo contexts found in assigned routes | Record `"status": "no_output_contexts"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Taint trace incomplete between user input and output sink | Mark confidence as `low`, document gap in `trace_gaps` |
+| Template engine not recognized or version unknown | Fall back to generic echo/print pattern matching |
+| Cannot determine output encoding context (HTML/JS/CSS) | Flag all output points as `needs_context_review` |
+| Timeout during XSS/SSTI static analysis | Save partial results, set `"status": "timeout_partial"` |

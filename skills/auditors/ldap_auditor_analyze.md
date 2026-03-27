@@ -116,3 +116,14 @@ Before starting attacks, query the attack memory store (`~/.php_audit/attack_mem
 ## Shared Protocols
 > �� `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No LDAP query functions found in assigned routes | Record `"status": "no_ldap_queries"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Taint trace incomplete between user input and LDAP filter | Mark confidence as `low`, document gap in `trace_gaps` |
+| Cannot determine if LDAP input is escaped with ldap_escape() | Assume unescaped, flag as `needs_manual_review` |
+| LDAP connection configuration not found in code | Document as `config_external`, check environment/config files |
+| Timeout during LDAP injection static analysis | Save partial results, set `"status": "timeout_partial"` |

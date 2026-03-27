@@ -1,160 +1,159 @@
-> **Skill ID**: S-030a | **Phase**: 2 | **Parent**: S-030 (route_mapper)
-> **Input**: source code (`TARGET_PATH`) + `environment_status.json` (framework type)
-> **Output**: `raw_routes.json` — unvalidated list of parsed route definitions
-
 # Framework Route Parser
 
-## Purpose
-
-Parse all registered HTTP routes from the target PHP project source code based on the detected framework type. Covers 9 framework variants (Laravel, ThinkPHP, Yii2, Native PHP, Symfony, CakePHP, CodeIgniter, WordPress, Drupal). Each route entry MUST include source file path and line number as provenance evidence.
-
-## Procedure
-
-### Step A: Determine Framework Type
-
-1. Read `$WORK_DIR/environment_status.json` → extract `framework` field.
-2. Select the matching framework parsing section below.
-3. If `framework = "unknown"` → use section B.4 (Native PHP Routes).
-
-### Step B: Parse Registered Routes
-
-Execute the section matching the detected framework. For **every** route discovered, record:
-- Path, HTTP method(s), controller class, action method
-- Source file path + line number (CR-1 provenance)
-- Middleware bindings (if declared at route level)
-- Route name (if named)
-
----
-
-#### B.1 — Laravel Routes
-
-1. Parse route definition files:
-   - `routes/web.php` — Web routes
-   - `routes/api.php` — API routes (auto-prefixed with `/api`)
-   - `routes/admin.php` (if present)
-   - Any additional files loaded in `RouteServiceProvider`
-2. Identify route registration methods:
-   - `Route::get('/path', [Controller::class, 'method'])`
-   - `Route::post('/path', 'Controller@method')`
-   - `Route::any('/path', ...)`
-   - `Route::match(['get', 'post'], '/path', ...)`
-3. **Expand `Route::resource` into 7 RESTful routes** (CR-5):
-
-   | HTTP Method | URI Pattern | Action |
-   |-------------|-------------|--------|
-   | GET | /photos | index |
-   | GET | /photos/create | create |
-   | POST | /photos | store |
-   | GET | /photos/{photo} | show |
-   | GET | /photos/{photo}/edit | edit |
-   | PUT/PATCH | /photos/{photo} | update |
-   | DELETE | /photos/{photo} | destroy |
-
-4. Parse `Route::group` to resolve prefix and middleware inheritance.
-5. Extract parameters from controller method signatures (`Request $request` injection).
-6. Handle `Route::apiResource` (excludes `create` and `edit`).
-
-#### B.2 — ThinkPHP Routes
-
-1. Parse `route/app.php` or `route/route.php`.
-2. Identify `Route::rule('path', 'controller/action')`.
-3. Parse annotation routes `@route("/path")`.
-4. Identify auto-routing: `module/controller/method` mapped to URL.
-5. Check `config/route.php` for global route configuration.
-
-#### B.3 — Yii2 Routes
-
-1. Parse `'urlManager' => ['rules' => [...]]` in `config/web.php`.
-2. Identify `action*` methods in controllers (e.g., `actionIndex`, `actionView`).
-3. Check module route configurations in `modules/*/config.php`.
-
-#### B.4 — Native PHP Routes
-
-1. Scan all entry `.php` files in the document root.
-2. Search for `$_GET`, `$_POST`, `$_REQUEST`, `$_FILES` global variable usage.
-3. Search for `$_SERVER['PATH_INFO']`, `$_SERVER['REQUEST_URI']` for path-based routing.
-4. Trace dynamically included files via `include` / `require` / `include_once` / `require_once`.
-5. Each directly accessible `.php` file is treated as a route (path = relative file path).
-6. Check for custom router implementations (e.g., `switch`/`if` on `$_SERVER['REQUEST_URI']`).
-
-#### B.5 — Symfony Routes
-
-1. Parse `config/routes.yaml` or `config/routes/*.yaml`.
-2. Identify annotation/attribute routes:
-   - `#[Route('/path', methods: ['GET'])]` (PHP 8 attributes)
-   - `@Route("/path", methods={"GET"})` (annotations)
-3. Parse resource imports in `config/routes.yaml`:
-   ```yaml
-   controllers:
-     resource: ../src/Controller/
-     type: annotation
-   ```
-4. Check `config/routes/annotations.yaml` for resource-based loading.
-
-#### B.6 — CakePHP Routes
-
-1. Parse `config/routes.php`.
-2. Identify `$routes->connect('/path', ['controller' => 'X', 'action' => 'y'])`.
-3. Identify RESTful resource routes: `$routes->resources('Articles')` — expand fully (CR-5).
-4. Parse prefix routing: `$routes->prefix('Admin', ...)`.
-5. Check scoped routes and middleware application.
-
-#### B.7 — CodeIgniter Routes
-
-1. Parse `app/Config/Routes.php`.
-2. Identify `$routes->get('path', 'Controller::method')`.
-3. Identify auto-routing: controllers/methods auto-mapped when `$routes->setAutoRoute(true)`.
-4. Parse `$routes->group('admin', ...)` groups.
-5. Check for `$routes->resource()` and `$routes->presenter()` shortcuts.
-
-#### B.8 — WordPress Routes
-
-1. Scan `functions.php` and plugins for `register_rest_route()`:
-   ```php
-   register_rest_route('wp/v2', '/custom', [...])
-   ```
-2. Identify `add_action('wp_ajax_*')` and `add_action('wp_ajax_nopriv_*')` AJAX endpoints.
-3. Scan `admin-ajax.php` handler functions.
-4. Identify WP-JSON API: all endpoints under `/wp-json/wp/v2/`.
-5. Scan rewrite rules in `.htaccess` / `web.config`.
-
-#### B.9 — Drupal Routes
-
-1. Parse `*.routing.yml` files:
-   ```yaml
-   module.route_name:
-     path: '/admin/config'
-     defaults:
-       _controller: '\Drupal\module\Controller\X::method'
-     requirements:
-       _permission: 'access content'
-   ```
-2. Scan `hook_menu()` implementations (Drupal 7).
-3. Identify REST resources provided by modules.
-4. Parse `*.links.menu.yml` for admin menu routes.
-
-### Step C: Verify Controller Methods Exist (CR-3)
-
-For each parsed route, verify the referenced controller and method exist:
-
-```bash
-grep -rn "function {method}" {controller_file}
-```
-
-If the method does NOT exist in the source code, flag the route with `"controller_verified": false`.
+## Identity
+| Field | Value |
+|-------|-------|
+| Skill ID | S-030a |
+| Phase | Phase-2 |
+| Parent | S-030 (route_mapper) |
+| Responsibility | Parse all registered HTTP routes from PHP project source based on detected framework type |
 
 ## Input Contract
-
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
 | environment_status.json | `$WORK_DIR/environment_status.json` | ✅ | `framework`, `framework_version` |
 | Target source code | `$TARGET_PATH/` | ✅ | Route definition files, controller files |
 
-## Output Contract
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | Every route MUST have `file` + `line` as provenance. MUST NOT speculate. | Route entry deleted from output |
+| CR-3 | `controller` + `action` MUST actually exist in source code. Verify with grep. | Set `controller_verified: false` |
+| CR-5 | `Route::resource` / `$routes->resources` MUST be expanded into all sub-routes. | Unexpanded resource routes are incomplete — downstream analysis misses endpoints |
 
-| Output | Path | Description |
-|--------|------|-------------|
-| raw_routes.json | `$WORK_DIR/raw_routes.json` | Array of parsed route objects with provenance |
+## Fill-in Procedure
+
+### Procedure A: Determine Framework Type
+| Field | Fill-in Value |
+|-------|--------------|
+| framework | {read `framework` field from `$WORK_DIR/environment_status.json`} |
+| framework_version | {read `framework_version` field from same file} |
+| parser_section | {select matching section B.1–B.9 below; if `framework = "unknown"` → use B.4 Native PHP} |
+
+### Procedure B: Parse Registered Routes
+
+For **every** route discovered, fill in this entry:
+
+| Field | Fill-in Value |
+|-------|--------------|
+| path | {URL path pattern, e.g. `/api/users/{id}`} |
+| method | {HTTP method(s): GET / POST / PUT / PATCH / DELETE / ANY} |
+| controller | {fully qualified controller class} |
+| action | {controller method name} |
+| file | {source file path where controller method is defined} |
+| line | {line number of controller method definition} |
+| route_file | {route definition file where route is registered} |
+| route_line | {line number in route definition file} |
+| middleware | {array of middleware names bound at route level} |
+| route_name | {named route identifier, if declared} |
+
+#### B.1 — Laravel Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| route_files | {scan `routes/web.php`, `routes/api.php`, `routes/admin.php`, + files loaded in `RouteServiceProvider`} |
+| registration_methods | {`Route::get`, `Route::post`, `Route::any`, `Route::match`, `Route::resource`, `Route::apiResource`} |
+| group_resolution | {resolve `Route::group` to inherit prefix + middleware} |
+| parameter_extraction | {extract from controller method signatures — `Request $request` injection} |
+
+**Route::resource expansion table (CR-5):**
+
+| HTTP Method | URI Pattern | Action |
+|-------------|-------------|--------|
+| GET | /photos | index |
+| GET | /photos/create | create |
+| POST | /photos | store |
+| GET | /photos/{photo} | show |
+| GET | /photos/{photo}/edit | edit |
+| PUT/PATCH | /photos/{photo} | update |
+| DELETE | /photos/{photo} | destroy |
+
+`Route::apiResource` excludes `create` and `edit`.
+
+#### B.2 — ThinkPHP Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| route_files | {`route/app.php`, `route/route.php`} |
+| patterns | {`Route::rule('path', 'controller/action')`, annotation routes `@route("/path")`} |
+| auto_routing | {module/controller/method auto-mapped to URL} |
+| config | {check `config/route.php` for global route configuration} |
+
+#### B.3 — Yii2 Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| url_rules | {parse `'urlManager' => ['rules' => [...]]` in `config/web.php`} |
+| controller_actions | {identify `action*` methods: `actionIndex`, `actionView`, etc.} |
+| module_configs | {check `modules/*/config.php` for module route configurations} |
+
+#### B.4 — Native PHP Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| entry_files | {scan all `.php` files in document root} |
+| global_vars | {search for `$_GET`, `$_POST`, `$_REQUEST`, `$_FILES` usage} |
+| path_routing | {search `$_SERVER['PATH_INFO']`, `$_SERVER['REQUEST_URI']`} |
+| includes | {trace `include` / `require` / `include_once` / `require_once`} |
+| file_as_route | {each directly accessible `.php` file = one route (path = relative file path)} |
+| custom_router | {check for `switch`/`if` on `$_SERVER['REQUEST_URI']`} |
+
+#### B.5 — Symfony Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| yaml_routes | {parse `config/routes.yaml`, `config/routes/*.yaml`} |
+| attribute_routes | {`#[Route('/path', methods: ['GET'])]` (PHP 8), `@Route("/path")` (annotations)} |
+| resource_imports | {parse `resource: ../src/Controller/` in YAML configs} |
+
+#### B.6 — CakePHP Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| route_file | {parse `config/routes.php`} |
+| connect_calls | {`$routes->connect('/path', ['controller' => 'X', 'action' => 'y'])`} |
+| resource_routes | {`$routes->resources('Articles')` — expand fully per CR-5} |
+| prefix_routing | {`$routes->prefix('Admin', ...)`} |
+
+#### B.7 — CodeIgniter Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| route_file | {parse `app/Config/Routes.php`} |
+| explicit_routes | {`$routes->get('path', 'Controller::method')`} |
+| auto_routing | {controllers auto-mapped when `$routes->setAutoRoute(true)`} |
+| groups | {`$routes->group('admin', ...)`} |
+| shortcuts | {`$routes->resource()`, `$routes->presenter()`} |
+
+#### B.8 — WordPress Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| rest_routes | {`register_rest_route('wp/v2', '/custom', [...])` in `functions.php` and plugins} |
+| ajax_endpoints | {`add_action('wp_ajax_*')` and `add_action('wp_ajax_nopriv_*')`} |
+| wp_json_api | {all endpoints under `/wp-json/wp/v2/`} |
+| rewrite_rules | {scan `.htaccess` / `web.config`} |
+
+#### B.9 — Drupal Routes
+
+| Field | Fill-in Value |
+|-------|--------------|
+| routing_yml | {parse `*.routing.yml` files for path + controller + permission} |
+| hook_menu | {scan `hook_menu()` implementations (Drupal 7)} |
+| rest_resources | {identify REST resources provided by modules} |
+| menu_links | {parse `*.links.menu.yml` for admin menu routes} |
+
+### Procedure C: Verify Controller Methods Exist (CR-3)
+
+| Field | Fill-in Value |
+|-------|--------------|
+| verification_command | {`grep -rn "function {method}" {controller_file}`} |
+| controller_verified | {`true` if method found in source code, `false` if not} |
+
+## Output Contract
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| raw_routes.json | `$WORK_DIR/原始数据/raw_routes.json` | See schema below | Array of parsed route objects with provenance |
 
 ### Output Schema (per route entry)
 
@@ -175,16 +174,61 @@ If the method does NOT exist in the source code, flag the route with `"controlle
 }
 ```
 
-## Validation Rules
+## Examples
 
-| Rule | Description |
-|------|-------------|
-| CR-1 | Every route MUST have `file` + `line` as provenance. MUST NOT speculate. |
-| CR-3 | `controller` + `action` MUST actually exist in source code. Verify with grep. |
-| CR-5 | `Route::resource` / `$routes->resources` MUST be expanded into all sub-routes. |
+### ✅ GOOD: Complete Laravel Route Entry
+```json
+{
+  "id": "route_007",
+  "path": "/api/users/{id}",
+  "method": "GET",
+  "controller": "App\\Http\\Controllers\\UserController",
+  "action": "show",
+  "file": "app/Http/Controllers/UserController.php",
+  "line": 45,
+  "route_file": "routes/api.php",
+  "route_line": 12,
+  "middleware": ["auth:sanctum"],
+  "controller_verified": true,
+  "framework_source": "laravel"
+}
+```
+Every field populated from actual source code. `file` + `line` provenance present (CR-1). Controller verified (CR-3). ✅
+
+### ❌ BAD: Missing Provenance
+```json
+{
+  "id": "route_007",
+  "path": "/api/users/{id}",
+  "method": "GET",
+  "controller": "App\\Http\\Controllers\\UserController",
+  "action": "show",
+  "middleware": ["auth:sanctum"],
+  "controller_verified": true,
+  "framework_source": "laravel"
+}
+```
+Missing `file`, `line`, `route_file`, `route_line` — violates **CR-1** (no provenance). Entry will be deleted by S-030g assembler. ❌
+
+### ❌ BAD: Unexpanded Resource Route
+```json
+{
+  "id": "route_020",
+  "path": "/photos",
+  "method": "RESOURCE",
+  "controller": "App\\Http\\Controllers\\PhotoController",
+  "action": "resource",
+  "file": "app/Http/Controllers/PhotoController.php",
+  "line": 1,
+  "route_file": "routes/web.php",
+  "route_line": 5,
+  "controller_verified": true,
+  "framework_source": "laravel"
+}
+```
+`Route::resource` not expanded into 7 individual routes — violates **CR-5**. Must generate separate entries for index/create/store/show/edit/update/destroy. ❌
 
 ## Error Handling
-
 | Error | Action |
 |-------|--------|
 | Framework not detected | Fall back to B.4 Native PHP parsing |

@@ -1,16 +1,35 @@
-> **Skill ID**: S-030e | **Phase**: 2 | **Parent**: S-030 (route_mapper)
-> **Input**: CLI command directories in the target project
-> **Output**: `cli_entries.json` — synthetic `ENTRY_CLI:` routes
-
 # CLI Entry Scanner
 
-## Purpose
+## Identity
+| Field | Value |
+|-------|-------|
+| Skill ID | S-030b |
+| Phase | Phase-2 |
+| Parent | S-030 (route_mapper) |
+| Responsibility | Scan CLI command entry points and generate synthetic ENTRY_CLI routes |
 
-Scan the target project for CLI command entry points (artisan commands, console commands, native PHP CLI scripts). CLI commands bypass HTTP middleware protections and may accept external input that triggers vulnerabilities. Each discovered CLI entry point is assigned a synthetic route ID (`ENTRY_CLI:{command_name}`) for inclusion in the unified route map.
+## Input Contract
+| File | Source | Required | Fields Used |
+|------|--------|----------|-------------|
+| Target source code | `$TARGET_PATH/` | ✅ | CLI command files |
+| environment_status.json | `$WORK_DIR/environment_status.json` | ✅ | `framework` (to determine scan locations) |
 
-## Procedure
+## 🚨 CRITICAL Rules
+| # | Rule | Consequence |
+|---|------|-------------|
+| CR-1 | Each CLI entry MUST have source file path + line number | Entry deleted from output |
+| CR-4 | Input sources MUST come from actual `$this->argument()` / `getopt()` code analysis, NOT guessed | Taint analysis produces false results |
 
-### Step 1: Identify CLI Command Locations by Framework
+## Fill-in Procedure
+
+### Procedure A: Identify CLI Command Locations by Framework
+
+| Field | Fill-in Value |
+|-------|--------------|
+| framework | {read from `environment_status.json`} |
+| scan_directories | {select from table below based on framework} |
+
+**Framework scan directory reference:**
 
 | Framework | Scan Directory | Key Patterns |
 |-----------|---------------|--------------|
@@ -19,59 +38,71 @@ Scan the target project for CLI command entry points (artisan commands, console 
 | ThinkPHP | `app/command/*.php` | Command class definitions |
 | CodeIgniter | `app/Commands/*.php` | `run()` method |
 | CakePHP | `src/Command/*.php` | `execute()` method |
-| Native PHP | Project root and `bin/`, `cli/`, `scripts/` | `$argv`, `$_SERVER['argv']`, `getopt()` |
+| Native PHP | Project root, `bin/`, `cli/`, `scripts/` | `$argv`, `$_SERVER['argv']`, `getopt()` |
 
-### Step 2: Parse Laravel Artisan Commands
+### Procedure B: Parse CLI Commands per Framework
+
+#### B.1 — Laravel Artisan Commands
 
 For each file in `app/Console/Commands/`:
 
-1. Extract the `$signature` property to determine command name and parameters:
-   ```php
-   protected $signature = 'import:users {file} {--format=csv}';
-   ```
-2. Parse the `handle()` method for input sources:
-   - `$this->argument('file')` → `cli_arg`
-   - `$this->option('format')` → `cli_opt`
-   - `$this->ask()` / `$this->anticipate()` → `cli_interactive`
-3. Check `$description` property for command purpose.
-4. Check if the command is registered in `app/Console/Kernel.php` → `$commands` array.
+| Field | Fill-in Value |
+|-------|--------------|
+| command_name | {extract from `$signature` property, e.g. `'import:users {file} {--format=csv}'`} |
+| description | {extract from `$description` property} |
+| method | {`handle()`} |
+| input_sources | {parse `handle()` method for: `$this->argument('key')` → `cli_arg`, `$this->option('key')` → `cli_opt`, `$this->ask()` → `cli_interactive`} |
+| registered | {check if command listed in `app/Console/Kernel.php` → `$commands` array} |
 
-### Step 3: Parse Symfony Console Commands
+#### B.2 — Symfony Console Commands
 
 For each file in `src/Command/`:
 
-1. Extract command name from `configure()`:
-   ```php
-   $this->setName('app:import-users')
-        ->addArgument('file', InputArgument::REQUIRED)
-        ->addOption('format', null, InputOption::VALUE_OPTIONAL, '', 'csv');
-   ```
-2. Parse the `execute()` method for input usage:
-   - `$input->getArgument('file')` → `cli_arg`
-   - `$input->getOption('format')` → `cli_opt`
+| Field | Fill-in Value |
+|-------|--------------|
+| command_name | {extract from `configure()` → `$this->setName('app:import-users')`} |
+| method | {`execute()`} |
+| input_sources | {parse `execute()` for: `$input->getArgument('key')` → `cli_arg`, `$input->getOption('key')` → `cli_opt`} |
 
-### Step 4: Parse Native PHP CLI Scripts
+#### B.3 — Native PHP CLI Scripts
 
-Scan for PHP files that use CLI-specific globals:
+| Field | Fill-in Value |
+|-------|--------------|
+| scan_command | {`grep -rln '\$argv\|\$_SERVER\[.argv.\]\|getopt(' --include="*.php" $TARGET_PATH/`} |
+| is_cli_script | {check for shebang `#!/usr/bin/env php` or no HTML output} |
+| input_sources | {extract `getopt()` parameters and `$argv` index access patterns} |
 
-```bash
-grep -rln '\$argv\|\$_SERVER\[.argv.\]\|getopt(' --include="*.php" $TARGET_PATH/
-```
+### Procedure C: Assess Auth Level
 
-For each file found:
-1. Determine if it is intended as a CLI script (shebang line `#!/usr/bin/env php`, or no HTML output).
-2. Extract `getopt()` parameters.
-3. Extract `$argv` index access patterns.
+| Field | Fill-in Value |
+|-------|--------------|
+| default_auth | {`system` — assumes server/shell access required} |
+| downgrade_check | {if command triggerable via web interface (admin panel, web cron manager) → downgrade to `authenticated` or `authorized`} |
+| web_references | {check for references to the command in web controllers or scheduled tasks} |
 
-### Step 5: Assess Auth Level
+### Procedure D: Generate Synthetic Route Entries
 
-- Default `auth_level: "system"` (assumes server/shell access required).
-- If the command can be triggered via web interface (e.g., admin panel "run command" feature, or scheduled via web-based cron manager), downgrade to `"authenticated"` or `"authorized"`.
-- Check for references to the command in web controllers or scheduled tasks.
+For each CLI entry point, fill in:
 
-### Step 6: Generate Synthetic Route Entries
+| Field | Fill-in Value |
+|-------|--------------|
+| id | {`route_synth_{NNN}` — sequential synthetic ID} |
+| entry_type | {`CLI`} |
+| synthetic_id | {`ENTRY_CLI:{command_name}`} |
+| file | {source file path of the command class} |
+| line | {line number of `handle()` / `execute()` / `run()` method} |
+| method | {entry method name: `handle`, `execute`, `run`} |
+| input_sources | {array of `{"source": "cli_arg|cli_opt|cli_interactive", "key": "{param_name}"}`} |
+| auth_level | {`system` / `authenticated` / `authorized` from Procedure C} |
+| middleware | {`[]` — CLI commands have no HTTP middleware} |
+| note | {`CLI command — no HTTP middleware protection; input from command-line arguments`} |
 
-For each CLI entry point, generate a synthetic route entry:
+## Output Contract
+| Output File | Path | Schema | Description |
+|-------------|------|--------|-------------|
+| cli_entries.json | `$WORK_DIR/原始数据/cli_entries.json` | See schema below | Array of synthetic ENTRY_CLI route entries |
+
+### Output Schema (per entry)
 
 ```json
 {
@@ -91,28 +122,49 @@ For each CLI entry point, generate a synthetic route entry:
 }
 ```
 
-## Input Contract
+## Examples
 
-| Source | Path | Required | Fields Used |
-|--------|------|----------|-------------|
-| Target source code | `$TARGET_PATH/` | ✅ | CLI command files |
-| environment_status.json | `$WORK_DIR/environment_status.json` | ✅ | `framework` (to determine scan locations) |
+### ✅ GOOD: Laravel Artisan Command Entry
+```json
+{
+  "id": "route_synth_001",
+  "entry_type": "CLI",
+  "synthetic_id": "ENTRY_CLI:import:users",
+  "file": "app/Console/Commands/ImportUsers.php",
+  "line": 28,
+  "method": "handle",
+  "input_sources": [
+    { "source": "cli_arg", "key": "file" },
+    { "source": "cli_opt", "key": "format" }
+  ],
+  "auth_level": "system",
+  "middleware": [],
+  "note": "CLI command — no HTTP middleware protection; input from command-line arguments"
+}
+```
+File + line provenance present (CR-1). Input sources extracted from actual `$this->argument()` / `$this->option()` code (CR-4). ✅
 
-## Output Contract
-
-| Output | Path | Description |
-|--------|------|-------------|
-| cli_entries.json | `$WORK_DIR/cli_entries.json` | Array of synthetic ENTRY_CLI: route entries |
-
-## Validation Rules
-
-| Rule | Description |
-|------|-------------|
-| CR-1 | Each CLI entry MUST have source file path + line number. |
-| CR-4 | Input sources MUST come from actual `$this->argument()` / `getopt()` code analysis. |
+### ❌ BAD: Guessed Input Sources
+```json
+{
+  "id": "route_synth_001",
+  "entry_type": "CLI",
+  "synthetic_id": "ENTRY_CLI:import:users",
+  "file": "app/Console/Commands/ImportUsers.php",
+  "line": 28,
+  "method": "handle",
+  "input_sources": [
+    { "source": "cli_arg", "key": "filename" },
+    { "source": "cli_arg", "key": "output_dir" }
+  ],
+  "auth_level": "system",
+  "middleware": [],
+  "note": "CLI command"
+}
+```
+Input sources guessed from command name rather than parsed from `handle()` body — violates **CR-4**. Actual code uses `$this->argument('file')` not `'filename'`, and `output_dir` does not exist in the source. ❌
 
 ## Error Handling
-
 | Error | Action |
 |-------|--------|
 | No CLI command directory found | Output empty `cli_entries.json` with `"entries": []` |

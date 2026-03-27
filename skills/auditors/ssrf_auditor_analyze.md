@@ -110,3 +110,14 @@ Before starting the attack, query the attack memory database (`~/.php_audit/atta
 ## Shared Protocols
 > 📄 `skills/shared/auditor_memory_query.md` (S-100) — Historical memory query
 > 📄 `skills/shared/context_compression_protocol.md` (S-107) — Context compression
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| No HTTP request functions found in assigned routes | Record `"status": "no_http_requests"`, skip to next route |
+| Route file does not exist or is unreadable | Record `"status": "file_not_found"`, log path, continue |
+| Taint trace incomplete between user input and URL parameter | Mark confidence as `low`, document gap in `trace_gaps` |
+| Cannot determine if URL allowlist/denylist is enforced | Assume no restriction, flag as `needs_manual_review` |
+| Internal network topology unknown for impact assessment | Document as `unknown_topology`, assess as potential high impact |
+| Timeout during SSRF static analysis | Save partial results, set `"status": "timeout_partial"` |
