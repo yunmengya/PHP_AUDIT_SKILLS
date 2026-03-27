@@ -41,6 +41,29 @@ All skill resources are located in the skill root directory (referred to as `SKI
   - `tools/quality_report_gen.sh` — Quality report generator. Usage: `bash tools/quality_report_gen.sh <work_dir>` (Phase-4.5/5 — generates QC summary report)
   - `tools/vuln_intel.sh` — Dependency vulnerability scanner (no API key required). Usage: `bash tools/vuln_intel.sh <composer.lock> [output_dir]` (Phase-4 Mini-Researcher — queries OSV.dev, cve.circl.lu for Packagist package vulnerabilities)
 
+## Skills Directory Overview
+
+| Directory | Skill IDs | Count | Description |
+|-----------|-----------|-------|-------------|
+| `skills/auditors/` | S-040~S-060 (-A/-B) | 42+1 | 21 auditor types × 2 stages (analyze + attack) + index |
+| `skills/auth/` | S-038a~S-038i | 9+1 | Authentication simulation sub-skills + index |
+| `skills/correlation/` | S-070~S-074 | 5+1 | Cross-auditor correlation rules + index |
+| `skills/infrastructure/` | S-002~S-007 | 4+1 | Workspace, checkpoint, recovery, timeout + index |
+| `skills/qc/` | S-080~S-085 | 6+1 | Per-phase quality checkers + index |
+| `skills/report/` | S-090a~S-090g | 7+1 | Report chapter writers + index |
+| `skills/routes/` | S-030a~S-030h | 8+1 | Route analysis sub-skills + index |
+| `skills/scanners/` | S-020~S-026 | 7+1 | Scanner tool wrappers + index |
+| `skills/shared/` | S-100~S-108 | 9+1 | Cross-cutting auditor protocols + index |
+| `skills/trace/` | S-036a~S-037h | 14+1 | Trace analysis sub-skills + index |
+
+**Total**: 111 skill files + 10 index files = 121 files
+
+### Fill-in Template Standard
+Every skill follows the fill-in template format:
+`Identity → Input Contract → 🚨 CRITICAL Rules → Fill-in Procedure (tables) → Output Contract → ✅/❌ Examples → Error Handling`
+
+This minimizes model dependency: the model fills predefined fields rather than generating free-form content.
+
 ## Input Parameters
 
 - `$ARGUMENTS`: Absolute path to the target PHP project source code

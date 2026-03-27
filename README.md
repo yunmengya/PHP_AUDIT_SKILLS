@@ -5,8 +5,9 @@
 **全链路 PHP 代码安全审计 AI Agent 系统**
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue)
-![Agents](https://img.shields.io/badge/agents-40+-green)
-![Auditors](https://img.shields.io/badge/auditors-21_types-red)
+![Skills](https://img.shields.io/badge/skills-145+-green)
+![Skill Files](https://img.shields.io/badge/skill_files-121-brightgreen)
+![Auditors](https://img.shields.io/badge/auditors-21_types_×_2_stages-red)
 ![Schemas](https://img.shields.io/badge/schemas-25-orange)
 ![Phase](https://img.shields.io/badge/phases-6-purple)
 
@@ -65,6 +66,48 @@ RCE · SQLi · 反序列化 · LFI · 文件写入 · SSRF · XSS/SSTI · XXE ·
 | **Phase 4.5: 后渗透** | 4 | 攻击图谱、关联分析、Patch 生成、PoC 生成 | `attack_graph.json`、`PoC脚本/*.py` |
 | **Phase 5: 报告收口** | 3 | 报告生成、SARIF 导出、环境清理 | `报告/审计报告.md`、`.sarif.json` |
 | **QC: 质检** | 2 | 独立质检员池、贯穿全流程 | QC 记录写入 `audit_session.db` |
+
+### Architecture Overview
+
+**145+ skills** organized in **10 subdirectories** under `skills/`, using a **2-stage auditor pattern** (21 auditor types → 42 files: `_analyze` + `_attack`) and a standardized **fill-in template format**.
+
+#### Skills Directory Structure
+
+```
+skills/
+├── auditors/       — 42 files (21 analyze + 21 attack) + index
+├── auth/           — 9 sub-skills + index
+├── correlation/    — 5 correlation rules + index
+├── infrastructure/ — 4 system skills + index
+├── qc/             — 6 phase QC checkers + index
+├── report/         — 7 chapter writers + index
+├── routes/         — 8 route sub-skills + index
+├── scanners/       — 7 scanner wrappers + index
+├── shared/         — 9 cross-cutting protocols + index
+└── trace/          — 14 trace sub-skills + index
+```
+
+**Total**: 111 skill files + 10 index files = **121 files in `skills/`**
+
+#### Fill-in Template Standard
+
+Every skill follows the fill-in template format:
+
+`Identity → Input Contract → 🚨 CRITICAL Rules → Fill-in Procedure (tables) → Output Contract → ✅/❌ Examples → Error Handling`
+
+This minimizes model dependency: the model fills predefined fields rather than generating free-form content.
+
+---
+
+### Design Philosophy
+
+- **Fill-in templates > free generation** — structured fields reduce hallucination
+- **Positive/negative examples > abstract rules** — concrete examples anchor behavior
+- **Multi-agent single-responsibility > monolithic** — each agent owns one task
+- **Independent QC agents for each phase** — quality verification is never self-assessed
+- **AI instructions in English, output in Chinese** — precision for the model, readability for the user
+
+---
 
 ### 攻击循环流程
 
@@ -563,15 +606,16 @@ Agent 启动时按层级注入共享知识：
 
 | 类别 | 数量 |
 |------|------|
-| Agent 总数 | 40+ |
-| 漏洞专家审计员 | 21 种 |
+| Skill 文件（`skills/`） | 121（111 skill + 10 index） |
+| 漏洞审计员（2-Stage） | 21 types × 2 = 42 files |
+| Skills 子目录 | 10 |
 | JSON Schema | 25 个 |
-| 共享知识库 | 25 个 |
+| 共享知识库（`shared/`） | 25 个 |
 | 阶段定义 | 7 个 |
 | 参考文档 | 9 个 |
 | 辅助工具 | 12 个 |
 | 环境模板 | 10 个 |
-| Markdown 文件 | 70+ 个 |
+| Markdown 文件总计 | 145+ 个 |
 
 ---
 
