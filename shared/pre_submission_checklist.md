@@ -24,14 +24,14 @@
 
 | # | Check Item | Expected | Your Result | Pass |
 |---|-----------|----------|-------------|------|
-| P1 | **JSON syntax valid** | No trailing commas, proper brackets, valid UTF-8 | {describe: ran json.tool / manual check} | {✅/❌} |
+| P1 | **JSON syntax valid** | No trailing commas, proper brackets, valid UTF-8 | {fill-in: tool_used — Enum: `python_json.tool` / `jq_validate` / `manual_inspection`}; {fill-in: result — Enum: `valid` / `invalid_syntax` / `encoding_error`} | {✅/❌} |
 | P2 | **All required fields present** | Per Output Contract — every required field filled | {list any missing fields, or "all present"} | {✅/❌} |
 | P3 | **Zero placeholder text** | No `【填写】`, `TODO`, `TBD`, `PLACEHOLDER`, `XXX` | {count found, or "0 found"} | {✅/❌} |
 | P4 | **File:line citations verified** | Every cited file exists; line numbers are accurate | {count verified / total citations} | {✅/❌} |
 | P5 | **Output saved to correct path** | Path matches Output Contract exactly | {actual path written} | {✅/❌} |
 | P6 | **Degradation check completed** | Step 0 table filled (per `shared/degradation_check.md`) | {done / N/A if Phase-1 agent} | {✅/❌} |
 | P7 | **No fabricated data** | Every claim backed by source code or tool output | {format: "checked N citations: file1.php:L42(✅), file2.php:L15(✅), ..."} | {✅/❌} |
-| P8 | **Field value ranges valid** | Enums use allowed values; numbers in valid ranges | {describe: checked against schema} | {✅/❌} |
+| P8 | **Field value ranges valid** | Enums use allowed values; numbers in valid ranges | {fill-in: validation_method — Enum: `json_schema_draft7` / `manual_field_check`}; {fill-in: errors_found — non-negative integer} | {✅/❌} |
 
 ### On ❌ Failure
 

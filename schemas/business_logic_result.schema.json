@@ -21,7 +21,9 @@
     },
     "route_url": {
       "type": "string",
-      "description": "Route path"
+      "description": "Route path",
+      "maxLength": 500,
+      "minLength": 1
     },
     "specialist": {
       "type": "string",
@@ -30,7 +32,9 @@
     },
     "business_flow": {
       "type": "string",
-      "description": "Description of affected business flow"
+      "description": "Description of affected business flow",
+      "maxLength": 500,
+      "minLength": 1
     },
     "rounds_executed": {
       "type": "integer",
@@ -70,19 +74,27 @@
           },
           "payload": {
             "type": "string",
-            "description": "Actual payload sent"
+            "description": "Actual payload sent",
+            "maxLength": 10000,
+            "minLength": 1
           },
           "business_impact": {
             "type": "string",
-            "description": "Business impact: financial loss / data leak / flow bypass etc."
+            "description": "Business impact: financial loss / data leak / flow bypass etc.",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "state_before": {
             "type": "string",
-            "description": "State before operation"
+            "description": "State before operation",
+            "maxLength": 2000,
+            "minLength": 1
           },
           "state_after": {
             "type": "string",
-            "description": "State after operation"
+            "description": "State after operation",
+            "maxLength": 2000,
+            "minLength": 1
           },
           "persisted": {
             "type": "boolean",

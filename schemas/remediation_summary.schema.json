@@ -26,7 +26,9 @@
     "skip_reasons": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       }
     },
     "patches": {
@@ -41,29 +43,62 @@
         ],
         "properties": {
           "sink_id": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 100
           },
           "vuln_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "sqli",
+              "xss_ssti",
+              "rce",
+              "lfi",
+              "filewrite",
+              "ssrf",
+              "xxe",
+              "deserial",
+              "crlf",
+              "ldap",
+              "nosql",
+              "csrf",
+              "session",
+              "authz",
+              "crypto",
+              "race_condition",
+              "business_logic",
+              "infoleak",
+              "logging",
+              "config",
+              "wordpress"
+            ]
           },
           "file": {
             "type": "string",
-            "description": "Modified source file path"
+            "description": "Modified source file path",
+            "maxLength": 500,
+            "minLength": 1
           },
           "patch_file": {
             "type": "string",
-            "description": "Patch file path"
+            "description": "Patch file path",
+            "maxLength": 500,
+            "minLength": 1
           },
           "fix_strategy": {
             "type": "string",
-            "description": "Fix strategy description"
+            "description": "Fix strategy description",
+            "maxLength": 200,
+            "minLength": 1
           },
           "breaking_change": {
             "type": "boolean"
           },
           "verification": {
             "type": "string",
-            "description": "Verification recommendation"
+            "description": "Verification recommendation",
+            "maxLength": 1000,
+            "minLength": 1
           }
         }
       }

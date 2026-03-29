@@ -14,28 +14,61 @@
   "properties": {
     "sink_type": {
       "type": "string",
-      "description": "Sink type (rce/sqli/xss/ssrf/lfi/deserial/xxe/authz/config/infoleak/nosql/race/crypto/wordpress/bizlogic/filewrite)"
+      "description": "Sink type (rce/sqli/xss/ssrf/lfi/deserial/xxe/authz/config/infoleak/nosql/race/crypto/wordpress/bizlogic/filewrite)",
+      "enum": [
+        "sqli",
+        "xss_ssti",
+        "rce",
+        "lfi",
+        "filewrite",
+        "ssrf",
+        "xxe",
+        "deserial",
+        "crlf",
+        "ldap",
+        "nosql",
+        "csrf",
+        "session",
+        "authz",
+        "crypto",
+        "race_condition",
+        "business_logic",
+        "infoleak",
+        "logging",
+        "config",
+        "wordpress"
+      ]
     },
     "sink_function": {
       "type": "string",
-      "description": "Specific sink function name (system/eval/query/unserialize etc.)"
+      "description": "Specific sink function name (system/eval/query/unserialize etc.)",
+      "pattern": "^[a-zA-Z_\\\\][a-zA-Z0-9_\\\\:]*$",
+      "maxLength": 200
     },
     "framework": {
       "type": "string",
-      "description": "Target framework (Laravel/ThinkPHP/WordPress/Symfony/CodeIgniter/Yii2/raw-php)"
+      "description": "Target framework (Laravel/ThinkPHP/WordPress/Symfony/CodeIgniter/Yii2/raw-php)",
+      "maxLength": 100,
+      "minLength": 1
     },
     "framework_version": {
       "type": "string",
-      "description": "Framework version number"
+      "description": "Framework version number",
+      "pattern": "^[\\d\\.]+.*$",
+      "maxLength": 50
     },
     "php_version": {
       "type": "string",
-      "description": "PHP version (e.g. 7.4.33, 8.1.27)"
+      "description": "PHP version (e.g. 7.4.33, 8.1.27)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "maxLength": 15
     },
     "waf_type": {
       "type": "string",
       "description": "WAF type (none/ModSecurity/Cloudflare/custom)",
-      "default": "none"
+      "default": "none",
+      "maxLength": 1000,
+      "minLength": 1
     },
     "status": {
       "type": "string",
@@ -60,45 +93,63 @@
     },
     "successful_payload_type": {
       "type": "string",
-      "description": "Successful payload strategy type (e.g. time_blind/filter_chain/LD_PRELOAD)"
+      "description": "Successful payload strategy type (e.g. time_blind/filter_chain/LD_PRELOAD)",
+      "maxLength": 1000,
+      "minLength": 1
     },
     "successful_payload_summary": {
       "type": "string",
-      "description": "Sanitized summary of successful payload (excluding specific URLs/paths)"
+      "description": "Sanitized summary of successful payload (excluding specific URLs/paths)",
+      "maxLength": 1000,
+      "minLength": 1
     },
     "bypass_technique": {
       "type": "string",
-      "description": "Bypass technique (e.g. double_urlencode/unicode/IFS_substitution)"
+      "description": "Bypass technique (e.g. double_urlencode/unicode/IFS_substitution)",
+      "maxLength": 1000,
+      "minLength": 1
     },
     "eliminated_strategies": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       },
       "description": "List of strategies proven ineffective"
     },
     "failure_reason": {
       "type": "string",
-      "description": "Failure reason category (waf_block/param_type_mismatch/framework_filter/runtime_version/auth_block)"
+      "description": "Failure reason category (waf_block/param_type_mismatch/framework_filter/runtime_version/auth_block)",
+      "maxLength": 500,
+      "minLength": 1
     },
     "environment_factors": {
       "type": "object",
       "properties": {
         "disable_functions": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 1000,
+          "minLength": 1
         },
         "open_basedir": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 1000,
+          "minLength": 1
         },
         "allow_url_include": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 1000,
+          "minLength": 1
         }
       },
       "description": "Key environment configurations affecting results"
     },
     "project_hash": {
       "type": "string",
-      "description": "Project identifier hash (for incremental audit matching)"
+      "description": "Project identifier hash (for incremental audit matching)",
+      "maxLength": 1000,
+      "minLength": 1
     },
     "timestamp": {
       "type": "string",

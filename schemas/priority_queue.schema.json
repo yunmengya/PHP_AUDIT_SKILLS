@@ -33,16 +33,24 @@
         ]
       },
       "route_id": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_/-]+$",
+        "maxLength": 100
       },
       "route_url": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 500,
+        "minLength": 1
       },
       "sink_function": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[a-zA-Z_\\\\][a-zA-Z0-9_\\\\:]*$",
+        "maxLength": 200
       },
       "sink_file": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 500,
+        "minLength": 1
       },
       "sink_line": {
         "type": "integer",
@@ -57,7 +65,9 @@
         ]
       },
       "reason": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 500,
+        "minLength": 1
       },
       "source_count": {
         "type": "integer",
@@ -66,12 +76,37 @@
       "sources": {
         "type": "array",
         "items": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 1000,
+          "minLength": 1
         }
       },
       "sink_type": {
         "type": "string",
-        "description": "Sink type (RCE/SQLi/XSS/LFI etc.)"
+        "description": "Sink type (RCE/SQLi/XSS/LFI etc.)",
+        "enum": [
+          "sqli",
+          "xss_ssti",
+          "rce",
+          "lfi",
+          "filewrite",
+          "ssrf",
+          "xxe",
+          "deserial",
+          "crlf",
+          "ldap",
+          "nosql",
+          "csrf",
+          "session",
+          "authz",
+          "crypto",
+          "race_condition",
+          "business_logic",
+          "infoleak",
+          "logging",
+          "config",
+          "wordpress"
+        ]
       },
       "cvss": {
         "type": "object",
@@ -83,7 +118,9 @@
             "maximum": 10
           },
           "vector": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "severity": {
             "type": "string",
@@ -106,7 +143,9 @@
       "business_impact": {
         "type": "array",
         "items": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 1000,
+          "minLength": 1
         },
         "description": "Business impact labels"
       }

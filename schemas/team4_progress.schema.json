@@ -20,15 +20,42 @@
         "properties": {
           "agent_name": {
             "type": "string",
-            "description": "Specialist agent name"
+            "description": "Specialist agent name",
+            "maxLength": 100,
+            "minLength": 1
           },
           "task_id": {
             "type": "string",
-            "description": "Corresponding task ID"
+            "description": "Corresponding task ID",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 100
           },
           "sink_type": {
             "type": "string",
-            "description": "Assigned sink type"
+            "description": "Assigned sink type",
+            "enum": [
+              "sqli",
+              "xss_ssti",
+              "rce",
+              "lfi",
+              "filewrite",
+              "ssrf",
+              "xxe",
+              "deserial",
+              "crlf",
+              "ldap",
+              "nosql",
+              "csrf",
+              "session",
+              "authz",
+              "crypto",
+              "race_condition",
+              "business_logic",
+              "infoleak",
+              "logging",
+              "config",
+              "wordpress"
+            ]
           },
           "status": {
             "type": "string",
@@ -63,7 +90,9 @@
           },
           "error_message": {
             "type": "string",
-            "description": "Error message on failure"
+            "description": "Error message on failure",
+            "maxLength": 500,
+            "minLength": 1
           }
         }
       }

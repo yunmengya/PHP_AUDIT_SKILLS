@@ -33,59 +33,59 @@
 ### Procedure A: Credential Validity
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 1.1 | `credentials.json` exists and is non-empty valid JSON | file exists, valid JSON, non-empty | {fill-in: file existence and JSON validity} | {✅/❌} |
-| 1.2 | Anonymous endpoints accessible without credentials (returns 200) | HTTP 200 on anonymous endpoints | {fill-in: HTTP status observed} | {✅/❌} |
-| 1.3 | Authenticated-level credential test: protected endpoint returns 200 (not 401/403) | HTTP 200 (not 401/403) | {fill-in: HTTP status observed} | {✅/❌} |
-| 1.4 | Admin-level credential test: admin endpoint returns 200 (not 401/403) | HTTP 200 (not 401/403) | {fill-in: HTTP status observed} | {✅/❌} |
-| 1.5 | Credential availability: at least 1 of 3 levels (anonymous/authenticated/admin) is valid | ≥ 1/3 valid levels | {fill-in: valid levels count/3} | {✅/❌} |
+| 1.1 | `credentials.json` exists and is non-empty valid JSON | file exists, valid JSON, non-empty | {fill-in: file existence and JSON validity, enum: "exists_valid" / "exists_empty" / "missing" / "invalid_json"} | {✅/❌} |
+| 1.2 | Anonymous endpoints accessible without credentials (returns 200) | HTTP 200 on anonymous endpoints | {fill-in: HTTP status, format: 3-digit integer (200/301/302/404/500) observed} | {✅/❌} |
+| 1.3 | Authenticated-level credential test: protected endpoint returns 200 (not 401/403) | HTTP 200 (not 401/403) | {fill-in: HTTP status, format: 3-digit integer (200/301/302/404/500) observed} | {✅/❌} |
+| 1.4 | Admin-level credential test: admin endpoint returns 200 (not 401/403) | HTTP 200 (not 401/403) | {fill-in: HTTP status, format: 3-digit integer (200/301/302/404/500) observed} | {✅/❌} |
+| 1.5 | Credential availability: at least 1 of 3 levels (anonymous/authenticated/admin) is valid | ≥ 1/3 valid levels | {fill-in: valid levels count, format: non-negative integer/3} | {✅/❌} |
 
 ### Procedure B: Trace Chain Structure
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 2.1 | `traces/` directory contains ≥1 JSON file | ≥ 1 JSON file in traces/ | {fill-in: file count found} | {✅/❌} |
-| 2.2 | Each trace record has required fields: `route_id`, `route_url`, `call_chain`, `filters_encountered`, `dynamic_bindings`, `raw_request`, `raw_response_status` | all 7 required fields present per record | {fill-in: missing fields if any} | {✅/❌} |
-| 2.3 | Each `call_chain` is non-empty — no traces with zero-length chains | 0 empty chains | {fill-in: empty chain count} | {✅/❌} |
-| 2.4 | Chain structure valid: head = entry file/controller, tail = target sink function | head→sink structure in every chain | {fill-in: invalid chain count} | {✅/❌} |
-| 2.5 | No unreasonable jumps — consecutive entries are in call-graph proximity | 0 suspicious jumps | {fill-in: suspicious jump count} | {✅/❌} |
+| 2.1 | `traces/` directory contains ≥1 JSON file | ≥ 1 JSON file in traces/ | {fill-in: file count, format: non-negative integer found} | {✅/❌} |
+| 2.2 | Each trace record has required fields: `route_id`, `route_url`, `call_chain`, `filters_encountered`, `dynamic_bindings`, `raw_request`, `raw_response_status` | all 7 required fields present per record | {fill-in: missing fields, format: comma-separated or "none" if any} | {✅/❌} |
+| 2.3 | Each `call_chain` is non-empty — no traces with zero-length chains | 0 empty chains | {fill-in: empty chain count, format: non-negative integer} | {✅/❌} |
+| 2.4 | Chain structure valid: head = entry file/controller, tail = target sink function | head→sink structure in every chain | {fill-in: invalid chain count, format: non-negative integer} | {✅/❌} |
+| 2.5 | No unreasonable jumps — consecutive entries are in call-graph proximity | 0 suspicious jumps | {fill-in: suspicious jump count, format: non-negative integer} | {✅/❌} |
 | 2.6 | Spot-check 3 trace chains for logical consistency | 3/3 spot-checks logically consistent | {fill-in: format "trace_id(pass/fail), trace_id(pass/fail), trace_id(pass/fail)"} | {✅/❌} |
 
 ### Procedure C: Call Chain Completeness
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 3.1 | Call chain completeness rate: `complete chains (head-to-sink) / total chains × 100%` ≥ 70% | ≥ 70% | {fill-in: actual percentage} | {✅/❌} |
-| 3.2 | Broken chains have `error_point` annotated | all broken chains annotated | {fill-in: unannotated count} | {✅/❌} |
-| 3.3 | `error_vs_sink` properly annotated for broken chains: `before_sink` or `after_sink` | annotation present on all broken chains | {fill-in: missing annotation count} | {✅/❌} |
-| 3.4 | Type B routes: broken chains before sink are returned to context_pack for static analysis | Type B broken chains returned to context_pack | {fill-in: Type B handling status} | {✅/❌} |
+| 3.1 | Call chain completeness rate: `complete chains (head-to-sink) / total chains × 100%` ≥ 70% | ≥ 70% | {fill-in: actual percentage, format: "N.N%" (0.0-100.0)} | {✅/❌} |
+| 3.2 | Broken chains have `error_point` annotated | all broken chains annotated | {fill-in: unannotated count, format: non-negative integer} | {✅/❌} |
+| 3.3 | `error_vs_sink` properly annotated for broken chains: `before_sink` or `after_sink` | annotation present on all broken chains | {fill-in: missing annotation count, format: non-negative integer} | {✅/❌} |
+| 3.4 | Type B routes: broken chains before sink are returned to context_pack for static analysis | Type B broken chains returned to context_pack | {fill-in: Type B handling status, enum: "returned_to_context_pack" / "no_type_b_routes" / "not_handled"} | {✅/❌} |
 
 ### Procedure D: Dynamic Bindings Resolution
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 4.1 | All `dynamic_bindings` entries have non-empty `resolved` field | 0 unresolved bindings | {fill-in: unresolved count} | {✅/❌} |
-| 4.2 | Binding types are valid: `call_user_func`, `variable_method`, or `dynamic_include` | only valid binding types | {fill-in: invalid type count} | {✅/❌} |
-| 4.3 | Resolved values reference actual functions/files in the codebase | all resolved values verified | {fill-in: unverified count} | {✅/❌} |
+| 4.1 | All `dynamic_bindings` entries have non-empty `resolved` field | 0 unresolved bindings | {fill-in: unresolved count, format: non-negative integer} | {✅/❌} |
+| 4.2 | Binding types are valid: `call_user_func`, `variable_method`, or `dynamic_include` | only valid binding types | {fill-in: invalid type count, format: non-negative integer} | {✅/❌} |
+| 4.3 | Resolved values reference actual functions/files in the codebase | all resolved values verified | {fill-in: unverified count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure E: Filter Function Annotations
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 5.1 | All `filters_encountered` entries have both `effective` (boolean) and `reason` (string) fields | both fields present on every entry | {fill-in: incomplete entry count} | {✅/❌} |
-| 5.2 | `reason` is descriptive (not empty or placeholder) | 0 empty/placeholder reasons | {fill-in: empty reason count} | {✅/❌} |
-| 5.3 | Filter assessments are reasonable (e.g. `htmlspecialchars` → `effective: true` for XSS) | assessments consistent with filter behavior | {fill-in: questionable assessment count} | {✅/❌} |
+| 5.1 | All `filters_encountered` entries have both `effective` (boolean) and `reason` (string) fields | both fields present on every entry | {fill-in: incomplete entry count, format: non-negative integer} | {✅/❌} |
+| 5.2 | `reason` is descriptive (not empty or placeholder) | 0 empty/placeholder reasons | {fill-in: empty reason count, format: non-negative integer} | {✅/❌} |
+| 5.3 | Filter assessments are reasonable (e.g. `htmlspecialchars` → `effective: true` for XSS) | assessments consistent with filter behavior | {fill-in: questionable assessment count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure F: Cross-Validation with Context Packs
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 6.1 | Dynamic call chains compared with static call chains from `context_packs/` | comparison completed | {fill-in: comparison status} | {✅/❌} |
-| 6.2 | Differences between dynamic and static chains recorded and explained | all differences explained | {fill-in: unexplained difference count} | {✅/❌} |
-| 6.3 | Coverage of priority routes: `traced routes / priority_queue routes × 100%` ≥ 80% | ≥ 80% | {fill-in: actual percentage} | {✅/❌} |
-| 6.4 | P0/P1 sinks have ≥ 90% trace coverage | ≥ 90% | {fill-in: actual percentage} | {✅/❌} |
+| 6.1 | Dynamic call chains compared with static call chains from `context_packs/` | comparison completed | {fill-in: comparison status, enum: "completed_match" / "completed_mismatch" / "not_compared"} | {✅/❌} |
+| 6.2 | Differences between dynamic and static chains recorded and explained | all differences explained | {fill-in: unexplained difference count, format: non-negative integer} | {✅/❌} |
+| 6.3 | Coverage of priority routes: `traced routes / priority_queue routes × 100%` ≥ 80% | ≥ 80% | {fill-in: actual percentage, format: "N.N%" (0.0-100.0)} | {✅/❌} |
+| 6.4 | P0/P1 sinks have ≥ 90% trace coverage | ≥ 90% | {fill-in: actual percentage, format: "N.N%" (0.0-100.0)} | {✅/❌} |
 
 ### Procedure G: Schema Validation
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 7.1 | `credentials.json` passes `schemas/credentials.schema.json` | passes schema validation | {fill-in: validation errors if any} | {✅/❌} |
-| 7.2 | Each `traces/*.json` file passes `schemas/trace_record.schema.json` | all files pass schema validation | {fill-in: validation errors if any} | {✅/❌} |
-| 7.3 | No placeholder residue: `grep 'TODO\|TBD\|PLACEHOLDER'` returns 0 hits | 0 hits | {fill-in: hit count} | {✅/❌} |
-| 7.4 | All files UTF-8 encoded | all files UTF-8 | {fill-in: non-UTF8 file count} | {✅/❌} |
+| 7.1 | `credentials.json` passes `schemas/credentials.schema.json` | passes schema validation | {fill-in: validation errors, format: non-negative integer if any} | {✅/❌} |
+| 7.2 | Each `traces/*.json` file passes `schemas/trace_record.schema.json` | all files pass schema validation | {fill-in: validation errors, format: non-negative integer if any} | {✅/❌} |
+| 7.3 | No placeholder residue: `grep 'TODO\|TBD\|PLACEHOLDER'` returns 0 hits | 0 hits | {fill-in: hit count, format: non-negative integer} | {✅/❌} |
+| 7.4 | All files UTF-8 encoded | all files UTF-8 | {fill-in: non-UTF8 file count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure H: Verdict Determination
 
@@ -119,7 +119,7 @@
   "basic_info": {
     "quality_checker": "S-082",
     "target": "Phase-3 output",
-    "validated_files": ["{fill-in: actual file paths read}"]
+    "validated_files": ["{fill-in: actual file paths read, format: comma-separated file paths}"]
   },
   "verdict": "pass",
   "checks": {

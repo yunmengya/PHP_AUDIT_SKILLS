@@ -30,7 +30,9 @@
             "pattern": "^route_(\\d+|synth_\\d+)$"
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "method": {
             "type": "string",
@@ -48,10 +50,14 @@
             ]
           },
           "controller": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1
           },
           "file": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "line": {
             "type": "integer",
@@ -60,19 +66,25 @@
           "params": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             }
           },
           "param_sources": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             }
           },
           "middleware": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             }
           },
           "auth_level": {
@@ -105,12 +117,16 @@
           },
           "synthetic_id": {
             "type": "string",
-            "description": "Synthetic route ID, e.g. ENTRY_CLI:artisan_import_users"
+            "description": "Synthetic route ID, e.g. ENTRY_CLI:artisan_import_users",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 100
           },
           "input_sources": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             },
             "description": "Input sources for non-HTTP entry points"
           },

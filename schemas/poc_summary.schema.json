@@ -34,24 +34,55 @@
         ],
         "properties": {
           "sink_id": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 100
           },
           "vuln_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "sqli",
+              "xss_ssti",
+              "rce",
+              "lfi",
+              "filewrite",
+              "ssrf",
+              "xxe",
+              "deserial",
+              "crlf",
+              "ldap",
+              "nosql",
+              "csrf",
+              "session",
+              "authz",
+              "crypto",
+              "race_condition",
+              "business_logic",
+              "infoleak",
+              "logging",
+              "config",
+              "wordpress"
+            ]
           },
           "file": {
             "type": "string",
-            "description": "PoC script filename"
+            "description": "PoC script filename",
+            "maxLength": 500,
+            "minLength": 1
           },
           "endpoint": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "auth_required": {
             "type": "boolean"
           },
           "curl_command": {
             "type": "string",
-            "description": "Equivalent curl command"
+            "description": "Equivalent curl command",
+            "maxLength": 5000,
+            "minLength": 1
           }
         }
       }

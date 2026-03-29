@@ -21,7 +21,9 @@
     },
     "route_url": {
       "type": "string",
-      "description": "Route path"
+      "description": "Route path",
+      "maxLength": 500,
+      "minLength": 1
     },
     "specialist": {
       "type": "string",
@@ -77,15 +79,21 @@
           },
           "payload": {
             "type": "string",
-            "description": "Actual payload sent"
+            "description": "Actual payload sent",
+            "maxLength": 10000,
+            "minLength": 1
           },
           "injection_point": {
             "type": "string",
-            "description": "Injection point description"
+            "description": "Injection point description",
+            "maxLength": 500,
+            "minLength": 1
           },
           "request": {
             "type": "string",
-            "description": "Complete HTTP request"
+            "description": "Complete HTTP request",
+            "maxLength": 10000,
+            "minLength": 1
           },
           "response_status": {
             "type": "integer",
@@ -93,7 +101,9 @@
           },
           "response_body_snippet": {
             "type": "string",
-            "description": "First 500 characters of response body"
+            "description": "First 500 characters of response body",
+            "maxLength": 5000,
+            "minLength": 1
           },
           "query_semantic_change": {
             "type": "boolean",

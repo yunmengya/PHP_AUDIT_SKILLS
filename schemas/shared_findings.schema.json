@@ -17,7 +17,9 @@
     },
     "source_agent": {
       "type": "string",
-      "description": "Source agent name (writer)"
+      "description": "Source agent name (writer)",
+      "maxLength": 100,
+      "minLength": 1
     },
     "finding_type": {
       "type": "string",
@@ -47,33 +49,45 @@
       "properties": {
         "key": {
           "type": "string",
-          "description": "Finding name/identifier"
+          "description": "Finding name/identifier",
+          "maxLength": 200,
+          "minLength": 1
         },
         "value": {
           "type": "string",
-          "description": "Finding value"
+          "description": "Finding value",
+          "maxLength": 2000,
+          "minLength": 1
         },
         "context": {
           "type": "string",
-          "description": "Context description of the finding"
+          "description": "Context description of the finding",
+          "maxLength": 2000,
+          "minLength": 1
         },
         "source_location": {
           "type": "string",
-          "description": "Finding source file:line"
+          "description": "Finding source file:line",
+          "maxLength": 500,
+          "minLength": 1
         }
       }
     },
     "target_agents": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       },
       "description": "Suggested consumer agent names"
     },
     "consumed_by": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       },
       "description": "Agent names that consumed this finding"
     }

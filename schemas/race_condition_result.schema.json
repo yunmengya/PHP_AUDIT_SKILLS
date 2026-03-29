@@ -21,7 +21,9 @@
     },
     "route_url": {
       "type": "string",
-      "description": "Route path"
+      "description": "Route path",
+      "maxLength": 500,
+      "minLength": 1
     },
     "specialist": {
       "type": "string",
@@ -66,7 +68,9 @@
           },
           "strategy": {
             "type": "string",
-            "description": "Strategy name"
+            "description": "Strategy name",
+            "maxLength": 200,
+            "minLength": 1
           },
           "concurrent_requests": {
             "type": "integer",
@@ -96,7 +100,9 @@
           },
           "payload": {
             "type": "string",
-            "description": "Actual payload sent"
+            "description": "Actual payload sent",
+            "maxLength": 10000,
+            "minLength": 1
           },
           "evidence_detail": {
             "type": [
@@ -115,7 +121,9 @@
           },
           "baseline_comparison": {
             "type": "string",
-            "description": "Comparison with normal request differences"
+            "description": "Comparison with normal request differences",
+            "maxLength": 2000,
+            "minLength": 1
           }
         }
       }

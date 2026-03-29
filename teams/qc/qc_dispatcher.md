@@ -196,16 +196,16 @@ On failure, the lead MUST inject the following **structured redo prompt** verbat
 
 | Field | Value |
 |-------|-------|
-| Phase | {fill-in: Phase-N} |
-| Your Agent Role | {fill-in: responsible agent name from mapping table above} |
-| Redo Attempt | {fill-in: current redo_count} / {fill-in: max retries for this phase} |
-| QC Report Path | {fill-in: $WORK_DIR/质量报告/quality_report_phaseN.json} |
+| Phase | {fill-in: enum: `phase1` / `phase2` / `phase3` / `phase4` / `phase45` / `phase5`} |
+| Your Agent Role | {fill-in: agent name — must match one of: `env_detective` / `docker_builder` / `schema_reconstructor` / `route_mapper` / `context_extractor` / `risk_classifier` / `auth_auditor` / `dep_scanner` / `trace_dispatcher` / `credential_harvester` / `{sink_type}_auditor` / `correlation_engine` / `attack_graph_builder` / `poc_generator` / `remediation_generator` / `report_writer` / `sarif_exporter` / `env_cleaner`} |
+| Redo Attempt | {fill-in: format: "N/M" where N=current attempt, M=max retries} |
+| QC Report Path | {fill-in: format: "$WORK_DIR/质量报告/quality_report_phaseN.json"} |
 
 ### Failed Items
 
 | # | Check Item | Expected | Your Actual Output | Fix Requirement |
 |---|-----------|----------|-------------------|-----------------|
-| {fill-in: check id from QC report} | {fill-in: check_item} | {fill-in: expected value} | {fill-in: actual value from QC report} | {fill-in: specific remediation action} |
+| {fill-in: check_id, format: "N.N" from QC report} | {fill-in: check_item text from QC report} | {fill-in: expected value from QC report} | {fill-in: actual value from QC report} | {fill-in: action — must start with verb: "Add..." / "Fix..." / "Replace..." / "Recalculate..." / "Re-read source and..."} |
 (repeat for each failed item)
 
 ### Constraints

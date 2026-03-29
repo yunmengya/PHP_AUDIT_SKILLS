@@ -100,8 +100,8 @@ Fill in for sinks where exploitation partially succeeded:
 | partial_round | {Round number where partial success was achieved} |
 | strategy | {Strategy identifier that partially worked} |
 | partial_result | {What was achieved — describe the observable effect} |
-| blocking_reason | {What prevented full exploitation — the specific defense or condition} |
-| notes | {What would be needed for full exploitation — conditions or bypasses that remain} |
+| blocking_reason | {Enum: `waf_blocked` / `filter_effective` / `auth_required` / `framework_protection` / `timeout` / `resource_unavailable` / `runtime_environment` / `version_incompatible` — followed by colon and detail, e.g., "filter_effective: addslashes() escapes single quotes in all string parameters"} |
+| notes | {Format: "Bypass requires: {condition_1}; {condition_2}" — each condition from: `disable_function_removed` / `open_basedir_off` / `specific_php_version` / `writable_directory` / `known_secret_key` / `race_window` / `chained_vuln` / `custom_config` — e.g., "Bypass requires: disable_function_removed; writable_directory"} |
 
 ### Procedure E: Execute Write Command
 After filling in the appropriate record from Procedures B/C/D:

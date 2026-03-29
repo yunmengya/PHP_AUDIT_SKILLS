@@ -62,11 +62,11 @@ Fill in the severity object:
 | Field | Fill-in Value |
 |-------|--------------|
 | reachability | {0-3 per dimension definition above} |
-| reachability_reason | {Specific justification — e.g., "Route /api/exec is exposed without auth middleware"} |
+| reachability_reason | {Format: "{CATEGORY}: {specific_detail}" — CATEGORY must be one of: `route_anonymous` / `route_auth_bypass` / `route_authenticated` / `param_injectable` / `framework_detected` / `middleware_absent` — e.g., "route_anonymous: Route /api/exec has no auth middleware"} |
 | impact | {0-3 per dimension definition above} |
-| impact_reason | {Specific justification — e.g., "system() call allows arbitrary OS command execution"} |
+| impact_reason | {Format: "{CATEGORY}: {specific_detail}" — CATEGORY must be one of: `rce_confirmed` / `data_exfiltration` / `privilege_escalation` / `auth_bypass` / `resource_access` / `dos_possible` / `info_disclosure` — e.g., "rce_confirmed: system() call allows arbitrary OS command execution"} |
 | complexity | {0-3 per dimension definition above; downgrade by 1 if conditionally_exploitable per CR-2} |
-| complexity_reason | {Specific justification — e.g., "Payload requires no encoding, direct injection into system()"} |
+| complexity_reason | {Format: "{CATEGORY}: {specific_detail}" — CATEGORY must be one of: `direct_injection` / `requires_encoding` / `requires_gadget_chain` / `requires_timing` / `multi_step_required` / `no_filter` / `weak_filter` — e.g., "no_filter: Payload requires no encoding, direct injection into system()"} |
 
 ### Procedure C: Score Calculation
 Compute the final score, CVSS, and level:

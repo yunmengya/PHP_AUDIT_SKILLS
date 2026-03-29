@@ -15,10 +15,14 @@
   ],
   "properties": {
     "sink_id": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "maxLength": 100
     },
     "sink_function": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[a-zA-Z_\\\\][a-zA-Z0-9_\\\\:]*$",
+      "maxLength": 200
     },
     "priority": {
       "type": "string",
@@ -60,16 +64,24 @@
             ]
           },
           "file": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "function": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-zA-Z_\\\\][a-zA-Z0-9_\\\\:]*$",
+            "maxLength": 200
           },
           "lines": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1
           },
           "analysis_notes": {
             "type": "object",
@@ -89,7 +101,9 @@
               "filters": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 1000,
+                  "minLength": 1
                 }
               },
               "bypass_hint": {
@@ -104,7 +118,9 @@
       }
     },
     "data_flow_summary": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 1000,
+      "minLength": 1
     },
     "filters_in_path": {
       "type": "array",
@@ -117,13 +133,17 @@
         ],
         "properties": {
           "function": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-zA-Z_\\\\][a-zA-Z0-9_\\\\:]*$",
+            "maxLength": 200
           },
           "effective": {
             "type": "boolean"
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           }
         }
       }
@@ -148,13 +168,19 @@
             ]
           },
           "file": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1
           },
           "affects": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           }
         }
       }
@@ -180,7 +206,9 @@
       "properties": {
         "auth_type": {
           "type": "string",
-          "description": "Auth type: none/session/token/middleware/custom"
+          "description": "Auth type: none/session/token/middleware/custom",
+          "maxLength": 1000,
+          "minLength": 1
         },
         "bypass_possibility": {
           "type": "string",
@@ -195,7 +223,9 @@
         "bypass_methods": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "description": "List of possible bypass methods, e.g. [\"missing middleware\", \"insufficient permission granularity\"]"
         }

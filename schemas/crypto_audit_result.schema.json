@@ -62,15 +62,21 @@
           },
           "strategy": {
             "type": "string",
-            "description": "Strategy name"
+            "description": "Strategy name",
+            "maxLength": 200,
+            "minLength": 1
           },
           "target_function": {
             "type": "string",
-            "description": "Cryptographic function under audit"
+            "description": "Cryptographic function under audit",
+            "maxLength": 200,
+            "minLength": 1
           },
           "target_file": {
             "type": "string",
-            "description": "File path"
+            "description": "File path",
+            "maxLength": 500,
+            "minLength": 1
           },
           "target_line": {
             "type": "integer",
@@ -79,11 +85,15 @@
           },
           "weakness": {
             "type": "string",
-            "description": "Weakness description"
+            "description": "Weakness description",
+            "maxLength": 500,
+            "minLength": 1
           },
           "evidence": {
             "type": "string",
-            "description": "Evidence: predictable output / weak key / algorithm downgrade etc."
+            "description": "Evidence: predictable output / weak key / algorithm downgrade etc.",
+            "maxLength": 5000,
+            "minLength": 1
           },
           "exploitability": {
             "type": "string",

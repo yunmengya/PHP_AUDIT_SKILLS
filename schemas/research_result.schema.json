@@ -24,11 +24,15 @@
     },
     "target_component": {
       "type": "string",
-      "description": "Target component / framework / library name + version"
+      "description": "Target component / framework / library name + version",
+      "maxLength": 200,
+      "minLength": 1
     },
     "context": {
       "type": "string",
-      "description": "Context that triggered the research (auditor current state, failure reasons etc.)"
+      "description": "Context that triggered the research (auditor current state, failure reasons etc.)",
+      "maxLength": 2000,
+      "minLength": 1
     },
     "trigger_condition": {
       "type": "string",
@@ -65,7 +69,9 @@
           },
           "id": {
             "type": "string",
-            "description": "CVE ID or other identifier (e.g. CVE-2024-XXXXX)"
+            "description": "CVE ID or other identifier (e.g. CVE-2024-XXXXX)",
+            "maxLength": 150,
+            "minLength": 1
           },
           "severity": {
             "type": "string",
@@ -85,7 +91,9 @@
           },
           "affected_versions": {
             "type": "string",
-            "description": "Affected version range (e.g. < 2.15.1)"
+            "description": "Affected version range (e.g. < 2.15.1)",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "exploit_available": {
             "type": "boolean",
@@ -93,18 +101,24 @@
           },
           "exploit_method": {
             "type": "string",
-            "description": "Exploit method overview"
+            "description": "Exploit method overview",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "preconditions": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             },
             "description": "List of exploit preconditions"
           },
           "payload_template": {
             "type": "string",
-            "description": "Specific payload template (if available)"
+            "description": "Specific payload template (if available)",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "source": {
             "type": "string",
@@ -117,7 +131,9 @@
     "recommendations": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       },
       "minItems": 1,
       "description": "Recommended directions for the auditor to try"

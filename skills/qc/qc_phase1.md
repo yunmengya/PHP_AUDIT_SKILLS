@@ -28,44 +28,44 @@
 ### Procedure A: Container Health
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 1.1 | All Docker services in `running` state (no `restarting` / `exited`) | all services `running` | `{fill-in: list service states}` | `{✅/❌}` |
-| 1.2 | `docker compose ps` shows all defined services healthy | healthy count = total count | `{fill-in: healthy count / total count}` | `{✅/❌}` |
-| 1.3 | Web service responds: `http://nginx:80/` returns HTTP 200/301/302 | HTTP 200/301/302 | `{fill-in: HTTP status code}` | `{✅/❌}` |
+| 1.1 | All Docker services in `running` state (no `restarting` / `exited`) | all services `running` | `{fill-in: list service states, format: "service:status,service:status,..." or "all_running"}` | `{✅/❌}` |
+| 1.2 | `docker compose ps` shows all defined services healthy | healthy count = total count | `{fill-in: healthy count, format: non-negative integer / total count, format: non-negative integer}` | `{✅/❌}` |
+| 1.3 | Web service responds: `http://nginx:80/` returns HTTP 200/301/302 | HTTP 200/301/302 | `{fill-in: HTTP status code, format: 3-digit integer (200/301/302/404/500)}` | `{✅/❌}` |
 
 ### Procedure B: PHP Version Detection
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 2.1 | `php_version` is non-empty and matches semver (e.g. `8.1.27`) | non-empty semver string | `{fill-in: detected version}` | `{✅/❌}` |
-| 2.2 | Container PHP version (`docker exec php php -v`) matches `php_version` field | version matches `php_version` field | `{fill-in: container PHP version}` | `{✅/❌}` |
-| 2.3 | Required extensions loaded: `pdo`, `pdo_mysql`/`pdo_pgsql`, `mbstring`, `xml`, `curl`, `json`, `Xdebug` | all required extensions loaded | `{fill-in: missing extensions list}` | `{✅/❌}` |
+| 2.1 | `php_version` is non-empty and matches semver (e.g. `8.1.27`) | non-empty semver string | `{fill-in: detected version, format: semver "X.Y.Z"}` | `{✅/❌}` |
+| 2.2 | Container PHP version (`docker exec php php -v`) matches `php_version` field | version matches `php_version` field | `{fill-in: container PHP version, format: semver "X.Y.Z"}` | `{✅/❌}` |
+| 2.3 | Required extensions loaded: `pdo`, `pdo_mysql`/`pdo_pgsql`, `mbstring`, `xml`, `curl`, `json`, `Xdebug` | all required extensions loaded | `{fill-in: missing extensions list, format: comma-separated or "none"}` | `{✅/❌}` |
 
 ### Procedure C: Framework Identification
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 3.1 | `framework` is one of: `Laravel`, `ThinkPHP`, `Yii2`, `Symfony`, `CakePHP`, `CodeIgniter`, `Native` | one of allowed framework values | `{fill-in: detected framework}` | `{✅/❌}` |
-| 3.2 | `framework_version` is non-empty when framework ≠ `Native` | non-empty version string | `{fill-in: version value}` | `{✅/❌}` |
-| 3.3 | Framework consistent with source code markers (e.g. `artisan` → Laravel, `think` → ThinkPHP) | marker matches declared framework | `{fill-in: marker found}` | `{✅/❌}` |
+| 3.1 | `framework` is one of: `Laravel`, `ThinkPHP`, `Yii2`, `Symfony`, `CakePHP`, `CodeIgniter`, `Native` | one of allowed framework values | `{fill-in: detected framework, enum: "Laravel" / "ThinkPHP" / "Yii2" / "Symfony" / "CakePHP" / "CodeIgniter" / "Native"}` | `{✅/❌}` |
+| 3.2 | `framework_version` is non-empty when framework ≠ `Native` | non-empty version string | `{fill-in: version value, format: semver "X.Y.Z"}` | `{✅/❌}` |
+| 3.3 | Framework consistent with source code markers (e.g. `artisan` → Laravel, `think` → ThinkPHP) | marker matches declared framework | `{fill-in: marker found, format: "marker_name → framework_name"}` | `{✅/❌}` |
 
 ### Procedure D: Composer Parsing
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 4.1 | `composer.json` exists and was successfully parsed | file exists and parses as valid JSON | `{fill-in: parse status}` | `{✅/❌}` |
-| 4.2 | `db_type` is one of: `mysql`, `pgsql`, `sqlite` | one of `mysql`, `pgsql`, `sqlite` | `{fill-in: detected db_type}` | `{✅/❌}` |
-| 4.3 | Database connection functional — PDO connection succeeds from within container | PDO connection succeeds | `{fill-in: connection result}` | `{✅/❌}` |
+| 4.1 | `composer.json` exists and was successfully parsed | file exists and parses as valid JSON | `{fill-in: parse status, enum: "success" / "file_missing" / "parse_error"}` | `{✅/❌}` |
+| 4.2 | `db_type` is one of: `mysql`, `pgsql`, `sqlite` | one of `mysql`, `pgsql`, `sqlite` | `{fill-in: detected db_type, enum: "mysql" / "pgsql" / "sqlite"}` | `{✅/❌}` |
+| 4.3 | Database connection functional — PDO connection succeeds from within container | PDO connection succeeds | `{fill-in: connection result, enum: "success" / "connection_refused" / "auth_failed" / "timeout"}` | `{✅/❌}` |
 
 ### Procedure E: Xdebug & Route Classification
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 5.1 | `xdebug_working` is `true` — `xdebug.mode` includes `trace` | `xdebug.mode` includes `trace` | `{fill-in: xdebug.mode value}` | `{✅/❌}` |
-| 5.2 | `routes_accessible + routes_error + routes_inaccessible > 0` — route classification completed | total route count > 0 | `{fill-in: route counts}` | `{✅/❌}` |
-| 5.3 | SSRF target reachable: `http://ssrf-target:80/` returns 200 | HTTP 200 | `{fill-in: HTTP status}` | `{✅/❌}` |
+| 5.1 | `xdebug_working` is `true` — `xdebug.mode` includes `trace` | `xdebug.mode` includes `trace` | `{fill-in: xdebug.mode value, format: literal mode string e.g. "trace,debug"}` | `{✅/❌}` |
+| 5.2 | `routes_accessible + routes_error + routes_inaccessible > 0` — route classification completed | total route count > 0 | `{fill-in: route count, format: non-negative integers}` | `{✅/❌}` |
+| 5.3 | SSRF target reachable: `http://ssrf-target:80/` returns 200 | HTTP 200 | `{fill-in: HTTP status, format: 3-digit integer (200/301/302/404/500)}` | `{✅/❌}` |
 
 ### Procedure F: Schema Validation
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 6.1 | `environment_status.json` passes `schemas/environment_status.schema.json` | schema validation passes with 0 errors | `{fill-in: validation errors}` | `{✅/❌}` |
-| 6.2 | All required fields present: `mode`, `framework`, `framework_version`, `php_version`, `db_type`, `startup_rounds`, `fixes_applied`, `web_accessible`, `routes_accessible`, `routes_error`, `routes_inaccessible`, `xdebug_working`, `db_tables_total`, `db_tables_from_migration`, `db_tables_from_inference`, `disabled_features`, `encrypted_files` | all 17 required fields present | `{fill-in: missing fields}` | `{✅/❌}` |
-| 6.3 | No placeholder residue: `grep 'TODO\|TBD\|PLACEHOLDER'` returns 0 hits | 0 hits | `{fill-in: hit count}` | `{✅/❌}` |
+| 6.1 | `environment_status.json` passes `schemas/environment_status.schema.json` | schema validation passes with 0 errors | `{fill-in: validation errors, format: non-negative integer}` | `{✅/❌}` |
+| 6.2 | All required fields present: `mode`, `framework`, `framework_version`, `php_version`, `db_type`, `startup_rounds`, `fixes_applied`, `web_accessible`, `routes_accessible`, `routes_error`, `routes_inaccessible`, `xdebug_working`, `db_tables_total`, `db_tables_from_migration`, `db_tables_from_inference`, `disabled_features`, `encrypted_files` | all 17 required fields present | `{fill-in: missing fields, format: comma-separated or "none"}` | `{✅/❌}` |
+| 6.3 | No placeholder residue: `grep 'TODO\|TBD\|PLACEHOLDER'` returns 0 hits | 0 hits | `{fill-in: hit count, format: non-negative integer}` | `{✅/❌}` |
 
 ### Procedure G: Verdict Determination
 

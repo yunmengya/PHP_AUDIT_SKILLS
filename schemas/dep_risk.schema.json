@@ -16,13 +16,19 @@
     ],
     "properties": {
       "package": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1
       },
       "installed_version": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[\\d\\.]+.*$",
+        "maxLength": 50
       },
       "cve": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^CVE-\\d{4}-\\d{4,}$",
+        "maxLength": 20
       },
       "severity": {
         "type": "string",
@@ -34,13 +40,19 @@
         ]
       },
       "type": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 100,
+        "minLength": 1
       },
       "description": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 2000,
+        "minLength": 1
       },
       "fixed_version": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[\\d\\.]+.*$",
+        "maxLength": 50
       }
     }
   }

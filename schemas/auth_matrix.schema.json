@@ -19,10 +19,14 @@
         ],
         "properties": {
           "route_id": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_/-]+$",
+            "maxLength": 100
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "auth_level": {
             "type": "string",
@@ -33,7 +37,9 @@
             ]
           },
           "auth_mechanism": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1
           },
           "bypass_notes": {
             "type": [

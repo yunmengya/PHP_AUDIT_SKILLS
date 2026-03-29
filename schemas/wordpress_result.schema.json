@@ -36,11 +36,15 @@
     },
     "component_name": {
       "type": "string",
-      "description": "WordPress core / plugin name / theme name"
+      "description": "WordPress core / plugin name / theme name",
+      "maxLength": 200,
+      "minLength": 1
     },
     "component_version": {
       "type": "string",
-      "description": "Component version number"
+      "description": "Component version number",
+      "pattern": "^[\\d\\.]+.*$",
+      "maxLength": 50
     },
     "rounds_executed": {
       "type": "integer",
@@ -77,11 +81,15 @@
           },
           "endpoint": {
             "type": "string",
-            "description": "Target endpoint"
+            "description": "Target endpoint",
+            "maxLength": 500,
+            "minLength": 1
           },
           "payload": {
             "type": "string",
-            "description": "Actual payload sent"
+            "description": "Actual payload sent",
+            "maxLength": 10000,
+            "minLength": 1
           },
           "evidence_detail": {
             "type": [

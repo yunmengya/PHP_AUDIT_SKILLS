@@ -24,7 +24,9 @@
       "const": "1"
     },
     "target_agent": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1
     },
     "timestamp": {
       "type": "string",
@@ -32,7 +34,11 @@
     },
     "verdict": {
       "type": "string",
-      "enum": ["pass", "fail", "conditional_pass"]
+      "enum": [
+        "pass",
+        "fail",
+        "conditional_pass"
+      ]
     },
     "checks": {
       "type": "object",
@@ -50,19 +56,39 @@
         },
         "php_version": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
-            "expected": { "type": "string" },
-            "actual": { "type": "string" }
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
+            "expected": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "actual": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            }
           }
         },
         "framework_id": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
-            "detected": { "type": "string" }
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
+            "detected": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            }
           }
         },
         "composer_parsed": {
@@ -73,12 +99,21 @@
         },
         "schema_valid": {
           "type": "object",
-          "required": ["status", "errors"],
+          "required": [
+            "status",
+            "errors"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
             "errors": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              }
             }
           }
         }
@@ -94,23 +129,41 @@
     },
     "failed_items": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
+      }
     },
     "degradation_impact": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 1
     }
   },
   "definitions": {
     "check_status": {
       "type": "string",
-      "enum": ["pass", "fail", "warn"]
+      "enum": [
+        "pass",
+        "fail",
+        "warn"
+      ]
     },
     "check_item_with_details": {
       "type": "object",
-      "required": ["status"],
+      "required": [
+        "status"
+      ],
       "properties": {
-        "status": { "$ref": "#/definitions/check_status" },
-        "details": { "type": "string" }
+        "status": {
+          "$ref": "#/definitions/check_status"
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 1000,
+          "minLength": 1
+        }
       }
     }
   }

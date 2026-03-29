@@ -39,62 +39,62 @@
 ### Procedure A: Route Map Completeness
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 1.1 | `route_map.json` exists and `routes` array length > 0 | file exists and route count > 0 | `{fill-in: route count}` | `{✅/❌}` |
-| 1.2 | Each route has required fields: `id`, `url`, `method`, `controller`, `file`, `line`, `params`, `param_sources`, `middleware`, `auth_level`, `route_type` | all 11 required fields present per route | `{fill-in: missing fields list}` | `{✅/❌}` |
-| 1.3 | Route IDs follow pattern `^route_(\d+\|synth_\d+)$` | all IDs match pattern | `{fill-in: invalid IDs}` | `{✅/❌}` |
+| 1.1 | `route_map.json` exists and `routes` array length > 0 | file exists and route count > 0 | `{fill-in: route count, format: non-negative integer}` | `{✅/❌}` |
+| 1.2 | Each route has required fields: `id`, `url`, `method`, `controller`, `file`, `line`, `params`, `param_sources`, `middleware`, `auth_level`, `route_type` | all 11 required fields present per route | `{fill-in: missing fields list, format: comma-separated or "none"}` | `{✅/❌}` |
+| 1.3 | Route IDs follow pattern `^route_(\d+\|synth_\d+)$` | all IDs match pattern | `{fill-in: invalid IDs, format: comma-separated or "0"}` | `{✅/❌}` |
 | 1.4 | Spot-check 3 routes: `controller` file + `file:line` exists in source code | 3/3 spot-checks pass | `{fill-in: format "route_id(pass/fail), route_id(pass/fail), route_id(pass/fail)"}` | `{✅/❌}` |
 
 ### Procedure B: Auth Matrix Consistency
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 2.1 | `auth_matrix.json` exists and `matrix` array length > 0 | file exists and entry count > 0 | `{fill-in: matrix entry count}` | `{✅/❌}` |
-| 2.2 | Coverage rate: `matrix entries / route_map routes × 100%` ≥ 80% | ≥ 80% | `{fill-in: actual percentage}` | `{✅/❌}` |
-| 2.3 | Each matrix entry `route_id` exists in `route_map.json` | 0 orphan references | `{fill-in: orphan count}` | `{✅/❌}` |
-| 2.4 | `auth_level` values are valid: `anonymous`, `authenticated`, or `admin` | all values in allowed set | `{fill-in: invalid values}` | `{✅/❌}` |
-| 2.5 | No orphan entries — every matrix `route_id` resolves to an actual route | 0 orphan entries | `{fill-in: orphan list}` | `{✅/❌}` |
+| 2.1 | `auth_matrix.json` exists and `matrix` array length > 0 | file exists and entry count > 0 | `{fill-in: matrix entry count, format: non-negative integer}` | `{✅/❌}` |
+| 2.2 | Coverage rate: `matrix entries / route_map routes × 100%` ≥ 80% | ≥ 80% | `{fill-in: actual percentage, format: "N.N%" (0.0-100.0)}` | `{✅/❌}` |
+| 2.3 | Each matrix entry `route_id` exists in `route_map.json` | 0 orphan references | `{fill-in: orphan count, format: non-negative integer}` | `{✅/❌}` |
+| 2.4 | `auth_level` values are valid: `anonymous`, `authenticated`, or `admin` | all values in allowed set | `{fill-in: invalid values, format: comma-separated or "0"}` | `{✅/❌}` |
+| 2.5 | No orphan entries — every matrix `route_id` resolves to an actual route | 0 orphan entries | `{fill-in: orphan list, format: comma-separated or "0"}` | `{✅/❌}` |
 
 ### Procedure C: Priority Queue Validity
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 3.1 | `priority_queue.json` is non-empty array | entry count > 0 | `{fill-in: entry count}` | `{✅/❌}` |
-| 3.2 | P0 count: `0 < P0 ≤ 20` — reasonable number, no duplicates | 1–20 P0 entries, 0 duplicates | `{fill-in: P0 count, duplicate count}` | `{✅/❌}` |
-| 3.3 | Each entry has required fields: `id`, `priority`, `route_id`, `route_url`, `sink_function`, `sink_file`, `sink_line`, `auth_level`, `reason`, `source_count`, `sources` | all 11 required fields present per entry | `{fill-in: missing fields}` | `{✅/❌}` |
-| 3.4 | Sink IDs follow pattern `^sink_\d+$` | all IDs match pattern | `{fill-in: invalid IDs}` | `{✅/❌}` |
-| 3.5 | `route_id` references all exist in `route_map.json` | 0 unresolved references | `{fill-in: unresolved refs}` | `{✅/❌}` |
+| 3.1 | `priority_queue.json` is non-empty array | entry count > 0 | `{fill-in: entry count, format: non-negative integer}` | `{✅/❌}` |
+| 3.2 | P0 count: `0 < P0 ≤ 20` — reasonable number, no duplicates | 1–20 P0 entries, 0 duplicates | `{fill-in: P0 count, format: non-negative integer, duplicate count, format: non-negative integer}` | `{✅/❌}` |
+| 3.3 | Each entry has required fields: `id`, `priority`, `route_id`, `route_url`, `sink_function`, `sink_file`, `sink_line`, `auth_level`, `reason`, `source_count`, `sources` | all 11 required fields present per entry | `{fill-in: missing fields, format: comma-separated or "none"}` | `{✅/❌}` |
+| 3.4 | Sink IDs follow pattern `^sink_\d+$` | all IDs match pattern | `{fill-in: invalid IDs, format: comma-separated or "0"}` | `{✅/❌}` |
+| 3.5 | `route_id` references all exist in `route_map.json` | 0 unresolved references | `{fill-in: unresolved refs, format: comma-separated or "0"}` | `{✅/❌}` |
 
 ### Procedure D: Scanner Outputs
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 4.1 | At least 2 of 4 scanner outputs exist: `psalm_taint.json`, `progpilot.json`, `semgrep.json`, `phpstan.json` | ≥ 2 scanner files present | `{fill-in: files found list}` | `{✅/❌}` |
-| 4.2 | Existing scanner files are valid JSON (even with `status: "failed"`) | all scanner files parse as valid JSON | `{fill-in: invalid files}` | `{✅/❌}` |
-| 4.3 | `ast_sinks.json` exists with sink count > 0, each sink has `file` and `line` | file exists, sink count > 0, each has `file` + `line` | `{fill-in: sink count}` | `{✅/❌}` |
+| 4.1 | At least 2 of 4 scanner outputs exist: `psalm_taint.json`, `progpilot.json`, `semgrep.json`, `phpstan.json` | ≥ 2 scanner files present | `{fill-in: files found list, format: comma-separated or "none"}` | `{✅/❌}` |
+| 4.2 | Existing scanner files are valid JSON (even with `status: "failed"`) | all scanner files parse as valid JSON | `{fill-in: invalid files, format: comma-separated or "none"}` | `{✅/❌}` |
+| 4.3 | `ast_sinks.json` exists with sink count > 0, each sink has `file` and `line` | file exists, sink count > 0, each has `file` + `line` | `{fill-in: sink count, format: non-negative integer}` | `{✅/❌}` |
 | 4.4 | Spot-check 3 sinks: confirm function call exists at source location | 3/3 spot-checks pass | `{fill-in: format "sink_id(pass/fail), sink_id(pass/fail), sink_id(pass/fail)"}` | `{✅/❌}` |
 
 ### Procedure E: Context Packs Coverage
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 5.1 | `context_packs/` directory exists with ≥1 JSON file | ≥ 1 JSON file in directory | `{fill-in: pack count}` | `{✅/❌}` |
-| 5.2 | Each context pack has required fields: `sink_id`, `sink_function`, `priority`, `trace_depth`, `layers`, `data_flow_summary`, `filters_in_path`, `global_filters` | all 8 required fields present per pack | `{fill-in: missing fields}` | `{✅/❌}` |
-| 5.3 | Each layer `code` field is non-empty (actual source code, not placeholders) | 0 empty code fields | `{fill-in: empty code count}` | `{✅/❌}` |
-| 5.4 | Breakpoint rate: `packs with broken chains / total packs` ≤ 50% | ≤ 50% | `{fill-in: breakpoint rate percentage}` | `{✅/❌}` |
-| 5.5 | Coverage: context packs cover ≥ 80% of priority_queue sinks | ≥ 80% | `{fill-in: coverage percentage}` | `{✅/❌}` |
+| 5.1 | `context_packs/` directory exists with ≥1 JSON file | ≥ 1 JSON file in directory | `{fill-in: pack count, format: non-negative integer}` | `{✅/❌}` |
+| 5.2 | Each context pack has required fields: `sink_id`, `sink_function`, `priority`, `trace_depth`, `layers`, `data_flow_summary`, `filters_in_path`, `global_filters` | all 8 required fields present per pack | `{fill-in: missing fields, format: comma-separated or "none"}` | `{✅/❌}` |
+| 5.3 | Each layer `code` field is non-empty (actual source code, not placeholders) | 0 empty code fields | `{fill-in: empty code count, format: non-negative integer}` | `{✅/❌}` |
+| 5.4 | Breakpoint rate: `packs with broken chains / total packs` ≤ 50% | ≤ 50% | `{fill-in: breakpoint rate percentage, format: "N.N%" (0.0-100.0)}` | `{✅/❌}` |
+| 5.5 | Coverage: context packs cover ≥ 80% of priority_queue sinks | ≥ 80% | `{fill-in: coverage percentage, format: "N.N%" (0.0-100.0)}` | `{✅/❌}` |
 
 ### Procedure F: Dependency Risk & Coverage Rates
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 6.1 | `dep_risk.json` exists with dependency risk assessment | file exists with risk data | `{fill-in: file status}` | `{✅/❌}` |
-| 6.2 | External CVE sources were queried (CVE match count ≥ 0) | CVE query executed | `{fill-in: CVE match count}` | `{✅/❌}` |
-| 6.3 | Route coverage rate: `analyzed routes / total routes × 100%` ≥ 90% | ≥ 90% | `{fill-in: actual percentage}` | `{✅/❌}` |
-| 6.4 | Sink scan coverage rate: `identified sink types / sink_definitions.md types` ≥ 85% | ≥ 85% | `{fill-in: actual percentage}` | `{✅/❌}` |
+| 6.1 | `dep_risk.json` exists with dependency risk assessment | file exists with risk data | `{fill-in: file status, enum: "exists_valid" / "exists_empty" / "missing"}` | `{✅/❌}` |
+| 6.2 | External CVE sources were queried (CVE match count ≥ 0) | CVE query executed | `{fill-in: CVE match count, format: non-negative integer}` | `{✅/❌}` |
+| 6.3 | Route coverage rate: `analyzed routes / total routes × 100%` ≥ 90% | ≥ 90% | `{fill-in: actual percentage, format: "N.N%" (0.0-100.0)}` | `{✅/❌}` |
+| 6.4 | Sink scan coverage rate: `identified sink types / sink_definitions.md types` ≥ 85% | ≥ 85% | `{fill-in: actual percentage, format: "N.N%" (0.0-100.0)}` | `{✅/❌}` |
 
 ### Procedure G: Schema Validation
 | # | Check Item | Expected | Actual | Status |
 |---|-----------|----------|--------|--------|
-| 7.1 | `route_map.json` passes `schemas/route_map.schema.json` | 0 validation errors | `{fill-in: validation errors}` | `{✅/❌}` |
-| 7.2 | `auth_matrix.json` passes `schemas/auth_matrix.schema.json` | 0 validation errors | `{fill-in: validation errors}` | `{✅/❌}` |
-| 7.3 | `priority_queue.json` passes `schemas/priority_queue.schema.json` | 0 validation errors | `{fill-in: validation errors}` | `{✅/❌}` |
-| 7.4 | Context pack files pass `schemas/context_pack.schema.json` | 0 validation errors | `{fill-in: validation errors}` | `{✅/❌}` |
-| 7.5 | No placeholder residue across all output files | 0 hits | `{fill-in: hit count}` | `{✅/❌}` |
+| 7.1 | `route_map.json` passes `schemas/route_map.schema.json` | 0 validation errors | `{fill-in: validation errors, format: non-negative integer}` | `{✅/❌}` |
+| 7.2 | `auth_matrix.json` passes `schemas/auth_matrix.schema.json` | 0 validation errors | `{fill-in: validation errors, format: non-negative integer}` | `{✅/❌}` |
+| 7.3 | `priority_queue.json` passes `schemas/priority_queue.schema.json` | 0 validation errors | `{fill-in: validation errors, format: non-negative integer}` | `{✅/❌}` |
+| 7.4 | Context pack files pass `schemas/context_pack.schema.json` | 0 validation errors | `{fill-in: validation errors, format: non-negative integer}` | `{✅/❌}` |
+| 7.5 | No placeholder residue across all output files | 0 hits | `{fill-in: hit count, format: non-negative integer}` | `{✅/❌}` |
 
 ### Procedure H: Verdict Determination
 

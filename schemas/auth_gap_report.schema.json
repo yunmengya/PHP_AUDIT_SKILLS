@@ -29,20 +29,28 @@
         "properties": {
           "path": {
             "type": "string",
-            "description": "Route path"
+            "description": "Route path",
+            "maxLength": 500,
+            "minLength": 1
           },
           "method": {
             "type": "string",
-            "description": "HTTP method"
+            "description": "HTTP method",
+            "maxLength": 10,
+            "minLength": 1
           },
           "controller": {
             "type": "string",
-            "description": "Controller#method"
+            "description": "Controller#method",
+            "maxLength": 300,
+            "minLength": 1
           },
           "missing_middleware": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             }
           },
           "risk_level": {

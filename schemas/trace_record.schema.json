@@ -14,15 +14,21 @@
   ],
   "properties": {
     "route_id": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_/-]+$",
+      "maxLength": 100
     },
     "route_url": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 1
     },
     "call_chain": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       }
     },
     "filters_encountered": {
@@ -36,13 +42,17 @@
         ],
         "properties": {
           "function": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-zA-Z_\\\\][a-zA-Z0-9_\\\\:]*$",
+            "maxLength": 200
           },
           "effective": {
             "type": "boolean"
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           }
         }
       }
@@ -65,13 +75,17 @@
             ]
           },
           "resolved": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           }
         }
       }
     },
     "raw_request": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 1000,
+      "minLength": 1
     },
     "raw_response_status": {
       "type": "integer"

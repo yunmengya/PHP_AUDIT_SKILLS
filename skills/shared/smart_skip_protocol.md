@@ -42,7 +42,7 @@
 | consecutive_failures | {integer: number of consecutive failures} |
 | attempted_strategies | {array: list of `{"round": N, "strategy": "name", "result": "failed"}` for every round attempted} |
 | defense_mechanism | {string: specific filtering/defense mechanism identified, e.g., "Parameterized queries via PDO::prepare()", "WAF ModSecurity CRS v3.3"} |
-| skip_reasoning | {string: explanation of why remaining strategies (R5-R8 or beyond) cannot bypass the identified defenses} |
+| skip_reasoning | {Format: "Remaining strategies ({list}) target {mechanism_type}. Defense {defense_name} prevents bypass because {specific_technical_reason}." — mechanism_type must be one of: `WAF_bypass` / `encoding_tricks` / `logic_flaws` / `second_order` / `out_of_band` / `stored_procedure` / `type_juggling` / `race_condition` — e.g., "Remaining strategies (R5-R8) target encoding_tricks. Defense parameterized_queries prevents bypass because SQL structure is fixed at compile time."} |
 
 ### Procedure C: Produce Final Output After Skip
 | Field | Fill-in Value |

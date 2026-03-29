@@ -43,10 +43,14 @@
       ]
     },
     "framework_version": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[\\d\\.]+.*$",
+      "maxLength": 50
     },
     "php_version": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "maxLength": 15
     },
     "db_type": {
       "type": "string",
@@ -63,7 +67,9 @@
     "fixes_applied": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       }
     },
     "web_accessible": {
@@ -93,16 +99,24 @@
         ],
         "properties": {
           "route": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "error": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "impact": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           }
         }
       }
@@ -125,13 +139,17 @@
     "disabled_features": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       }
     },
     "encrypted_files": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
       }
     },
     "version_alerts": {
@@ -150,15 +168,21 @@
         "properties": {
           "component": {
             "type": "string",
-            "description": "Affected component, e.g. Laravel / ThinkPHP / PHP"
+            "description": "Affected component, e.g. Laravel / ThinkPHP / PHP",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "detected_version": {
             "type": "string",
-            "description": "Detected version number"
+            "description": "Detected version number",
+            "pattern": "^[\\d\\.]+.*$",
+            "maxLength": 50
           },
           "cve_id": {
             "type": "string",
-            "description": "CVE identifier"
+            "description": "CVE identifier",
+            "maxLength": 150,
+            "minLength": 1
           },
           "severity": {
             "type": "string",
@@ -171,12 +195,16 @@
           },
           "description": {
             "type": "string",
-            "description": "Vulnerability summary"
+            "description": "Vulnerability summary",
+            "maxLength": 2000,
+            "minLength": 1
           },
           "affected_auditors": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             },
             "description": "List of auditors to prioritize"
           }

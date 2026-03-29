@@ -36,63 +36,63 @@
 ### Procedure A: Correlation Report Completeness
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | `correlation_report.json` exists and is non-empty | File exists, size > 0 bytes | {fill-in: file existence and size} | {✅/❌} |
-| 2 | Required fields present: `generated_at`, `total_findings`, `false_positives_removed`, `chains`, `summary` | All 5 fields present | {fill-in: missing fields if any} | {✅/❌} |
-| 3 | `total_findings` > 0 (at least one finding analyzed) | total_findings ≥ 1 | {fill-in: total_findings value} | {✅/❌} |
-| 4 | `chains` array contains ≥0 entries (empty is valid if no chains found) | chains is a valid array | {fill-in: chain count} | {✅/❌} |
-| 5 | `summary` is non-empty descriptive text (not placeholder) | summary.length > 0, not placeholder | {fill-in: summary length and content check} | {✅/❌} |
+| 1 | `correlation_report.json` exists and is non-empty | File exists, size > 0 bytes | {fill-in: file existence and size, enum: "exists_nonempty" / "exists_empty" / "missing"} | {✅/❌} |
+| 2 | Required fields present: `generated_at`, `total_findings`, `false_positives_removed`, `chains`, `summary` | All 5 fields present | {fill-in: missing fields, format: comma-separated or "none" if any} | {✅/❌} |
+| 3 | `total_findings` > 0 (at least one finding analyzed) | total_findings ≥ 1 | {fill-in: total_findings value, format: non-negative integer} | {✅/❌} |
+| 4 | `chains` array contains ≥0 entries (empty is valid if no chains found) | chains is a valid array | {fill-in: chain count, format: non-negative integer} | {✅/❌} |
+| 5 | `summary` is non-empty descriptive text (not placeholder) | summary.length > 0, not placeholder | {fill-in: summary length and content check, format: "length:N, placeholder:yes/no"} | {✅/❌} |
 
 ### Procedure B: No Duplicate Chains
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | No duplicate `chain_id` values in `chains` array | 0 duplicate chain_ids | {fill-in: duplicate chain_ids found} | {✅/❌} |
-| 2 | No duplicate vulnerability reference pairs within a single chain — each `vulns` entry unique within its chain | 0 duplicate vuln pairs per chain | {fill-in: duplicate vuln pairs found} | {✅/❌} |
-| 3 | No identical chain compositions — two chains must not contain the exact same set of `vulns` | 0 identical compositions | {fill-in: identical compositions found} | {✅/❌} |
-| 4 | Each `chain_id` follows a consistent naming pattern | All chain_ids match naming convention | {fill-in: invalid chain_ids found} | {✅/❌} |
+| 1 | No duplicate `chain_id` values in `chains` array | 0 duplicate chain_ids | {fill-in: duplicate chain_ids found, format: comma-separated chain_ids or "none"} | {✅/❌} |
+| 2 | No duplicate vulnerability reference pairs within a single chain — each `vulns` entry unique within its chain | 0 duplicate vuln pairs per chain | {fill-in: duplicate vuln pairs found, format: comma-separated or "none"} | {✅/❌} |
+| 3 | No identical chain compositions — two chains must not contain the exact same set of `vulns` | 0 identical compositions | {fill-in: identical compositions found, format: comma-separated chain_id pairs or "none"} | {✅/❌} |
+| 4 | Each `chain_id` follows a consistent naming pattern | All chain_ids match naming convention | {fill-in: invalid chain_ids found, format: comma-separated or "none"} | {✅/❌} |
 
 ### Procedure C: Severity Escalation Justification
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | Each chain with `combined_impact` has a justified escalation reason | 0 unjustified escalations | {fill-in: unjustified escalations count} | {✅/❌} |
-| 2 | Escalated severity is strictly higher than individual vulnerability severities — no gratuitous escalation | 0 gratuitous escalations | {fill-in: gratuitous escalations found} | {✅/❌} |
-| 3 | `confidence` for chains is one of: `high`, `medium`, `low` | All confidence values in {high, medium, low} | {fill-in: invalid confidence values} | {✅/❌} |
-| 4 | High-confidence chains require ≥2 confirmed individual vulnerabilities | Each high-confidence chain has ≥ 2 confirmed vulns | {fill-in: non-compliant high-confidence chains} | {✅/❌} |
-| 5 | If `graph_correlations.escalations_from_graph` exists, each entry has `original_severities` and `combined_severity` with supporting chain evidence | All escalation entries have required fields | {fill-in: missing fields in escalations} | {✅/❌} |
+| 1 | Each chain with `combined_impact` has a justified escalation reason | 0 unjustified escalations | {fill-in: unjustified escalations count, format: non-negative integer} | {✅/❌} |
+| 2 | Escalated severity is strictly higher than individual vulnerability severities — no gratuitous escalation | 0 gratuitous escalations | {fill-in: gratuitous escalations found, format: comma-separated chain_ids or "none"} | {✅/❌} |
+| 3 | `confidence` for chains is one of: `high`, `medium`, `low` | All confidence values in {high, medium, low} | {fill-in: invalid confidence values, format: comma-separated or "none"} | {✅/❌} |
+| 4 | High-confidence chains require ≥2 confirmed individual vulnerabilities | Each high-confidence chain has ≥ 2 confirmed vulns | {fill-in: non-compliant high-confidence chains, format: comma-separated chain_ids or "none"} | {✅/❌} |
+| 5 | If `graph_correlations.escalations_from_graph` exists, each entry has `original_severities` and `combined_severity` with supporting chain evidence | All escalation entries have required fields | {fill-in: missing fields, format: comma-separated or "none" in escalations} | {✅/❌} |
 
 ### Procedure D: Attack Graph Validity
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | `attack_graph.json` exists with `nodes` and `edges` | File exists with nodes and edges arrays | {fill-in: node_count, edge_count} | {✅/❌} |
-| 2 | Graph nodes reference valid finding IDs from `exploits/*.json` | 0 invalid node references | {fill-in: invalid node references found} | {✅/❌} |
-| 3 | Graph edges represent actual exploitable paths (not hypothetical connections) | 0 hypothetical-only edges | {fill-in: hypothetical edges count} | {✅/❌} |
-| 4 | `data_flow_chains` (if present) have `source_node`, `target_node`, `relation` fields | All data_flow_chains have required fields | {fill-in: incomplete data_flow_chains} | {✅/❌} |
-| 5 | No orphan nodes — every node has at least one edge connection or is explicitly isolated | 0 orphan nodes | {fill-in: orphan nodes count} | {✅/❌} |
+| 1 | `attack_graph.json` exists with `nodes` and `edges` | File exists with nodes and edges arrays | {fill-in: node_count, format: non-negative integer, edge_count, format: non-negative integer} | {✅/❌} |
+| 2 | Graph nodes reference valid finding IDs from `exploits/*.json` | 0 invalid node references | {fill-in: invalid node references found, format: comma-separated node_ids or "none"} | {✅/❌} |
+| 3 | Graph edges represent actual exploitable paths (not hypothetical connections) | 0 hypothetical-only edges | {fill-in: hypothetical edges count, format: non-negative integer} | {✅/❌} |
+| 4 | `data_flow_chains` (if present) have `source_node`, `target_node`, `relation` fields | All data_flow_chains have required fields | {fill-in: incomplete data_flow_chains, format: comma-separated chain_ids or "none"} | {✅/❌} |
+| 5 | No orphan nodes — every node has at least one edge connection or is explicitly isolated | 0 orphan nodes | {fill-in: orphan nodes count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure E: Finding ID Cross-Reference
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | All vulnerability IDs in `correlation_report.json` exist in `team4_progress.json` or `exploits/*.json` | 0 invalid references | {fill-in: invalid references count} | {✅/❌} |
-| 2 | No references to non-existent findings (zero invalid references) | 0 invalid IDs | {fill-in: invalid IDs list} | {✅/❌} |
-| 3 | `false_positives_removed` count is plausible relative to `total_findings` | fp_removed / total_findings ≤ 0.5 (plausible ratio) | {fill-in: fp ratio} | {✅/❌} |
-| 4 | Removed false positives match patterns from `shared/false_positive_patterns.md` | All removals match known FP patterns | {fill-in: unmatched removals} | {✅/❌} |
+| 1 | All vulnerability IDs in `correlation_report.json` exist in `team4_progress.json` or `exploits/*.json` | 0 invalid references | {fill-in: invalid references count, format: non-negative integer} | {✅/❌} |
+| 2 | No references to non-existent findings (zero invalid references) | 0 invalid IDs | {fill-in: invalid IDs, format: comma-separated or "0" list} | {✅/❌} |
+| 3 | `false_positives_removed` count is plausible relative to `total_findings` | fp_removed / total_findings ≤ 0.5 (plausible ratio) | {fill-in: fp ratio, format: "N/N" (removed/total)} | {✅/❌} |
+| 4 | Removed false positives match patterns from `shared/false_positive_patterns.md` | All removals match known FP patterns | {fill-in: unmatched removals, format: comma-separated finding_ids or "none"} | {✅/❌} |
 
 ### Procedure F: PoC Scripts Validation
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | `PoC脚本/` directory contains ≥1 `.py` file | script_count ≥ 1 | {fill-in: script count} | {✅/❌} |
-| 2 | All `.py` files pass Python syntax check: `python3 -c "compile(open('file').read(), 'file', 'exec')"` | syntax_pass_count = script_count | {fill-in: syntax_pass_count / script_count} | {✅/❌} |
-| 3 | `一键运行.sh` exists and contains execution commands for all PoC scripts | Runner exists, covers all scripts | {fill-in: runner_exists, scripts covered} | {✅/❌} |
-| 4 | `poc_summary.json` exists with valid JSON | Valid JSON, schema-compliant | {fill-in: validation result} | {✅/❌} |
-| 5 | Target URLs in PoC scripts are consistent (use parameterized base URL, not hardcoded) | 0 hardcoded URLs | {fill-in: hardcoded URLs found} | {✅/❌} |
+| 1 | `PoC脚本/` directory contains ≥1 `.py` file | script_count ≥ 1 | {fill-in: script count, format: non-negative integer} | {✅/❌} |
+| 2 | All `.py` files pass Python syntax check: `python3 -c "compile(open('file').read(), 'file', 'exec')"` | syntax_pass_count = script_count | {fill-in: syntax_pass_count, format: non-negative integer / script_count, format: non-negative integer} | {✅/❌} |
+| 3 | `一键运行.sh` exists and contains execution commands for all PoC scripts | Runner exists, covers all scripts | {fill-in: runner_exists, scripts covered, format: "exists:yes/no, covered:N/N"} | {✅/❌} |
+| 4 | `poc_summary.json` exists with valid JSON | Valid JSON, schema-compliant | {fill-in: validation result, enum: "valid" / "invalid" / "missing"} | {✅/❌} |
+| 5 | Target URLs in PoC scripts are consistent (use parameterized base URL, not hardcoded) | 0 hardcoded URLs | {fill-in: hardcoded URLs found, format: non-negative integer} | {✅/❌} |
 
 ### Procedure G: Remediation Patches
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | `修复补丁/` directory contains ≥1 `.patch` file | patch_count ≥ 1 | {fill-in: patch count} | {✅/❌} |
-| 2 | Each confirmed vulnerability has a corresponding patch file | 0 confirmed vulns without patch | {fill-in: confirmed_without_patch count} | {✅/❌} |
-| 3 | Each patch passes `patch --dry-run` verification against source | dry_run_pass = patch_count | {fill-in: dry_run_pass / patch_count} | {✅/❌} |
-| 4 | `remediation_summary.json` exists with patch-to-vulnerability mapping | Valid JSON with complete mapping | {fill-in: validation result} | {✅/❌} |
-| 5 | Patches contain specific code changes (before/after), not generic advice | 0 generic patches | {fill-in: generic patches count} | {✅/❌} |
+| 1 | `修复补丁/` directory contains ≥1 `.patch` file | patch_count ≥ 1 | {fill-in: patch count, format: non-negative integer} | {✅/❌} |
+| 2 | Each confirmed vulnerability has a corresponding patch file | 0 confirmed vulns without patch | {fill-in: confirmed_without_patch count, format: non-negative integer} | {✅/❌} |
+| 3 | Each patch passes `patch --dry-run` verification against source | dry_run_pass = patch_count | {fill-in: dry_run_pass / patch_count, format: non-negative integer} | {✅/❌} |
+| 4 | `remediation_summary.json` exists with patch-to-vulnerability mapping | Valid JSON with complete mapping | {fill-in: validation result, enum: "valid" / "invalid" / "missing"} | {✅/❌} |
+| 5 | Patches contain specific code changes (before/after), not generic advice | 0 generic patches | {fill-in: generic patches count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure H: Final Verdict Determination
 | Field | Fill-in Value |
@@ -126,7 +126,7 @@
   "basic_info": {
     "quality_checker": "S-084",
     "target": "Phase-4.5 output",
-    "validated_files": ["{fill-in: actual file paths read}"]
+    "validated_files": ["{fill-in: actual file paths read, format: comma-separated file paths}"]
   },
   "checks": {
     "correlation_report": { "status": "pass", "total_findings": 12, "chain_count": 3, "fp_removed": 2 },

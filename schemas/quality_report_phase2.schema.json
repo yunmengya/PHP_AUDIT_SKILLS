@@ -24,7 +24,9 @@
       "const": "2"
     },
     "target_agent": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1
     },
     "timestamp": {
       "type": "string",
@@ -32,7 +34,11 @@
     },
     "verdict": {
       "type": "string",
-      "enum": ["pass", "fail", "conditional_pass"]
+      "enum": [
+        "pass",
+        "fail",
+        "conditional_pass"
+      ]
     },
     "checks": {
       "type": "object",
@@ -48,73 +54,150 @@
       "properties": {
         "route_map": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
-            "route_count": { "type": "integer", "minimum": 0 },
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
+            "route_count": {
+              "type": "integer",
+              "minimum": 0
+            },
             "spot_check_results": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              }
             }
           }
         },
         "auth_matrix": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
-            "coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 },
-            "orphan_count": { "type": "integer", "minimum": 0 }
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
+            "coverage_pct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "orphan_count": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "priority_queue": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
-            "total": { "type": "integer", "minimum": 0 },
-            "p0_count": { "type": "integer", "minimum": 0 },
-            "duplicates": { "type": "integer", "minimum": 0 }
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "p0_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duplicates": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "scanners": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
             "files_found": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              }
             },
-            "ast_sink_count": { "type": "integer", "minimum": 0 }
+            "ast_sink_count": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "context_packs": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
-            "pack_count": { "type": "integer", "minimum": 0 },
-            "breakpoint_rate_pct": { "type": "number", "minimum": 0, "maximum": 100 },
-            "coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
+            "pack_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "breakpoint_rate_pct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "coverage_pct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
           }
         },
         "dep_risk": {
           "type": "object",
-          "required": ["status"],
+          "required": [
+            "status"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
-            "cve_matches": { "type": "integer", "minimum": 0 }
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
+            "cve_matches": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "schema_valid": {
           "type": "object",
-          "required": ["status", "errors"],
+          "required": [
+            "status",
+            "errors"
+          ],
           "properties": {
-            "status": { "$ref": "#/definitions/check_status" },
+            "status": {
+              "$ref": "#/definitions/check_status"
+            },
             "errors": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              }
             }
           }
         }
@@ -123,10 +206,26 @@
     "metrics": {
       "type": "object",
       "properties": {
-        "coverage_route": { "type": "string" },
-        "coverage_auth": { "type": "string" },
-        "coverage_sink": { "type": "string" },
-        "context_pack_breakpoint_rate": { "type": "string" }
+        "coverage_route": {
+          "type": "string",
+          "maxLength": 20,
+          "minLength": 1
+        },
+        "coverage_auth": {
+          "type": "string",
+          "maxLength": 20,
+          "minLength": 1
+        },
+        "coverage_sink": {
+          "type": "string",
+          "maxLength": 20,
+          "minLength": 1
+        },
+        "context_pack_breakpoint_rate": {
+          "type": "string",
+          "maxLength": 20,
+          "minLength": 1
+        }
       }
     },
     "pass_count": {
@@ -139,13 +238,21 @@
     },
     "failed_items": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
+      }
     }
   },
   "definitions": {
     "check_status": {
       "type": "string",
-      "enum": ["pass", "fail", "warn"]
+      "enum": [
+        "pass",
+        "fail",
+        "warn"
+      ]
     }
   }
 }

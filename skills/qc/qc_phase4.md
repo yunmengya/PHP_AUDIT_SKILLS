@@ -35,25 +35,25 @@
 ### Procedure A: Exploit File Integrity
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | `exploits/` directory exists with ≥1 JSON file | ≥ 1 JSON file in exploits/ | {fill-in: file count found} | {✅/❌} |
-| 2 | Each exploit file is valid JSON and passes `schemas/exploit_result.schema.json` | all files pass exploit_result.schema.json | {fill-in: schema errors if any} | {✅/❌} |
-| 3 | Required fields present in each file: `sink_id`, `route_url`, `sink_function`, `specialist`, `route_type`, `rounds_executed`, `rounds_skipped`, `results`, `final_verdict`, `confidence`, `severity`, `prerequisite_conditions` | all 12 required fields present per file | {fill-in: missing fields list} | {✅/❌} |
-| 4 | `sink_id` follows pattern `^sink_\d+$` | matches `^sink_\d+$` pattern | {fill-in: invalid sink_ids if any} | {✅/❌} |
+| 1 | `exploits/` directory exists with ≥1 JSON file | ≥ 1 JSON file in exploits/ | {fill-in: file count, format: non-negative integer found} | {✅/❌} |
+| 2 | Each exploit file is valid JSON and passes `schemas/exploit_result.schema.json` | all files pass exploit_result.schema.json | {fill-in: schema errors if any, format: comma-separated or "none"} | {✅/❌} |
+| 3 | Required fields present in each file: `sink_id`, `route_url`, `sink_function`, `specialist`, `route_type`, `rounds_executed`, `rounds_skipped`, `results`, `final_verdict`, `confidence`, `severity`, `prerequisite_conditions` | all 12 required fields present per file | {fill-in: missing fields list, format: comma-separated or "none"} | {✅/❌} |
+| 4 | `sink_id` follows pattern `^sink_\d+$` | matches `^sink_\d+$` pattern | {fill-in: invalid sink_ids if any, format: comma-separated or "none"} | {✅/❌} |
 
 ### Procedure B: Final Verdict Validity
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | `final_verdict` is one of: `confirmed`, `suspected`, `potential`, `not_vulnerable` | value ∈ {confirmed, suspected, potential, not_vulnerable} | {fill-in: invalid values if any} | {✅/❌} |
-| 2 | `confirmed` verdicts have physical evidence: HTTP request/response with actual payload + observable outcome | every confirmed has HTTP evidence | {fill-in: count of confirmed without evidence} | {✅/❌} |
-| 3 | `confirmed` verdicts have `confidence: "high"` — no `confirmed` with low confidence | all confirmed → confidence: "high" | {fill-in: mismatched entries} | {✅/❌} |
-| 4 | `suspected` verdicts have at least code-level evidence or partial response anomaly | every suspected has partial evidence | {fill-in: count missing evidence} | {✅/❌} |
-| 5 | All-8-rounds-failed sinks annotated as `potential` with failure reason documented | failed sinks → potential + documented reason | {fill-in: undocumented failure count} | {✅/❌} |
+| 1 | `final_verdict` is one of: `confirmed`, `suspected`, `potential`, `not_vulnerable` | value ∈ {confirmed, suspected, potential, not_vulnerable} | {fill-in: invalid values, format: comma-separated or "0" if any} | {✅/❌} |
+| 2 | `confirmed` verdicts have physical evidence: HTTP request/response with actual payload + observable outcome | every confirmed has HTTP evidence | {fill-in: count, format: non-negative integer of confirmed without evidence} | {✅/❌} |
+| 3 | `confirmed` verdicts have `confidence: "high"` — no `confirmed` with low confidence | all confirmed → confidence: "high" | {fill-in: mismatched entries, format: comma-separated sink_ids or "none"} | {✅/❌} |
+| 4 | `suspected` verdicts have at least code-level evidence or partial response anomaly | every suspected has partial evidence | {fill-in: count, format: non-negative integer missing evidence} | {✅/❌} |
+| 5 | All-8-rounds-failed sinks annotated as `potential` with failure reason documented | failed sinks → potential + documented reason | {fill-in: undocumented failure count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure C: Evidence Completeness (EVID Chain)
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | Each `confirmed` finding references all required EVID_* points per `shared/evidence_contract.md` | ≥ 1 EVID_* reference per confirmed finding | {fill-in: missing EVID references} | {✅/❌} |
-| 2 | EVID references contain actual data — not empty strings or placeholders | 0 empty/placeholder EVID values | {fill-in: empty EVID count} | {✅/❌} |
+| 1 | Each `confirmed` finding references all required EVID_* points per `shared/evidence_contract.md` | ≥ 1 EVID_* reference per confirmed finding | {fill-in: missing EVID references, format: comma-separated sink_ids or "none"} | {✅/❌} |
+| 2 | EVID references contain actual data — not empty strings or placeholders | 0 empty/placeholder EVID values | {fill-in: empty EVID count, format: non-negative integer} | {✅/❌} |
 
 **Evidence Data Validation Reference** (use when checking EVID field #2):
 
@@ -65,46 +65,46 @@
 | EVID_OBSERVABLE | `"alert(1) dialog appeared with title 'XSS PoC' in Chrome DevTools"` | `""`, `"XSS worked"`, `"vulnerable"` | Length > 20 chars AND describes specific observable behavior |
 | EVID_FILE_LINE | `"app/Http/Controllers/UserController.php:42"` | `""`, `"some file"`, `"controller"` | Matches pattern `*.php:\d+` |
 | EVID_TRACE | `"$_GET['id'] → UserController::show($id) → DB::raw($id) → mysql_query()"` | `""`, `"tainted"`, `"user input to sink"` | Contains → or -> indicating flow direction |
-| 3 | Missing EVID points annotated `EVID_XXX: [Not obtained: reason]` and verdict auto-downgraded | all missing EVIDs annotated + verdict downgraded | {fill-in: unannotated missing EVID count} | {✅/❌} |
-| 4 | HTTP requests in Burp format: `METHOD URL HTTP/1.1` + Headers + Body — directly replayable | Burp-compatible request format | {fill-in: non-compliant request count} | {✅/❌} |
-| 5 | HTTP responses include status code + key response body (evidence portion, not truncated) | status code + evidence body present | {fill-in: incomplete response count} | {✅/❌} |
+| 3 | Missing EVID points annotated `EVID_XXX: [Not obtained: reason]` and verdict auto-downgraded | all missing EVIDs annotated + verdict downgraded | {fill-in: unannotated missing EVID count, format: non-negative integer} | {✅/❌} |
+| 4 | HTTP requests in Burp format: `METHOD URL HTTP/1.1` + Headers + Body — directly replayable | Burp-compatible request format | {fill-in: non-compliant request count, format: non-negative integer} | {✅/❌} |
+| 5 | HTTP responses include status code + key response body (evidence portion, not truncated) | status code + evidence body present | {fill-in: incomplete response count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure D: Severity Scoring Consistency
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | `severity` object contains all 10 required fields: `reachability`, `reachability_reason`, `impact`, `impact_reason`, `complexity`, `complexity_reason`, `score`, `cvss`, `level`, `vuln_id` | all 10 fields present | {fill-in: missing fields} | {✅/❌} |
-| 2 | R/I/C values are integers 0–3 with non-empty reason strings | R, I, C ∈ {0,1,2,3} + non-empty reasons | {fill-in: invalid values} | {✅/❌} |
-| 3 | Weighted score formula correct: `score = R×0.40 + I×0.35 + C×0.25` | score = R×0.40 + I×0.35 + C×0.25 | {fill-in: formula error count} | {✅/❌} |
-| 4 | CVSS estimate correct: `cvss = (score / 3.0) × 10.0` | cvss = (score / 3.0) × 10.0 | {fill-in: CVSS error count} | {✅/❌} |
-| 5 | Level mapping correct: C=2.70–3.00, H=2.10–2.69, M=1.20–2.09, L=0.10–1.19 | level matches score range | {fill-in: mismatched level count} | {✅/❌} |
-| 6 | `vuln_id` follows pattern `^[CHML]-[A-Z_]+-\d{3}$` | matches `^[CHML]-[A-Z_]+-\d{3}$` | {fill-in: invalid vuln_id count} | {✅/❌} |
-| 7 | Score ↔ evidence consistency: score ≥ 2.10 → evidence_score ≥ 7; 1.20–2.09 → 4–6; < 1.20 → 1–3 | score-evidence alignment per ranges | {fill-in: inconsistency count} | {✅/❌} |
+| 1 | `severity` object contains all 10 required fields: `reachability`, `reachability_reason`, `impact`, `impact_reason`, `complexity`, `complexity_reason`, `score`, `cvss`, `level`, `vuln_id` | all 10 fields present | {fill-in: missing fields, format: comma-separated or "none"} | {✅/❌} |
+| 2 | R/I/C values are integers 0–3 with non-empty reason strings | R, I, C ∈ {0,1,2,3} + non-empty reasons | {fill-in: invalid values, format: comma-separated or "0"} | {✅/❌} |
+| 3 | Weighted score formula correct: `score = R×0.40 + I×0.35 + C×0.25` | score = R×0.40 + I×0.35 + C×0.25 | {fill-in: formula error count, format: non-negative integer} | {✅/❌} |
+| 4 | CVSS estimate correct: `cvss = (score / 3.0) × 10.0` | cvss = (score / 3.0) × 10.0 | {fill-in: CVSS error count, format: non-negative integer} | {✅/❌} |
+| 5 | Level mapping correct: C=2.70–3.00, H=2.10–2.69, M=1.20–2.09, L=0.10–1.19 | level matches score range | {fill-in: mismatched level count, format: non-negative integer} | {✅/❌} |
+| 6 | `vuln_id` follows pattern `^[CHML]-[A-Z_]+-\d{3}$` | matches `^[CHML]-[A-Z_]+-\d{3}$` | {fill-in: invalid vuln_id count, format: non-negative integer} | {✅/❌} |
+| 7 | Score ↔ evidence consistency: score ≥ 2.10 → evidence_score ≥ 7; 1.20–2.09 → 4–6; < 1.20 → 1–3 | score-evidence alignment per ranges | {fill-in: inconsistency count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure E: Prerequisite Conditions
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | Each exploit has `prerequisite_conditions` with 4 sub-items: `auth_requirement`, `bypass_method`, `other_preconditions`, `exploitability_judgment` | all 4 sub-items present per exploit | {fill-in: missing sub-item count} | {✅/❌} |
-| 2 | `auth_requirement` is one of: `anonymous`, `authenticated`, `admin`, `internal_network` | value ∈ {anonymous, authenticated, admin, internal_network} | {fill-in: invalid values} | {✅/❌} |
-| 3 | `auth_requirement` matches the route's `auth_level` in `auth_matrix.json` | auth_requirement = auth_matrix.auth_level | {fill-in: mismatch count} | {✅/❌} |
-| 4 | `exploitability_judgment = "not_exploitable"` → `final_verdict` capped at `potential`, `confidence` capped at `low` | not_exploitable → potential + low confidence | {fill-in: violation count} | {✅/❌} |
-| 5 | `exploitability_judgment = "conditionally_exploitable"` → `severity.complexity` drops 1 level | conditionally_exploitable → complexity -1 | {fill-in: uncapped entry count} | {✅/❌} |
+| 1 | Each exploit has `prerequisite_conditions` with 4 sub-items: `auth_requirement`, `bypass_method`, `other_preconditions`, `exploitability_judgment` | all 4 sub-items present per exploit | {fill-in: missing sub-item count, format: non-negative integer} | {✅/❌} |
+| 2 | `auth_requirement` is one of: `anonymous`, `authenticated`, `admin`, `internal_network` | value ∈ {anonymous, authenticated, admin, internal_network} | {fill-in: invalid values, format: comma-separated or "0"} | {✅/❌} |
+| 3 | `auth_requirement` matches the route's `auth_level` in `auth_matrix.json` | auth_requirement = auth_matrix.auth_level | {fill-in: mismatch count, format: non-negative integer} | {✅/❌} |
+| 4 | `exploitability_judgment = "not_exploitable"` → `final_verdict` capped at `potential`, `confidence` capped at `low` | not_exploitable → potential + low confidence | {fill-in: violation count, format: non-negative integer} | {✅/❌} |
+| 5 | `exploitability_judgment = "conditionally_exploitable"` → `severity.complexity` drops 1 level | conditionally_exploitable → complexity -1 | {fill-in: uncapped entry count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure F: Sink Coverage & Auditor Matrix
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | Sink coverage: `audited sinks / priority_queue total sinks` ≥ 90% | ≥ 90% | {fill-in: coverage percentage} | {✅/❌} |
-| 2 | `team4_progress.json` contains `total_findings` + per-level counts + findings array | all required fields present | {fill-in: missing fields} | {✅/❌} |
-| 3 | All 21 auditor types have a status (`executed`, `not_applicable`, `deferred`, `failed`) | 21/21 auditors have status | {fill-in: missing auditor status count} | {✅/❌} |
-| 4 | P0 sinks have 100% coverage — every P0 sink has an exploit result | 100% P0 coverage | {fill-in: P0 coverage percentage} | {✅/❌} |
-| 5 | `not_applicable` auditors have documented reason | all not_applicable have reason | {fill-in: undocumented count} | {✅/❌} |
+| 1 | Sink coverage: `audited sinks / priority_queue total sinks` ≥ 90% | ≥ 90% | {fill-in: coverage percentage, format: "N.N%" (0.0-100.0)} | {✅/❌} |
+| 2 | `team4_progress.json` contains `total_findings` + per-level counts + findings array | all required fields present | {fill-in: missing fields, format: comma-separated or "none"} | {✅/❌} |
+| 3 | All 21 auditor types have a status (`executed`, `not_applicable`, `deferred`, `failed`) | 21/21 auditors have status | {fill-in: missing auditor status count, format: non-negative integer} | {✅/❌} |
+| 4 | P0 sinks have 100% coverage — every P0 sink has an exploit result | 100% P0 coverage | {fill-in: P0 coverage percentage, format: "N.N%" (0.0-100.0)} | {✅/❌} |
+| 5 | `not_applicable` auditors have documented reason | all not_applicable have reason | {fill-in: undocumented count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure G: Filter Bypass & False Positive Check
 | # | Check Item | Expected | Actual | Status |
 |---|------------|----------|--------|--------|
-| 1 | For sinks with `effective=true` filters in context_pack, exploit records bypass method or `not_bypassable` annotation | bypass method or not_bypassable for all filtered sinks | {fill-in: unhandled filter count} | {✅/❌} |
-| 2 | All `confirmed`/`suspected` findings compared against `shared/false_positive_patterns.md` | comparison completed for all findings | {fill-in: false positive match count} | {✅/❌} |
-| 3 | Bypass strategies are reasonable (e.g., `htmlspecialchars` bypass not claimed via SQL comment technique) | strategies consistent with filter type | {fill-in: unreasonable strategy count} | {✅/❌} |
-| 4 | Cross-validated with variant payloads for confirmed findings | variant payload validation done | {fill-in: unvalidated finding count} | {✅/❌} |
+| 1 | For sinks with `effective=true` filters in context_pack, exploit records bypass method or `not_bypassable` annotation | bypass method or not_bypassable for all filtered sinks | {fill-in: unhandled filter count, format: non-negative integer} | {✅/❌} |
+| 2 | All `confirmed`/`suspected` findings compared against `shared/false_positive_patterns.md` | comparison completed for all findings | {fill-in: false positive match count, format: non-negative integer} | {✅/❌} |
+| 3 | Bypass strategies are reasonable (e.g., `htmlspecialchars` bypass not claimed via SQL comment technique) | strategies consistent with filter type | {fill-in: unreasonable strategy count, format: non-negative integer} | {✅/❌} |
+| 4 | Cross-validated with variant payloads for confirmed findings | variant payload validation done | {fill-in: unvalidated finding count, format: non-negative integer} | {✅/❌} |
 
 ### Procedure G2: Anti-Hallucination Verification (per `shared/anti_hallucination.md`)
 
@@ -112,23 +112,23 @@ For EACH `confirmed` or `suspected` exploit result, verify the following rules:
 
 | # | Anti-Hallucination Rule | Check Method | Actual | Status |
 |---|------------------------|--------------|--------|--------|
-| 1 | No speculation — conclusions backed by code evidence | Every conclusion has `file:line` citation | {fill-in: unsupported conclusion count} | {✅/❌} |
-| 2 | Source code snippets present | Each finding includes actual code snippet (not paraphrased) | {fill-in: missing snippet count} | {✅/❌} |
-| 3 | Uncertain findings marked `[Needs Verification]` | Findings without full evidence chain marked | {fill-in: unmarked uncertain count} | {✅/❌} |
-| 4 | Call chain evidence complete | Every link in call chain has code evidence | {fill-in: broken chain count} | {✅/❌} |
-| 5 | Payload results from actual HTTP responses | `confirmed` has real response data, not fabricated | {fill-in: fabricated response count} | {✅/❌} |
-| 6 | Response mismatch = not confirmed | If expected vs actual response differ → verdict ≠ confirmed | {fill-in: mismatch-but-confirmed count} | {✅/❌} |
-| 7 | Code re-read, not from memory | Evidence references match actual file content — for EACH `file:line` citation, run `sed -n '{line}p' $TARGET_PATH/{file}` and compare with quoted code | {fill-in: stale reference count} | {✅/❌} |
-| 8 | Non-vulnerability analysis present | Safe sinks documented with reason | {fill-in: undocumented safe count} | {✅/❌} |
-| 9 | Multi-agent conflict resolved | Contradictory findings between auditors reconciled | {fill-in: unresolved conflict count} | {✅/❌} |
-| 10 | Complete reproduction materials | PoC script + exact curl command + expected output | {fill-in: incomplete reproduction count} | {✅/❌} |
-| 11 | Race condition statistical significance | Race findings have ≥3 successful reproductions | {fill-in: insufficient evidence count} | {✅/❌} |
-| 12 | NoSQL/GraphQL semantics correct | NoSQL/GraphQL-specific syntax not confused with SQL | {fill-in: semantic error count} | {✅/❌} |
-| 13 | Business logic context present | Business logic vulns have workflow context documented | {fill-in: missing context count} | {✅/❌} |
-| 14 | Crypto exploitability verified | Crypto findings have practical exploit demonstration | {fill-in: theoretical-only crypto count} | {✅/❌} |
-| 15 | WordPress core/plugin/theme distinction | WordPress findings correctly attribute component | {fill-in: misattribution count} | {✅/❌} |
-| 16 | No fabrication on tool failure | If tool returned error, finding not fabricated from assumption | {fill-in: post-failure fabrication count} | {✅/❌} |
-| 17 | Output size within limits | Each exploit JSON ≤ 50KB; total exploits/ ≤ 5MB | {fill-in: oversized file count} | {✅/❌} |
+| 1 | No speculation — conclusions backed by code evidence | Every conclusion has `file:line` citation | {fill-in: unsupported conclusion count, format: non-negative integer} | {✅/❌} |
+| 2 | Source code snippets present | Each finding includes actual code snippet (not paraphrased) | {fill-in: missing snippet count, format: non-negative integer} | {✅/❌} |
+| 3 | Uncertain findings marked `[Needs Verification]` | Findings without full evidence chain marked | {fill-in: unmarked uncertain count, format: non-negative integer} | {✅/❌} |
+| 4 | Call chain evidence complete | Every link in call chain has code evidence | {fill-in: broken chain count, format: non-negative integer} | {✅/❌} |
+| 5 | Payload results from actual HTTP responses | `confirmed` has real response data, not fabricated | {fill-in: fabricated response count, format: non-negative integer} | {✅/❌} |
+| 6 | Response mismatch = not confirmed | If expected vs actual response differ → verdict ≠ confirmed | {fill-in: mismatch-but-confirmed count, format: non-negative integer} | {✅/❌} |
+| 7 | Code re-read, not from memory | Evidence references match actual file content — for EACH `file:line` citation, run `sed -n '{line}p' $TARGET_PATH/{file}` and compare with quoted code | {fill-in: stale reference count, format: non-negative integer} | {✅/❌} |
+| 8 | Non-vulnerability analysis present | Safe sinks documented with reason | {fill-in: undocumented safe count, format: non-negative integer} | {✅/❌} |
+| 9 | Multi-agent conflict resolved | Contradictory findings between auditors reconciled | {fill-in: unresolved conflict count, format: non-negative integer} | {✅/❌} |
+| 10 | Complete reproduction materials | PoC script + exact curl command + expected output | {fill-in: incomplete reproduction count, format: non-negative integer} | {✅/❌} |
+| 11 | Race condition statistical significance | Race findings have ≥3 successful reproductions | {fill-in: insufficient evidence count, format: non-negative integer} | {✅/❌} |
+| 12 | NoSQL/GraphQL semantics correct | NoSQL/GraphQL-specific syntax not confused with SQL | {fill-in: semantic error count, format: non-negative integer} | {✅/❌} |
+| 13 | Business logic context present | Business logic vulns have workflow context documented | {fill-in: missing context count, format: non-negative integer} | {✅/❌} |
+| 14 | Crypto exploitability verified | Crypto findings have practical exploit demonstration | {fill-in: theoretical-only crypto count, format: non-negative integer} | {✅/❌} |
+| 15 | WordPress core/plugin/theme distinction | WordPress findings correctly attribute component | {fill-in: misattribution count, format: non-negative integer} | {✅/❌} |
+| 16 | No fabrication on tool failure | If tool returned error, finding not fabricated from assumption | {fill-in: post-failure fabrication count, format: non-negative integer} | {✅/❌} |
+| 17 | Output size within limits | Each exploit JSON ≤ 50KB; total exploits/ ≤ 5MB | {fill-in: oversized file count, format: non-negative integer} | {✅/❌} |
 
 **Anti-hallucination verdict:**
 - ANY of rules 1-6 has count > 0 for `confirmed` findings → FAIL (critical fabrication risk)
@@ -165,7 +165,7 @@ For EACH `confirmed` or `suspected` exploit result, verify the following rules:
   "basic_info": {
     "quality_checker": "S-083",
     "target": "Phase-4 output",
-    "validated_files": ["{fill-in: actual file paths read}"]
+    "validated_files": ["{fill-in: actual file paths read, format: comma-separated file paths}"]
   },
   "verdict": "pass",
   "checks": {

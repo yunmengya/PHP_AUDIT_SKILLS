@@ -3,25 +3,40 @@
   "title": "Checkpoint",
   "description": "Audit checkpoint file for resume and progress tracking",
   "type": "object",
-  "required": ["completed", "current", "mode"],
+  "required": [
+    "completed",
+    "current",
+    "mode"
+  ],
   "properties": {
     "completed": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string",
+        "maxLength": 1000,
+        "minLength": 1
+      },
       "description": "List of completed phase names (e.g., [\"env\", \"scan\", \"trace\"])"
     },
     "current": {
       "type": "string",
-      "description": "Currently executing phase name"
+      "description": "Currently executing phase name",
+      "maxLength": 20,
+      "minLength": 1
     },
     "mode": {
       "type": "string",
-      "enum": ["full", "degraded"],
+      "enum": [
+        "full",
+        "degraded"
+      ],
       "description": "Overall audit mode — degraded if any phase degraded"
     },
     "framework": {
       "type": "string",
-      "description": "Detected PHP framework name"
+      "description": "Detected PHP framework name",
+      "maxLength": 100,
+      "minLength": 1
     },
     "total_sinks": {
       "type": "integer",
@@ -39,8 +54,14 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
-          "start": { "type": "string", "format": "date-time" },
-          "end": { "type": "string", "format": "date-time" }
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       }
     },
@@ -52,13 +73,20 @@
         "properties": {
           "mode": {
             "type": "string",
-            "enum": ["full", "degraded"]
+            "enum": [
+              "full",
+              "degraded"
+            ]
           },
           "degradation_reason": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           }
         },
-        "required": ["mode"]
+        "required": [
+          "mode"
+        ]
       }
     },
     "agent_states": {
@@ -69,19 +97,40 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["spawned", "running", "passed", "failed", "retrying", "degraded", "timed_out"]
+            "enum": [
+              "spawned",
+              "running",
+              "passed",
+              "failed",
+              "retrying",
+              "degraded",
+              "timed_out"
+            ]
           },
           "spawned_at": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "completed_at": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "qc_verdict": {
-            "type": ["string", "null"],
-            "enum": ["pass", "fail", null]
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "pass",
+              "fail",
+              null
+            ]
           },
           "redo_count": {
             "type": "integer",
@@ -91,7 +140,9 @@
             "type": "boolean"
           }
         },
-        "required": ["status"]
+        "required": [
+          "status"
+        ]
       }
     }
   }

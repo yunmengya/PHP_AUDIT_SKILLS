@@ -46,13 +46,40 @@
             "pattern": "^V-\\d+$"
           },
           "vuln_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "sqli",
+              "xss_ssti",
+              "rce",
+              "lfi",
+              "filewrite",
+              "ssrf",
+              "xxe",
+              "deserial",
+              "crlf",
+              "ldap",
+              "nosql",
+              "csrf",
+              "session",
+              "authz",
+              "crypto",
+              "race_condition",
+              "business_logic",
+              "infoleak",
+              "logging",
+              "config",
+              "wordpress"
+            ]
           },
           "sub_type": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
           },
           "endpoint": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "confidence": {
             "type": "string",
@@ -64,7 +91,9 @@
           },
           "output_data": {
             "type": "string",
-            "description": "Data/capabilities produced by this vulnerability"
+            "description": "Data/capabilities produced by this vulnerability",
+            "maxLength": 2000,
+            "minLength": 1
           },
           "required_access": {
             "type": "string",
@@ -76,7 +105,9 @@
           },
           "grants_access": {
             "type": "string",
-            "description": "Access level granted"
+            "description": "Access level granted",
+            "maxLength": 200,
+            "minLength": 1
           },
           "severity": {
             "type": "string",
@@ -103,11 +134,15 @@
         "properties": {
           "from": {
             "type": "string",
-            "description": "Source node_id"
+            "description": "Source node_id",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "to": {
             "type": "string",
-            "description": "Target node_id"
+            "description": "Target node_id",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "relationship": {
             "type": "string",
@@ -120,7 +155,9 @@
             ]
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
           }
         }
       }
@@ -157,19 +194,27 @@
           "nodes": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             },
             "description": "Ordered list of node_ids"
           },
           "entry_point": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "final_impact": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
           },
           "narrative": {
             "type": "string",
-            "description": "Attack narrative"
+            "description": "Attack narrative",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "remediation_priority": {
             "type": "string",
@@ -188,29 +233,41 @@
         "type": "object",
         "properties": {
           "pattern_name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1
           },
           "involved_vulns": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             }
           },
           "individual_severity": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "combined_severity": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           },
           "explanation": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1
           }
         }
       }
     },
     "mermaid_diagram": {
       "type": "string",
-      "description": "Complete Mermaid diagram code"
+      "description": "Complete Mermaid diagram code",
+      "maxLength": 1000,
+      "minLength": 1
     }
   }
 }

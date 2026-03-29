@@ -33,16 +33,26 @@
         ],
         "properties": {
           "chain_id": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^CHAIN-\\d{1,4}$",
+            "maxLength": 12
           },
           "vulns": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
             }
           },
           "combined_impact": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
           },
           "confidence": {
             "type": "string",
@@ -53,7 +63,9 @@
             ]
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
           }
         }
       }
@@ -65,7 +77,9 @@
       }
     },
     "summary": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 3000,
+      "minLength": 1
     },
     "graph_correlations": {
       "type": "object",
@@ -77,22 +91,61 @@
             "type": "object",
             "properties": {
               "source_node": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "maxLength": 100
               },
               "target_node": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "maxLength": 100
               },
               "relation": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "auth_bypass",
+                  "privilege_escalation",
+                  "data_flow",
+                  "credential_reuse",
+                  "session_hijack",
+                  "token_forge",
+                  "file_access",
+                  "code_execution",
+                  "information_disclosure",
+                  "resource_access",
+                  "chained_exploit"
+                ]
               },
               "source_status": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "confirmed",
+                  "suspected",
+                  "not_vulnerable",
+                  "failed",
+                  "error",
+                  "skipped"
+                ]
               },
               "target_status": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "confirmed",
+                  "suspected",
+                  "not_vulnerable",
+                  "failed",
+                  "error",
+                  "skipped"
+                ]
               },
               "escalated_severity": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ]
               }
             }
           },
@@ -104,16 +157,24 @@
             "type": "object",
             "properties": {
               "node_id": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 150,
+                "minLength": 1
               },
               "sink_id": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "maxLength": 100
               },
               "reason": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
               },
               "enabled_by": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
               }
             }
           },
@@ -125,19 +186,27 @@
             "type": "object",
             "properties": {
               "source_node": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "maxLength": 100
               },
               "target_node": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "maxLength": 100
               },
               "original_severities": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 1000,
+                  "minLength": 1
                 }
               },
               "combined_severity": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
               }
             }
           },
@@ -153,7 +222,9 @@
             ],
             "properties": {
               "data_object": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
               },
               "vuln_count": {
                 "type": "integer",
@@ -162,14 +233,20 @@
               "vuln_types": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 1000,
+                  "minLength": 1
                 }
               },
               "max_severity": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
               },
               "recommendation": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
               }
             }
           },
@@ -181,13 +258,19 @@
             "type": "object",
             "properties": {
               "pattern": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
               },
               "matched_from_project": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
               },
               "suggestion": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
               }
             }
           },
