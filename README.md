@@ -4,12 +4,13 @@
 
 **全链路 PHP 代码安全审计 AI Agent 系统**
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![Skills](https://img.shields.io/badge/skills-145+-green)
 ![Skill Files](https://img.shields.io/badge/skill_files-121-brightgreen)
 ![Auditors](https://img.shields.io/badge/auditors-21_types_×_2_stages-red)
 ![Schemas](https://img.shields.io/badge/schemas-30-orange)
 ![Phase](https://img.shields.io/badge/phases-6-purple)
+![Controllability](https://img.shields.io/badge/controllability-530+_constraints-yellow)
 
 基于 Claude Code Agent Teams 的多智能体协作安全审计框架，覆盖环境构建、静态侦察、动态追踪、深度对抗利用、后渗透关联分析、报告收口全链路，支持 **21 种漏洞类型** 专家级审计。
 
@@ -48,8 +49,17 @@ RCE · SQLi · 反序列化 · LFI · 文件写入 · SSRF · XSS/SSTI · XXE ·
 ### 🔒 质量保障体系
 - **Gate 门禁**：每阶段结束强制校验产物存在性（GATE-1 ~ GATE-4.5）
 - **独立 QC 池**：按需 spawn 质检员，"完成一个、校验一个"，含图记忆 + 研究员专项检查
-- **30 个 JSON Schema**：所有 Agent 间数据交换严格校验格式
+- **30 个 JSON Schema**：所有 Agent 间数据交换严格校验格式，251 个 string 字段全部约束（enum/pattern/maxLength），251 个 string 字段全部约束（enum/pattern/maxLength）
 - **Auditor 自检**：每个审计员内置 `auditor_self_check.md` 自我校验清单
+- **530+ 可控性约束**：4 轮深度优化，消除自由文本幻觉风险
+
+### 📊 专业审计报告
+- **单文件全包含**：一个 `审计报告.md` 包含所有内容（目录/执行摘要/漏洞详情/攻击链/覆盖率/风险池/经验总结）
+- **Context Pack 内嵌**：每个漏洞详情含完整调用链、中间件、过滤器分析、认证绕过评估
+- **Burp 复现模板**：每个漏洞自带可直接复制到 Burp Repeater 的 HTTP 请求
+- **Mermaid 可视化**：攻击链 + 联合攻击路径全部用 Mermaid 流程图展示
+- **CVSS 进度条**：`████████░░ 9.45/10` 直观展示严重程度
+- **SARIF 导出**：支持导入 GitHub/VS Code 的标准格式
 
 ---
 
@@ -222,13 +232,25 @@ Phase-4 攻击循环（每个 Sink，最多 8 轮）：
 | `poc_generator` | 可执行 PoC 脚本生成 |
 | `remediation_generator` | 修复 Patch 生成（框架适配） |
 
-### Team 5 — 报告收口（3 Agents）
+### Team 5 — 报告收口（3 Agents + 7 Chapter Writers）
 
 | Agent | 职责 |
 |-------|------|
-| `report_writer` | 主审计报告生成（含 Burp 复现包） |
+| `report_writer` | 主审计报告编排（7 章并行写入 → 单文件组装） |
 | `sarif_exporter` | SARIF 2.1.0 标准导出 |
 | `env_cleaner` | Xdebug 清理 + 代码/数据库还原 |
+
+**7 个 Chapter Writers（并行执行）：**
+
+| Chapter | Writer | 输出内容 |
+|---------|--------|----------|
+| S-090a | `cover_page_writer` | 封面 + 目录 + 执行摘要 + CVSS 可视化 |
+| S-090b | `vuln_summary_writer` | 漏洞汇总表 + CVSS 进度条 |
+| S-090c | `vuln_detail_writer` | 漏洞详情（信息卡 + Context Pack + Mermaid + Burp + 修复对比） |
+| S-090d | `attack_chain_writer` | 联合攻击链（Mermaid + 步骤表） |
+| S-090e | `coverage_stats_writer` | 覆盖率统计（路由/优先级/审计器） |
+| S-090f | `risk_pool_writer` | 待补证风险池 |
+| S-090g | `lessons_writer` | 审计经验总结 |
 
 ### QC — 独立质检（2 Agents）
 
@@ -242,18 +264,10 @@ Phase-4 攻击循环（每个 Sink，最多 8 轮）：
 ## 前置要求
 
 - **Docker** + **Docker Compose**（必需）
-- **Claude Code**（建议开启 Agent Teams 实验特性）
+- **Claude Code**（v2.1.87+）
 - **tmux**（可选，分屏查看并行 Agent）
 
-> **Agent Teams 配置：** 在 `~/.claude/settings.json` 中添加：
->
-> ```json
-> {
->   "env": {
->     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
->   }
-> }
-> ```
+> **注意：** 本项目自带完整的多 Agent 编排（phases + teams + skills），无需依赖 Claude Code 的 Agent Teams 实验特性。如使用第三方 API（如智谱 glm-5），建议关闭 Agent Teams 以避免模型不兼容问题。
 
 ---
 
@@ -506,7 +520,7 @@ bash audit_db.sh qc-read [phase]                  # 读取质检记录
 ```
 $WORK_DIR/
 ├── 报告/
-│   ├── 审计报告.md              ← 全中文主报告（含 Burp 模板、攻击链、AI验证标记）
+│   ├── 审计报告.md              ← 全中文单文件报告（含目录/执行摘要/漏洞详情/Context Pack/Burp/攻击链/覆盖率/风险池/经验总结）
 │   └── audit_report.sarif.json  ← SARIF 2.1.0（可导入 GitHub/VS Code）
 ├── PoC脚本/
 │   ├── poc_{sink_id}.py         ← 每个漏洞的 PoC
@@ -514,7 +528,7 @@ $WORK_DIR/
 ├── 修复补丁/
 │   └── {finding_id}.patch       ← 框架适配修复
 ├── 经验沉淀/
-│   ├── 经验总结.md              ← 绕过技巧/失败教训/新模式
+│   ├── lessons_learned.md       ← 绕过技巧/失败教训/新模式
 │   └── 共享文件更新建议.md
 ├── 质量报告/
 │   └── 质量报告.md
@@ -522,6 +536,29 @@ $WORK_DIR/
     ├── exploits/, traces/, context_packs/
     ├── attack_graph.json, correlation_report.json
     └── checkpoint.json
+```
+
+### 审计报告内容结构
+
+```
+审计报告.md
+├── # 封面（项目元数据 + CVSS可视化进度条）
+├── 📖 目录（7章锚点导航）
+├── 执行摘要（整体风险等级 + 关键发现 + 审计范围）
+├── 漏洞汇总表（CVSS进度条 + AI验证徽章）
+├── 漏洞详情 ×N
+│   ├── 📋 漏洞信息卡（等级/类型/路由/Sink/鉴权/优先级）
+│   ├── 📦 上下文包（入口→调用链→Sink + 中间件 + 过滤器 + 认证绕过）
+│   ├── 🔗 Mermaid 攻击链
+│   ├── 📊 数据流追踪（Source→Sink + file:line）
+│   ├── 🔫 Burp 复现模板（请求 + 响应）
+│   ├── ⚔️ 攻击迭代记录
+│   └── 🔧 修复方案（❌修复前 vs ✅修复后）
+├── 联合攻击链分析（Mermaid + 步骤表）
+├── 审计覆盖率统计（路由/优先级/审计器状态）
+├── 待补证风险池（降级原因 + 复验建议）
+├── 审计经验总结（框架特征/绕过手法/踩坑/建议）
+└── 📋 页脚（版本 + 时间 + 工具）
 ```
 
 ---
@@ -614,13 +651,15 @@ Agent 启动时按层级注入共享知识：
 | Skill 文件（`skills/`） | 121（111 skill + 10 index） |
 | 漏洞审计员（2-Stage） | 21 types × 2 = 42 files |
 | Skills 子目录 | 10 |
-| JSON Schema | 25 个 |
-| 共享知识库（`shared/`） | 25 个 |
+| JSON Schema | 30 个（251 string 字段全约束） |
+| 共享知识库（`shared/`） | 28 个 |
 | 阶段定义 | 7 个 |
 | 参考文档 | 9 个 |
 | 辅助工具 | 12 个 |
 | 环境模板 | 10 个 |
-| Markdown 文件总计 | 145+ 个 |
+| 报告 Chapter Writers | 7 个 |
+| 可控性约束 | 530+ 项（4 轮深度优化） |
+| Markdown 文件总计 | 210+ 个 |
 
 ---
 
