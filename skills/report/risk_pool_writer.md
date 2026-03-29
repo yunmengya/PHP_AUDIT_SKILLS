@@ -95,7 +95,14 @@ If `suggested_action` is a code, map to Chinese:
 ### Procedure D: Assemble Document
 
 ````markdown
-# 待补证风险池
+
+<br/>
+
+---
+
+<br/>
+
+## 待补证风险池
 
 > 以下条目因证据不完整暂未确认，建议人工复验。
 > ⚠️ 风险池条目不可删除，即使风险极低也须列出并注明原因。

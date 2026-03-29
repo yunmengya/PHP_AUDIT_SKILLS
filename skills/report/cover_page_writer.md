@@ -57,7 +57,29 @@ Read `exploit_summary.json` and fill:
 | medium_count | `exploit_summary.json → severity_breakdown.medium` |
 | low_count | `exploit_summary.json → severity_breakdown.low` |
 
-### Procedure C: Assemble Cover Page
+### Procedure C: Calculate CVSS Visual Bars
+
+For each severity count, generate a progress bar:
+
+| Field | Fill-in Rule |
+|-------|-------------|
+| critical_bar | Repeat `█` for `critical_count` times (max 20), then pad with `░` to 20 chars. Suffix: `{critical_count}个` |
+| high_bar | Same rule for `high_count` |
+| medium_bar | Same rule for `medium_count` |
+| low_bar | Same rule for `low_count` |
+
+If count > 20, cap at 20 `█`. If count == 0, show 20 `░`.
+
+### Procedure D: Calculate Risk Level
+
+| Condition | Risk Level |
+|-----------|-----------|
+| critical_count ≥ 1 OR confirmed ≥ 5 | 🔴 **高风险** |
+| high_count ≥ 1 OR confirmed ≥ 2 | 🟠 **中风险** |
+| confirmed ≥ 1 AND critical == 0 AND high == 0 | 🟡 **低风险** |
+| confirmed == 0 | 🟢 **安全** |
+
+### Procedure E: Assemble Cover Page + Executive Summary
 
 Fill all values into the following fixed template:
 
@@ -68,26 +90,85 @@ Fill all values into the following fixed template:
 |------|------|
 | 项目名称 | {project_name} |
 | 审计日期 | {audit_date} |
-| 目标版本 | {target_version} |
-| 框架 | {framework} |
+| 目标版本 | {framework} {target_version} |
 | PHP 版本 | {php_version} |
+| 路由总数 | {total_routes} |
+| 已审计路由 | {audited_routes} |
+| 审计覆盖率 | {coverage_pct}% |
 
-## 漏洞统计概览
+### 漏洞统计概览
 
-| 严重等级 | 数量 | 标记 |
-|----------|------|------|
-| 🔴 紧急 (Critical) | {critical_count} | ██████ |
-| 🟠 高危 (High) | {high_count} | █████ |
-| 🟡 中危 (Medium) | {medium_count} | ████ |
-| 🔵 低危 (Low) | {low_count} | ███ |
+| 严重等级 | 数量 | 可视化 |
+|----------|------|--------|
+| 🔴 紧急 (Critical) | {critical_count} | {critical_bar} |
+| 🟠 高危 (High) | {high_count} | {high_bar} |
+| 🟡 中危 (Medium) | {medium_count} | {medium_bar} |
+| 🔵 低危 (Low) | {low_count} | {low_bar} |
 | **合计** | **{total_vulns}** | |
 
 > 🟢已确认 {confirmed} / 🟡疑似 {suspected} / 🔴潜在 {potential}
 
+*本报告由 AI 辅助生成，所有漏洞均经过自动化验证。*
+*报告版本: v1.0 | 生成时间: {audit_date} {audit_time} | 工具: PHP_AUDIT_SKILLS v2.0*
+
+<br/>
+
 ---
 
-*本报告由 AI 辅助生成，所有漏洞均经过自动化验证。*
-*报告生成时间: {audit_date}*
+<br/>
+
+## 📖 目录
+
+| 章节 | 标题 | 页内锚点 |
+|------|------|----------|
+| 第 0 章 | 执行摘要 | [跳转](#执行摘要) |
+| 第 1 章 | 漏洞汇总表 | [跳转](#漏洞汇总表) |
+| 第 2 章 | 漏洞详情 | [跳转](#漏洞详情) |
+| 第 3 章 | 联合攻击链分析 | [跳转](#联合攻击链分析) |
+| 第 4 章 | 审计覆盖率统计 | [跳转](#审计覆盖率统计) |
+| 第 5 章 | 待补证风险池 | [跳转](#待补证风险池) |
+| 第 6 章 | 审计经验总结 | [跳转](#审计经验总结) |
+
+<br/>
+
+---
+
+<br/>
+
+## 执行摘要
+
+> 🎯 本节为审计结果一页纸总结，供管理层快速了解整体安全态势。
+
+### 整体风险评级
+
+| 指标 | 值 |
+|------|-----|
+| **整体风险等级** | {risk_level} |
+| 确认漏洞数 | {confirmed} |
+| 紧急漏洞数 | {critical_count} |
+| 高危漏洞数 | {high_count} |
+| 需立即修复 | {immediate_fix_list} |
+
+### 关键发现
+
+| # | 漏洞 | 等级 | 一句话描述 | 紧急程度 |
+|---|------|------|-----------|---------|
+| 1 | {sink_id} | {severity_emoji} | {one_line_desc} | {⚡ 立即修复 / 📋 计划修复} |
+| ... | ... | ... | ... | ... |
+
+> ⚡ 立即修复 = Critical/High | 📋 计划修复 = Medium/Low
+
+### 审计范围概要
+
+| 项目 | 值 |
+|------|-----|
+| 扫描路由数 | {total_routes} |
+| 已审计路由 | {audited_routes} |
+| 覆盖率 | {coverage_pct}% |
+| 使用审计器 | {auditor_count} 个 |
+| 攻击轮次 | 最多 {max_rounds} 轮/漏洞 |
+
+{IF confirmed == 0: "> ✅ **恭喜！本次审计未发现可利用的安全漏洞。**"}
 ````
 
 ## Pre-Submission Checklist (MUST Execute)

@@ -103,18 +103,29 @@ IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "su
 3. Fill into the following template:
 
 ````markdown
-# 漏洞汇总表
+
+<br/>
+
+---
+
+<br/>
+
+## 漏洞汇总表
 
 > 共发现 **{confirmed_count}** 个已确认漏洞
 
-| 编号 | 漏洞类型 | 严重等级 | 路由 | 验证状态 | CVSS |
-|------|----------|----------|------|----------|------|
-| {sink_id} | {漏洞类型} | {严重等级} | {路由} | {验证状态} | {score} |
-| ... | ... | ... | ... | ... | ... |
+| 编号 | 漏洞类型 | 严重等级 | CVSS | 可视化 | 路由 | AI验证 |
+|------|----------|----------|------|--------|------|--------|
+| {sink_id} | {漏洞类型} | {严重等级} | {score} | {cvss_bar} | {路由} | {验证状态} |
+| ... | ... | ... | ... | ... | ... | ... |
 
 > 评分公式: 可达性×0.40 + 影响×0.35 + 复杂度反转×0.25
 > 等级映射: ≥8.0 🔴紧急 / 6.0-7.9 🟠高危 / 4.0-5.9 🟡中危 / <4.0 🔵低危
 ````
+
+**CVSS Visual Bar Rule:**
+- `cvss_bar` = Repeat `█` for `floor(score)` times, then pad with `░` to 10 chars. Suffix: `{score}/10`
+- Example: score=9.45 → `█████████░ 9.45/10`, score=4.30 → `████░░░░░░ 4.30/10`
 
 ### Procedure D: Zero-Vulnerability Case
 

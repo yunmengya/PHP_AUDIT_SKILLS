@@ -96,13 +96,20 @@ Derive from confirmed vulnerabilities and coverage gaps:
 ### Procedure E: Assemble Document
 
 ````markdown
-# 审计经验总结
+
+<br/>
+
+---
+
+<br/>
+
+## 审计经验总结
 
 > 项目: {project_name} | 框架: {framework} {framework_version} | 日期: {audit_date}
 
 ---
 
-## 一、框架安全特征
+### 一、框架安全特征
 
 ### {framework_name} {framework_version} 安全机制观察
 
@@ -121,15 +128,17 @@ Derive from confirmed vulnerabilities and coverage gaps:
 
 ---
 
-## 二、典型绕过手法
+### 二、典型绕过手法
 
 > 以下技术在本次审计中实测验证
 
-### {technique_name} {effectiveness_label}
+**{technique_name} [{effectiveness_label}]**
 
-- **目标类型**: {target_sink_type}
-- **有效载荷**: `{payload_example}`
-- **适用场景**: {context}
+| 项目 | 值 |
+|------|-----|
+| 目标类型 | {target_sink_type} |
+| 有效载荷 | `{payload_example}` |
+| 适用场景 | {context} |
 
 {Repeat for each confirmed bypass...}
 
@@ -137,7 +146,7 @@ Derive from confirmed vulnerabilities and coverage gaps:
 
 ---
 
-## 三、踩坑记录
+### 三、踩坑记录
 
 > 以下方法在本次审计中测试但未成功，记录原因以避免重复
 
@@ -150,7 +159,7 @@ Derive from confirmed vulnerabilities and coverage gaps:
 
 ---
 
-## 四、安全建议
+### 四、安全建议
 
 > 基于本次审计实际发现，提出以下改进建议
 
@@ -159,9 +168,14 @@ Derive from confirmed vulnerabilities and coverage gaps:
 | {priority} | {recommendation} | {based_on} |
 | ... | ... | ... |
 
+<br/>
+
 ---
 
-*经验总结生成时间: {timestamp}*
+<br/>
+
+*📋 报告结束 | 版本: v1.0 | 生成时间: {audit_date} {audit_time} | 工具: PHP_AUDIT_SKILLS v2.0*
+*⚠️ 本报告由 AI 辅助生成，所有漏洞均经过自动化验证，建议人工复核关键发现。*
 ````
 
 ## Pre-Submission Checklist (MUST Execute)

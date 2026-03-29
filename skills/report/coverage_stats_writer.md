@@ -91,9 +91,16 @@ Read `exploit_summary.json → per_auditor[]` or `checkpoint.json → auditor_st
 ### Procedure D: Assemble Document
 
 ````markdown
-# 审计覆盖率统计
 
-## 路由覆盖率
+<br/>
+
+---
+
+<br/>
+
+## 审计覆盖率统计
+
+### 路由覆盖率
 
 | 统计项 | 数量 |
 |--------|------|

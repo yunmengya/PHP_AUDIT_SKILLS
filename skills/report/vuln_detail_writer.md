@@ -18,6 +18,7 @@
 |------|--------|----------|-------------|
 | exploits/*.json | `$WORK_DIR/exploits/*.json` | ✅ | `sink_id`, `sink_type`, `route`, `severity`, `score`, `final_verdict`, `verification_level`, `evidence`, `iterations`, `sink_location` |
 | traces/*.json | `$WORK_DIR/traces/*.json` | ✅ | `source`, `sink`, `chain[]` (data flow steps), `sanitizers` |
+| context_packs/*.json | `$WORK_DIR/context_packs/*.json` | ✅ | `entry_function`, `call_chain[]`, `middleware_chain`, `global_filters`, `auth_bypass_summary`, `filter_score`, `chain_status` |
 | 修复补丁/*.diff | `$WORK_DIR/修复补丁/*.diff` | ❌ | Before/after code snippets for remediation |
 | remediation output | `$WORK_DIR/exploits/*.json → remediation` | ❌ | `fix_description`, `fix_code` |
 
@@ -55,7 +56,7 @@ IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "su
 2. For each file where `final_verdict == "confirmed"`, execute Procedures B-G
 3. Output one file per vulnerability: `02_漏洞详情_{sink_id}.md`
 
-### Procedure B: Fill Vulnerability Header
+### Procedure B: Fill Vulnerability Header (Card Layout)
 
 | Field | Fill-in Value |
 |-------|---------------|
@@ -67,6 +68,36 @@ IF any Value = true → apply Degradation Enforcement Rules (cap verdicts at "su
 | affected_route | `route` (HTTP method + path) |
 | sink_location | `sink_location` (file:line + function name) |
 | auth_requirement | From evidence or route metadata; default `"需进一步确认"` |
+| priority | From `context_pack → route_priority` or default `"P3"` |
+
+### Procedure B2: Fill Context Pack Data (NEW — MANDATORY)
+
+Read `$WORK_DIR/context_packs/{sink_id}.json` and fill:
+
+| Field | Fill-in Value |
+|-------|---------------|
+| entry_function | `context_pack → entry_function` (e.g., `UserController::update()`) |
+| entry_file | `context_pack → entry_file` (e.g., `app/Http/Controllers/UserController.php`) |
+| entry_line | `context_pack → entry_line` |
+| chain_depth | `len(context_pack → call_chain[])` |
+| chain_status | `context_pack → chain_status` — enum: `"complete"` / `"broken_depth_limit"` / `"broken_no_caller"` |
+| middleware_chain | `context_pack → middleware_chain` — comma-separated list or `"无"` |
+| global_filters | `context_pack → global_filters` — comma-separated list or `"无"` |
+| auth_bypass_summary | `context_pack → auth_bypass_summary` — format: `"{auth_type}: {bypass_possibility}"` |
+| filter_score | `context_pack → filter_score` — integer 0-100 |
+| call_chain_steps | Each step in `context_pack → call_chain[]` with `function_name [file:line]` |
+
+**Filter Analysis Table:**
+From `context_pack → filters[]` extract:
+
+| Field | Fill-in Value |
+|-------|---------------|
+| filter_name | `filter.name` |
+| filter_location | `filter.file:line` |
+| filter_effective | `filter.effective` → `✅有效` / `❌无效` |
+| filter_bypass | `filter.bypass_method` or `"否"` |
+
+**If context_pack file is missing:** Output `"> ⚠️ 上下文包数据不可用"` and skip the context pack section.
 
 ### Procedure C: Fill Attack Chain Mermaid Diagram
 
@@ -138,35 +169,74 @@ From `修复补丁/{sink_id}.diff` or `exploit → remediation`:
 For each confirmed vulnerability, output:
 
 ````markdown
+
+<br/>
+
 ---
 
-## {sink_id} {title}
+<br/>
 
-### {verification_badge_text}
+### 🔖 {sink_id} {title}
 
+#### AI 验证状态
+
+> {verification_badge_text — 三选一，保留匹配的一行:}
 > 🟢 **AI已实战验证** — AI 向目标发送了真实 HTTP 请求，收到了预期的攻击响应
 > 🟡 **AI已分析未实战** — AI 完成了代码分析和数据流追踪，但未发送真实攻击请求
 > 🔴 **纯静态发现** — 仅通过代码审查发现，未做动态验证
->
-> （保留与 verification_level 匹配的一行，删除其余两行）
+
+#### 📋 漏洞信息卡
 
 | 项目 | 值 |
 |------|-----|
 | 严重程度 | {severity_display} |
 | 漏洞类型 | {vuln_type_display} |
-| 影响路由 | {affected_route} |
-| Sink 位置 | {sink_location} |
+| 影响路由 | `{affected_route}` |
+| Sink 位置 | `{sink_location}` |
 | 鉴权要求 | {auth_requirement} |
+| 路由优先级 | {priority} |
 
-### 漏洞描述
+#### 📦 上下文包 (Context Pack)
 
-{sink_type_chinese_description — 1-2 sentences explaining what this vulnerability is and why it is dangerous}
+> 来源: `$WORK_DIR/context_packs/{sink_id}.json`
 
-### 影响分析
+| 项目 | 值 |
+|------|-----|
+| 入口函数 | `{entry_function}` [{entry_file}:{entry_line}] |
+| 调用链深度 | {chain_depth} 层 |
+| 链路状态 | {chain_status} |
+| 中间件链 | {middleware_chain} |
+| 全局过滤器 | {global_filters} |
+| 认证绕过评估 | {auth_bypass_summary} |
+| 过滤器评分 | {filter_score}/100 |
 
-{impact_analysis — based on severity scoring: what can an attacker achieve, what data/systems are at risk; MUST use Impact Analysis Mapping Template below}
+**完整调用链:**
+```
+{entry_point}
+  → {call_chain_step_1} [{file}:{line}]
+  → {call_chain_step_2} [{file}:{line}]
+  → ...
+  → {sink_function}({param}) [{file}:{line}]  ← SINK
+```
 
-### 攻击链
+**过滤器分析:**
+
+| 过滤器 | 位置 | 有效性 | 可绕过 |
+|--------|------|--------|--------|
+| {filter_name} | {filter_location} | {filter_effective} | {filter_bypass} |
+| ... | ... | ... | ... |
+
+{IF no filters: "> ⚠️ **无任何过滤器** — 用户输入直达危险函数"}
+
+#### 漏洞描述
+
+{sink_type_description — 使用下方 Sink Type Description Templates}
+
+#### 影响分析
+
+{impact_analysis — 使用下方 Impact Analysis Mapping Template}
+
+#### 🔗 攻击链 (Mermaid)
 
 ```mermaid
 graph LR
@@ -176,7 +246,7 @@ graph LR
     style D fill:#ff4444,color:#fff
 ```
 
-### 数据流
+#### 📊 数据流追踪
 
 ```
 Source: {source}
@@ -186,7 +256,7 @@ Source: {source}
 过滤函数: {sanitizers}
 ```
 
-### Burp 复现模板
+#### 🔫 Burp 复现模板
 
 > 以下 HTTP 请求可直接复制到 Burp Suite Repeater 中使用
 
@@ -207,26 +277,25 @@ HTTP/1.1 {response_status}
 {response_body}
 ```
 
-### 攻击迭代记录
+#### ⚔️ 攻击迭代记录
 
 | 轮次 | 策略 | Payload | 结果 |
 |------|------|---------|------|
-| {round} | {strategy} | {payload} | {result} |
+| {round} | {strategy} | `{payload}` | {result} |
 
-### 修复方案
+#### 🔧 修复方案
 
-**修复前:**
+**❌ 修复前 (危险):**
 ```php
-// {fix_before_file}
+// {fix_before_file}:{fix_before_line}
 {fix_before_code}
 ```
 
-**修复后:**
+**✅ 修复后 (安全):**
 ```php
+// {fix_description}
 {fix_after_code}
 ```
-
-{fix_description}
 ````
 
 ## Reference Integrity Check (MUST Execute)
