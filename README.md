@@ -282,7 +282,7 @@ docker compose version
 
 ### 2. 配置 Skill
 
-将本仓库整体放入 Claude Code 的 skills 目录，或作为项目级 `.github/skills/php-audit/` 使用。
+将本仓库整体放入 Claude Code 的 skills 目录，或作为项目级 `.github/skills/PHP_AUDIT_SKILLS/` 使用。
 
 ### 3. 一键启动审计
 
