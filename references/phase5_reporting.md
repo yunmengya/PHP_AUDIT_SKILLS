@@ -8,19 +8,19 @@
 
 Spawn three Agents simultaneously (background mode):
 
-  Agent(name="env-cleaner", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="env-cleaner", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #N+1 instructions + teams/team5/env_cleaner.md + shared resources + WORK_DIR
 
-  Agent(name="report-writer", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="report-writer", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #N+2 instructions + teams/team5/report_writer.md + shared resources + TARGET_PATH + WORK_DIR
 
-  Agent(name="sarif-exporter", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="sarif-exporter", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #N+3 instructions + teams/team5/sarif_exporter.md + shared resources + WORK_DIR
 
 Wait for all three to complete
 ── sequential step ──
 
-  Agent(name="quality-checker-final", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="quality-checker-final", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: teams/qc/quality_checker.md
             + references/quality_check_templates.md (Phase 5: report generation validation + final quality report template)
             + shared/output_standard.md + shared/data_contracts.md + shared/evidence_contract.md

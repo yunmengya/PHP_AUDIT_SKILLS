@@ -67,10 +67,10 @@ Fill in the SARIF `runs[0].tool.driver` fields:
 
 | Field | Fill-in Value |
 |-------|---------------|
-| `name` | `"php-audit"` |
+| `name` | `"php-audit-skills"` |
 | `version` | `"2.0.0"` |
 | `semanticVersion` | `"2.0.0"` |
-| `informationUri` | `"https://github.com/php-audit"` |
+| `informationUri` | `"https://github.com/yunmengya/PHP_AUDIT_SKILLS"` |
 | `rules` | *(populated in Procedure F)* |
 
 Top-level scaffold:
@@ -188,7 +188,7 @@ After generating the SARIF JSON, fill in the checklist:
 | # | Check | Pass/Fail |
 |---|-------|-----------|
 | 1 | Top-level contains `"version": "2.1.0"` and `runs` array | `____` |
-| 2 | `runs[0].tool.driver.name` === `"php-audit"` | `____` |
+| 2 | `runs[0].tool.driver.name` === `"php-audit-skills"` | `____` |
 | 3 | Every result has `ruleId`, `level`, `message`, `locations` | `____` |
 | 4 | Every `level` value ∈ {`error`, `warning`, `note`} | `____` |
 | 5 | Every `startLine` is a positive integer (≥ 1) | `____` |

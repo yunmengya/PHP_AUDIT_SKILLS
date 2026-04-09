@@ -6,11 +6,11 @@
 
 ── Sequential step ──
 
-  Agent(name="auth-simulator", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="auth-simulator", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #12 instructions + teams/team3/auth_simulator.md + shared resources + TARGET_PATH + WORK_DIR
 
 Completed
-  Agent(name="trace-dispatcher", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="trace-dispatcher", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #13 instructions + teams/team3/trace_dispatcher.md + shared resources
             + teams/team3/trace_worker.md (injected as worker prompt for internal spawning)
             + tools/trace_filter.php (provide path and usage)
@@ -18,7 +18,7 @@ Completed
     → Internally spawns up to 2 trace-workers in parallel
 
 Completed
-  Agent(name="quality-checker-3", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="quality-checker-3", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #14 instructions + teams/qc/quality_checker.md
             + references/quality_check_templates.md (Phase 3 section)
             + shared/output_standard.md + shared/data_contracts.md + shared/evidence_contract.md

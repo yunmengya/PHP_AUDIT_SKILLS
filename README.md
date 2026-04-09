@@ -287,7 +287,7 @@ docker compose version
 ### 3. 一键启动审计
 
 ```text
-/php-audit /path/to/php-project
+/php-audit-skills /path/to/php-project
 ```
 
 系统将自动执行 6 阶段全链路审计，最终输出完整报告和 PoC。
@@ -457,8 +457,8 @@ PHP_AUDIT_SKILLS/
 │
 ├── assets/                           # 可视化资源
 │   ├── PHP_AUDIT_SKILLS-pipeline.png
-│   ├── php-audit-workflow.png
-│   ├── php-audit-workflow.svg
+│   ├── php-audit-skills-workflow.png
+│   ├── php-audit-skills-workflow.svg
 │   └── workflow.mmd
 │
 ├── agent-flow.mmd                    # Agent 执行流程图（Mermaid）
@@ -596,7 +596,7 @@ $WORK_DIR/
 > 完整流程详见 `全链路详细流程.md`
 
 ```
-输入: /php-audit <目标路径>
+输入: /php-audit-skills <目标路径>
   ↓
 前置检查: Docker → 路径验证 → WORK_DIR → 断点续审 → 增量审计
   ↓

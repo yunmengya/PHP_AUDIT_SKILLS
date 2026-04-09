@@ -5,7 +5,7 @@
 # 替代 JSONL 文件，提供 ACID 事务、索引查询、并发安全
 #
 # 两个数据库:
-#   1. 全局记忆库: ~/.php_audit/attack_memory.db  (跨审计持久化)
+#   1. 全局记忆库: ~/.php_audit_skills/attack_memory.db  (跨审计持久化)
 #   2. 审计会话库: $WORK_DIR/audit_session.db      (单次审计)
 #
 # 用法:
@@ -43,7 +43,7 @@
 # ============================================================
 set -euo pipefail
 
-MEMORY_DIR="${HOME}/.php_audit"
+MEMORY_DIR="${HOME}/.php_audit_skills"
 MEMORY_DB="${MEMORY_DIR}/attack_memory.db"
 
 # ── SQLite 配置：WAL 模式 + 合理超时 ──
@@ -861,7 +861,7 @@ case "${1:-help}" in
         echo "  init-memory                  初始化全局记忆库"
         echo "  init-session <WORK_DIR>      初始化审计会话库"
         echo ""
-        echo "攻击记忆 (全局 ~/.php_audit/attack_memory.db):"
+        echo "攻击记忆 (全局 ~/.php_audit_skills/attack_memory.db):"
         echo "  memory-write  '<json>'       写入攻击记忆"
         echo "  memory-query  <sink_type> [framework] [php_major] [waf_type]"
         echo "  memory-stats                 统计记忆库"
@@ -882,7 +882,7 @@ case "${1:-help}" in
         echo "  qc-read   <WORK_DIR> [phase]   读取质检记录"
         echo "  qc-stats  <WORK_DIR>           质检统计汇总"
         echo ""
-        echo "关系型记忆图 (全局 ~/.php_audit/attack_memory.db):"
+        echo "关系型记忆图 (全局 ~/.php_audit_skills/attack_memory.db):"
         echo "  init-graph                      初始化图表（memory_nodes + memory_edges）"
         echo "  graph-node-write '<json>'       写入漏洞节点"
         echo "  graph-edge-write '<json>'       写入关系边"

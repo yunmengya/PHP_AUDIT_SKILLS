@@ -11,7 +11,7 @@ Inspired by PentAGI's Smart Memory System approach, uses SQLite database for ACI
 - **Write timing**: After each Phase-4 expert completes an attack, experience is written to the memory store
 - **Read timing**: Before Phase-4 expert starts the attack phase, matching historical memories are queried
 - **Matching dimensions**: `sink_type + framework + PHP version segment + WAF type`
-- **Storage location**: `${HOME}/.php_audit/attack_memory.db` (SQLite, persistent across projects)
+- **Storage location**: `${HOME}/.php_audit_skills/attack_memory.db` (SQLite, persistent across projects)
 - **Tool script**: `tools/audit_db.sh` (encapsulates all database operations)
 
 ## Initialization
@@ -184,7 +184,7 @@ If historical JSONL memory files exist, one-command migration is available:
 
 ```bash
 bash tools/audit_db.sh migrate-memory
-# Default reads ~/.php_audit/attack_memory.jsonl → writes to attack_memory.db
+# Default reads ~/.php_audit_skills/attack_memory.jsonl → writes to attack_memory.db
 ```
 
 ## Relationship with Other Systems

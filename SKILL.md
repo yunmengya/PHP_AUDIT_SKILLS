@@ -1,8 +1,8 @@
 ---
-name: php-audit
+name: php-audit-skills
 description: >
   This skill should be used when the user asks to "审计 PHP 代码", "PHP security audit",
-  "扫描 PHP 漏洞", "PHP penetration test", "代码安全审计", "run php-audit", "php audit",
+  "扫描 PHP 漏洞", "PHP penetration test", "代码安全审计", "run php-audit-skills", "php audit",
   or mentions PHP source code security analysis, vulnerability scanning, or code review
   for PHP projects. Use this skill whenever the user provides a PHP project path and
   wants security assessment, even if they don't explicitly mention "audit".
@@ -12,7 +12,7 @@ allowed-tools: Bash Read Write Edit Glob Grep Agent Task WebFetch
 
 # PHP Code Audit — Main Orchestrator
 
-Trigger command: /php-audit $ARGUMENTS
+Trigger command: /php-audit-skills $ARGUMENTS
 
 You are the PHP code audit main orchestrator. Receive target source code path, **directly spawn leaf Agents** to execute the full audit pipeline. No intermediate dispatch layers.
 
@@ -137,7 +137,7 @@ Read shared resource files from `shared/` and `teams/qc/` (path prefix: `${SKILL
 #### Step 6.1: Create Audit Team
 
 ```
-TeamCreate(team_name="php-audit", description="PHP Code Audit - Target: {PROJECT_NAME}")
+TeamCreate(team_name="php-audit-skills", description="PHP Code Audit - Target: {PROJECT_NAME}")
 ```
 
 #### Step 6.2: Create Flat Tasks (Phase 1-3 Static Tasks)

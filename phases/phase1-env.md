@@ -107,7 +107,7 @@ Spawn two Agents simultaneously (background mode, true parallelism):
 ```
 Agent(
   name="env-detective",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -120,7 +120,7 @@ Output: Environment analysis results (framework / PHP version / DB type / extens
 ```
 Agent(
   name="schema-reconstructor",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -141,7 +141,7 @@ Read the following file contents:
 ```
 Agent(
   name="docker-builder",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=3) + docker_builder.md + env_selfheal.md + env-detective return results
@@ -159,7 +159,7 @@ Read: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality
 ```
 Agent(
   name="quality-checker-1",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=4) + teams/qc/quality_checker.md + references/quality_check_templates.md (corresponding phase section) + shared/output_standard.md

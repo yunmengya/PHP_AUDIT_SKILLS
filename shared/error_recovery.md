@@ -56,10 +56,10 @@ bash tools/audit_db.sh init-session "$WORK_DIR"
 jq '.agent_states' "$WORK_DIR/checkpoint.json"
 
 # 2. Rollback Docker snapshot (restore to pre-attack state)
-docker commit php_audit_target php_audit_snapshot_recovery
-docker stop php_audit_target 2>/dev/null
-docker rm php_audit_target 2>/dev/null
-docker run -d --name php_audit_target php_audit_snapshot_pre_attack
+docker commit php_audit_skills_target php_audit_skills_snapshot_recovery
+docker stop php_audit_skills_target 2>/dev/null
+docker rm php_audit_skills_target 2>/dev/null
+docker run -d --name php_audit_skills_target php_audit_skills_snapshot_pre_attack
 
 # 3. Check for existing partial results
 ls -la "$WORK_DIR/attack_plans/${SINK_ID}_plan.json"  # Phase 1 analysis results
@@ -98,19 +98,19 @@ When triggered (3 consecutive auditor crashes or manual invocation), fill the fo
 
 | # | Health Check Item | Command | Result | Pass |
 |---|------------------|---------|--------|------|
-| 1 | Container running | `docker ps --filter name=php_audit_target --format '{{.Status}}'` | {status or "not running"} | {✅/❌} |
+| 1 | Container running | `docker ps --filter name=php_audit_skills_target --format '{{.Status}}'` | {status or "not running"} | {✅/❌} |
 | 2 | HTTP responds (port 80/8080) | `curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:TARGET_PORT/` | {HTTP code or "timeout"} | {✅/❌} |
-| 3 | Database connection | `docker exec php_audit_target php -r "new PDO('mysql:host=...');"` or equivalent | {success/error} | {✅/❌} |
-| 4 | Disk space available | `docker exec php_audit_target df -h / \| tail -1 \| awk '{print $5}'` | {usage %}  | {✅ if <90%} |
-| 5 | Memory not exhausted | `docker stats --no-stream php_audit_target --format '{{.MemPerc}}'` | {mem %} | {✅ if <95%} |
+| 3 | Database connection | `docker exec php_audit_skills_target php -r "new PDO('mysql:host=...');"` or equivalent | {success/error} | {✅/❌} |
+| 4 | Disk space available | `docker exec php_audit_skills_target df -h / \| tail -1 \| awk '{print $5}'` | {usage %}  | {✅ if <90%} |
+| 5 | Memory not exhausted | `docker stats --no-stream php_audit_skills_target --format '{{.MemPerc}}'` | {mem %} | {✅ if <95%} |
 
 **Recovery actions:**
 | Failure | Action |
 |---------|--------|
-| #1 ❌ Container not running | Restart: `docker start php_audit_target` or restore from snapshot |
-| #2 ❌ HTTP unresponsive | Restart web server inside container: `docker exec php_audit_target service apache2 restart` |
-| #3 ❌ Database down | Restart database: `docker exec php_audit_target service mysql restart` |
-| #4 ❌ Disk full | Clean logs: `docker exec php_audit_target find /tmp -type f -delete` |
+| #1 ❌ Container not running | Restart: `docker start php_audit_skills_target` or restore from snapshot |
+| #2 ❌ HTTP unresponsive | Restart web server inside container: `docker exec php_audit_skills_target service apache2 restart` |
+| #3 ❌ Database down | Restart database: `docker exec php_audit_skills_target service mysql restart` |
+| #4 ❌ Disk full | Clean logs: `docker exec php_audit_skills_target find /tmp -type f -delete` |
 | #5 ❌ Memory exhausted | Restart container with higher memory limit |
 | ALL ❌ | Restore from pre-attack snapshot: `docker stop && docker rm && docker run` from snapshot |
 

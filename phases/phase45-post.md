@@ -77,7 +77,7 @@ Spawn two Agents simultaneously (background mode):
 ```
 Agent(
   name="attack-graph-builder",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -90,7 +90,7 @@ Output: $WORK_DIR/attack_graph.json
 ```
 Agent(
   name="correlation-engine",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -117,7 +117,7 @@ Spawn two Agents simultaneously (background mode):
 ```
 Agent(
   name="remediation-generator",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -132,7 +132,7 @@ Output: $WORK_DIR/修复补丁/*.patch, $WORK_DIR/修复补丁/remediation_summa
 ```
 Agent(
   name="poc-generator",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",

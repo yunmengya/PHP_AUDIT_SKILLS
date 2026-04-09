@@ -28,7 +28,7 @@ Record storage points and usage points to $WORK_DIR/second_order/ (refer to shar
 Enter Stage 2 only when you receive the "START_ATTACK" signal. Until then, only perform Stage 1.
 ```
 
-> **Attack Memory**: Before a Phase-4 specialist starts the attack stage, it automatically queries `~/.php_audit/attack_memory.db` for historical records matching (sink_type + framework + PHP version range), prioritizes historically successful payloads, and skips known ineffective strategies. After completing the attack, it writes experience to the memory store. See `shared/attack_memory.md` for details.
+> **Attack Memory**: Before a Phase-4 specialist starts the attack stage, it automatically queries `~/.php_audit_skills/attack_memory.db` for historical records matching (sink_type + framework + PHP version range), prioritizes historically successful payloads, and skips known ineffective strategies. After completing the attack, it writes experience to the memory store. See `shared/attack_memory.md` for details.
 
 ── Step 1: Parallel Analysis (All specialists work simultaneously, no container interaction) ──
 
@@ -36,7 +36,7 @@ Spawn all specialist Agents simultaneously (background mode):
 
   For example (spawn on demand — skip if no corresponding sink exists, but framework-mandatory items MUST be started):
 
-  Agent(name="rce_auditor", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="rce_auditor", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #{id} instructions (Stage 1 mode) + teams/team4/rce_auditor.md + shared/docker_snapshot.md
             + shared/payload_templates.md + shared/waf_bypass.md + shared/framework_patterns.md
             + shared resources + corresponding sink's context_packs + traces + credentials
@@ -77,7 +77,7 @@ Sort specialists by priority (specialists corresponding to P0 sinks first):
 
   Iterate over each specialist that has completed analysis:
 
-    Agent(name="{type}-auditor-attack", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+    Agent(name="{type}-auditor-attack", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
       → prompt: "START_ATTACK signal + You have completed Stage 1 analysis, now execute Stage 2.
                 Read $WORK_DIR/attack_plans/{sink_id}_plan.json and attack round by round per plan."
               + teams/team4/{type}_auditor.md + shared/docker_snapshot.md
@@ -168,7 +168,7 @@ When a specialist Agent continuously fails during Stage 2 attacks, the following
    ```
 3. **Spawn Mini-Researcher**:
    ```
-   Agent(name="mini-researcher-{N}", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+   Agent(name="mini-researcher-{N}", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
      → prompt: teams/team4/mini_researcher.md
              + RESEARCH_QUERY + CONTEXT + TARGET_COMPONENT
              + WORK_DIR + SKILL_DIR
@@ -209,7 +209,7 @@ When a specialist Agent continuously fails during Stage 2 attacks, the following
 
   2. Assign quality check task (9 general items + specialized checks):
 
-  Agent(name="quality-checker-N", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="quality-checker-N", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: teams/qc/quality_checker.md
             + references/quality_check_templates.md (Phase 4: Individual Auditor verification + corresponding Auditor specialized checks)
             + shared/output_standard.md + shared/evidence_contract.md
@@ -242,7 +242,7 @@ When a specialist Agent continuously fails during Stage 2 attacks, the following
 
   After all Auditors pass individual verification, spawn one quality checker for comprehensive verification:
 
-  Agent(name="quality-checker-final-phase4", team_name="php-audit", foreground, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="quality-checker-final-phase4", team_name="php-audit-skills", foreground, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: teams/qc/quality_checker.md
             + references/quality_check_templates.md (Phase 4: Physical Evidence Comprehensive Verification + Cross-phase Data Consistency Verification)
             + shared/output_standard.md + shared/evidence_contract.md + shared/false_positive_patterns.md

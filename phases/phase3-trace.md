@@ -97,7 +97,7 @@ Read: ${SKILL_DIR}/teams/team3/auth_simulator.md
 ```
 Agent(
   name="auth-simulator",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=12) + auth_simulator.md contents
@@ -117,7 +117,7 @@ Read:
 ```
 Agent(
   name="trace-dispatcher",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=13) + trace_dispatcher.md + trace_worker.md contents
@@ -136,7 +136,7 @@ Read: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality
 ```
 Agent(
   name="quality-checker-3",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=14) + teams/qc/quality_checker.md + references/quality_check_templates.md (corresponding phase section) + shared/output_standard.md

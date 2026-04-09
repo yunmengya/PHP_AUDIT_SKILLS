@@ -10,11 +10,11 @@
 
 Spawn two Agents simultaneously (background mode):
 
-  Agent(name="attack-graph-builder", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="attack-graph-builder", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #M instructions + teams/team4.5/attack_graph_builder.md
             + shared/attack_chains.md + shared resources + WORK_DIR
 
-  Agent(name="correlation-engine", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="correlation-engine", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #M+1 instructions + teams/team4.5/correlation_engine.md
             + shared/false_positive_patterns.md + shared/second_order.md
             + shared/attack_chains.md + shared resources + WORK_DIR
@@ -24,11 +24,11 @@ Wait for both to complete
 
 Spawn two Agents simultaneously (background mode):
 
-  Agent(name="remediation-generator", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="remediation-generator", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #M+2 instructions + teams/team4.5/remediation_generator.md
             + shared/framework_patterns.md + shared resources + TARGET_PATH + WORK_DIR
 
-  Agent(name="poc-generator", team_name="php-audit", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
+  Agent(name="poc-generator", team_name="php-audit-skills", run_in_background=true, mode="bypassPermissions", subagent_type="general-purpose")
     → prompt: Task #M+3 instructions + teams/team4.5/poc_generator.md
             + shared/payload_templates.md + shared/waf_bypass.md + shared resources + WORK_DIR
 

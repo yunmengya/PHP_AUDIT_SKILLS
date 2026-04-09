@@ -110,7 +110,7 @@ Spawn 10 Agents simultaneously (background mode, true parallelism):
 ```
 Agent(
   name="psalm-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -123,7 +123,7 @@ Output: $WORK_DIR/psalm_taint.json
 ```
 Agent(
   name="progpilot-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -136,7 +136,7 @@ Output: $WORK_DIR/progpilot.json
 ```
 Agent(
   name="ast-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -149,7 +149,7 @@ Output: $WORK_DIR/ast_sinks.json
 ```
 Agent(
   name="phpstan-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -162,7 +162,7 @@ Output: $WORK_DIR/phpstan.json
 ```
 Agent(
   name="semgrep-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -175,7 +175,7 @@ Output: $WORK_DIR/semgrep.json
 ```
 Agent(
   name="composer-audit-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -188,7 +188,7 @@ Output: $WORK_DIR/composer_audit.json
 ```
 Agent(
   name="codeql-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -201,7 +201,7 @@ Output: $WORK_DIR/codeql.json
 ```
 Agent(
   name="route-mapper",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -214,7 +214,7 @@ Output: $WORK_DIR/route_map.json
 ```
 Agent(
   name="auth-auditor",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -227,7 +227,7 @@ Output: $WORK_DIR/auth_matrix.json
 ```
 Agent(
   name="dep-scanner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -246,7 +246,7 @@ Read: ${SKILL_DIR}/teams/team2/context_extractor.md
 ```
 Agent(
   name="context-extractor",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=9) + context_extractor.md contents
@@ -264,7 +264,7 @@ Read: ${SKILL_DIR}/teams/team2/risk_classifier.md
 ```
 Agent(
   name="risk-classifier",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=10) + risk_classifier.md contents
@@ -282,7 +282,7 @@ Read: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality
 ```
 Agent(
   name="quality-checker-2",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=11) + teams/qc/quality_checker.md + references/quality_check_templates.md (corresponding phase section) + shared/output_standard.md

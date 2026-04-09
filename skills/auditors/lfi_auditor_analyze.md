@@ -69,7 +69,7 @@ The vulnerability is confirmed if ANY of the following conditions are met:
 
 ### Historical Memory Query
 
-Before starting analysis, query the attack memory store (`~/.php_audit/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
+Before starting analysis, query the attack memory store (`~/.php_audit_skills/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
 - If confirmed records exist → prioritize their successful strategies to R1
 - If failed records exist → skip their excluded strategies
 - If no match → execute in default round order

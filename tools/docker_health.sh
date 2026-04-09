@@ -6,7 +6,7 @@
 
 set -uo pipefail
 
-CONTAINER="${1:-php_audit_target}"
+CONTAINER="${1:-php_audit_skills_target}"
 PASS=0
 FAIL=0
 WARN=0

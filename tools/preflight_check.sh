@@ -6,7 +6,7 @@
 set -euo pipefail
 
 TARGET_PATH="${1:-}"
-CONTAINER_NAME="${2:-php_audit_target}"
+CONTAINER_NAME="${2:-php_audit_skills_target}"
 ERRORS=0
 WARNINGS=0
 
@@ -70,7 +70,7 @@ fi
 
 # --- Check 5: WORK_DIR writable ---
 echo -n "[5/8] WORK_DIR writable... "
-WORK_DIR="${WORK_DIR:-/tmp/php_audit_workdir}"
+WORK_DIR="${WORK_DIR:-/tmp/php_audit_skills_workdir}"
 if [ -d "$WORK_DIR" ] && [ -w "$WORK_DIR" ]; then
     echo "✅ PASS ($WORK_DIR)"
 elif mkdir -p "$WORK_DIR" 2>/dev/null; then

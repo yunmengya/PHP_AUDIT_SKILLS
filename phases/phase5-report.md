@@ -138,7 +138,7 @@ Spawn Agents simultaneously (background mode, mutually independent):
 ```
 Agent(
   name="env-cleaner",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -166,7 +166,7 @@ Each agent config:
 ```
 Agent(
   name="{chapter-name}",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -178,7 +178,7 @@ Agent(
 ```
 Agent(
   name="sarif-exporter",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   run_in_background=true,
   mode="bypassPermissions",
   subagent_type="general-purpose",
@@ -202,7 +202,7 @@ Read: ${SKILL_DIR}/teams/qc/quality_checker.md + ${SKILL_DIR}/references/quality
 ```
 Agent(
   name="quality-checker-final",
-  team_name="php-audit",
+  team_name="php-audit-skills",
   mode="bypassPermissions",
   subagent_type="general-purpose",
   prompt= Prompt template(TASK_ID=N+4) + teams/qc/quality_checker.md + references/quality_check_templates.md (corresponding phase section) + shared/output_standard.md

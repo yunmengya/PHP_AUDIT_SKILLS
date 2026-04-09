@@ -73,7 +73,7 @@ Plan 8 rounds of attack strategies with different approaches against SQLi-class 
 
 ### Historical Memory Query
 
-Before starting the analysis, query the attack memory store (`~/.php_audit/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
+Before starting the analysis, query the attack memory store (`~/.php_audit_skills/attack_memory.db`) for records matching the current sink_type + framework + PHP version range:
 - If confirmed records exist → prioritize their successful strategies to R1
 - Has failed records → skip their excluded strategies
 - No matches → execute in default round order

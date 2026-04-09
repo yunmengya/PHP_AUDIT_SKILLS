@@ -10,7 +10,7 @@
 ## Input Contract
 | File | Source | Required | Fields Used |
 |------|--------|----------|-------------|
-| `~/.php_audit/attack_memory.db` | System memory store | ✅ | `sink_type`, `framework`, `php_version`, `strategy`, `result` |
+| `~/.php_audit_skills/attack_memory.db` | System memory store | ✅ | `sink_type`, `framework`, `php_version`, `strategy`, `result` |
 | Current auditor context | Invoking auditor (S-040 ~ S-060) | ✅ | `sink_type`, `target_framework`, `target_php_version` |
 
 ## 🚨 CRITICAL Rules
@@ -30,7 +30,7 @@
 | sink_type | {exact match with current auditor's sink type, e.g., "sql_injection", "rce"} |
 | framework | {exact match with target framework, e.g., "Laravel", "ThinkPHP"} |
 | php_version | {Major.Minor version of target, e.g., "8.1"} |
-| query_target | {path to memory DB: `~/.php_audit/attack_memory.db`} |
+| query_target | {path to memory DB: `~/.php_audit_skills/attack_memory.db`} |
 
 ### Procedure B: Apply Query Results
 | Field | Fill-in Value |

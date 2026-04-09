@@ -126,7 +126,7 @@ On agent/phase timeout, fill in the handling steps:
 1. Save progress to checkpoint.json
 2. Generate report from completed phases
 3. TeamDelete()
-4. Print: `"⏱️ Global timeout, progress saved. Resume with checkpoint: /php-audit $ARGUMENTS"`
+4. Print: `"⏱️ Global timeout, progress saved. Resume with checkpoint: /php-audit-skills $ARGUMENTS"`
 
 ### Procedure D: Reset Timers on Resume
 
